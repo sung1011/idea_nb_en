@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import gsap from 'gsap'
-import { Application, Circle, Container, FillGradient, Graphics, Text } from 'pixi.js'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { Application, Circle, Container, FillGradient, Graphics, Rectangle, Text } from 'pixi.js'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { wordEmoji } from '../data/phonicsFamily'
 
 const props = defineProps<{
@@ -93,36 +93,42 @@ function paintBucket() {
   const { width } = app.screen
   const point = bucketPoint(width)
   netBox.position.set(point.x, point.y)
+  const barW = Math.min(width - 28, 360)
 
   const bowl = new Graphics()
-  bowl.roundRect(-62, -6, 124, 52, 18)
-  bowl.fill({ color: 0xf4b400, alpha: 0.95 })
-  bowl.roundRect(-54, 8, 108, 30, 14)
-  bowl.fill({ color: 0xffe27a, alpha: 0.88 })
-  const net = new Text({ text: '🧺', style: emojiFont(36) })
+  bowl.roundRect(-barW / 2, -18, barW, 58, 20)
+  bowl.fill({ color: 0xffe27a, alpha: 0.96 })
+  bowl.roundRect(-barW / 2, -18, barW, 58, 20)
+  bowl.stroke({ color: 0xf4b400, width: 3, alpha: 0.9 })
+  const net = new Text({ text: '🧺', style: emojiFont(30) })
   net.anchor.set(0.5)
-  net.position.set(-38, 8)
+  net.position.set(-barW / 2 + 28, 10)
   const title = new Text({
     text: 'net',
-    style: { fontFamily: 'Fredoka, "PingFang SC", sans-serif', fontSize: 14, fill: 0x4a2808, fontWeight: '700' },
+    style: { fontFamily: 'Fredoka, "PingFang SC", sans-serif', fontSize: 16, fill: 0x4a2808, fontWeight: '700' },
   })
-  title.anchor.set(0.5)
-  title.position.set(18, -16)
+  title.anchor.set(0, 0.5)
+  title.position.set(-barW / 2 + 48, 10)
   netBox.addChild(bowl, net, title)
 
   const caughtWords = marks.filter((item) => item.caught).map((item) => item.word)
   caughtWords.forEach((word, index) => {
-    const chip = new Text({
-      text: `${wordEmoji(word)} ${word}`,
+    const chip = new Container()
+    const bgChip = new Graphics()
+    bgChip.roundRect(-32, -16, 64, 32, 16)
+    bgChip.fill({ color: 0xffffff, alpha: 0.95 })
+    const label = new Text({
+      text: word,
       style: {
         fontFamily: 'Fredoka, "PingFang SC", sans-serif',
-        fontSize: 13,
+        fontSize: 16,
         fill: 0x0e4b6b,
         fontWeight: '700',
       },
     })
-    chip.anchor.set(0.5)
-    chip.position.set(16 + (index - (caughtWords.length - 1) / 2) * 8, 18)
+    label.anchor.set(0.5)
+    chip.addChild(bgChip, label)
+    chip.position.set(-barW / 2 + 128 + index * 72, 10)
     netBox.addChild(chip)
   })
 }
@@ -217,17 +223,20 @@ function makeFish(word: string, index: number): FishMark {
   label.position.set(10, -1)
   const speaker = new Container()
   const speakerDisc = new Graphics()
-  speakerDisc.circle(0, 0, 28)
+  speakerDisc.circle(0, 0, 18)
   speakerDisc.fill({ color: 0xffffff, alpha: 0.96 })
-  speakerDisc.circle(0, 0, 28)
-  speakerDisc.stroke({ color: 0x0e4b6b, width: 2, alpha: 0.18 })
-  const speakerIcon = new Text({ text: '🔊', style: emojiFont(20) })
+  speakerDisc.circle(0, 0, 18)
+  speakerDisc.stroke({ color: 0x0e4b6b, width: 2, alpha: 0.2 })
+  const speakerIcon = new Text({
+    text: '♪',
+    style: { fontFamily: 'Fredoka, sans-serif', fontSize: 18, fill: 0x0e4b6b, fontWeight: '700' },
+  })
   speakerIcon.anchor.set(0.5)
   speaker.addChild(speakerDisc, speakerIcon)
-  speaker.position.set(18, -46)
+  speaker.position.set(48, 28)
   speaker.eventMode = 'static'
   speaker.cursor = 'pointer'
-  speaker.hitArea = new Circle(0, 0, 30)
+  speaker.hitArea = new Circle(0, 0, 22)
   speaker.on('pointertap', (event) => {
     event.stopPropagation()
     if (props.locked) return
@@ -239,7 +248,7 @@ function makeFish(word: string, index: number): FishMark {
   node.addChild(body, art, label, speaker)
   node.eventMode = 'static'
   node.cursor = 'pointer'
-  node.hitArea = new Circle(0, 0, 70)
+  node.hitArea = new Rectangle(-72, -40, 168, 92)
   node.on('pointertap', (event) => {
     event.stopPropagation()
     if (props.locked) return
@@ -368,9 +377,19 @@ function layout() {
   }
 }
 
+async function waitForBox(el: HTMLElement) {
+  await nextTick()
+  for (let i = 0; i < 24; i += 1) {
+    if (el.clientWidth >= 120 && el.clientHeight >= 160) return
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
+}
+
 async function boot() {
   const el = host.value
   if (!el) return
+  await waitForBox(el)
+  if (dead) return
   const stage = new Application()
   await stage.init({
     width: Math.max(el.clientWidth, 280),

@@ -25,7 +25,7 @@ const locked = ref(false)
 const listening = ref(false)
 const celebrating = ref(false)
 const prompt = ref('Read a word!')
-const micOk = canUseRecognition()
+const micOk = ref(canUseRecognition())
 const stageRef = ref<{
   liftFish: (word: string) => Promise<void>
   nudgeRemaining: () => void
@@ -46,7 +46,7 @@ function stopMic() {
 }
 
 function startListen() {
-  if (!recognizer || locked.value || !remaining.value.length) return
+  if (!recognizer || !micOk.value || locked.value || !remaining.value.length) return
   try {
     recognizer.start()
     listening.value = true
@@ -62,7 +62,7 @@ async function replayPrompt() {
   stopMic()
   prompt.value = remaining.value.length ? 'Read a word!' : 'Nice fishing!'
   await speak('Read a word!')
-  if (micOk && remaining.value.length && !locked.value) {
+  if (micOk.value && remaining.value.length && !locked.value) {
     window.setTimeout(() => startListen(), 250)
   }
 }
@@ -94,7 +94,7 @@ async function catchWord(word: string) {
   }
   locked.value = false
   prompt.value = 'Read a word!'
-  if (micOk) {
+  if (micOk.value) {
     window.setTimeout(() => startListen(), 280)
   } else {
     prompt.value = '再说一个，或点下一条小鱼'
@@ -109,7 +109,7 @@ function missSpeak() {
   stageRef.value?.nudgeRemaining()
   void (async () => {
     await speak('Try again!')
-    if (micOk && remaining.value.length && !locked.value) {
+    if (micOk.value && remaining.value.length && !locked.value) {
       window.setTimeout(() => startListen(), 250)
     }
   })()
@@ -134,7 +134,7 @@ async function onHearFish(word: string) {
   stopMic()
   prompt.value = word
   await speak(word)
-  if (micOk && remaining.value.length && !locked.value) {
+  if (micOk.value && remaining.value.length && !locked.value) {
     window.setTimeout(() => startListen(), 250)
   }
 }
@@ -144,6 +144,12 @@ onMounted(() => {
     onResult: onHeard,
     onEnd: () => {
       listening.value = false
+    },
+    onError: (error) => {
+      if (error === 'not-allowed' || error === 'service-not-allowed') {
+        micOk.value = false
+        prompt.value = '点小鱼钓上来，或点 ♪ 先听'
+      }
     },
   })
   void replayPrompt()
@@ -183,7 +189,7 @@ onUnmounted(() => {
       {{
         micOk
           ? '读出鱼身上的单词，或点小鱼钓上来'
-          : '这台设备没有麦克风识别，点小鱼就能钓上来'
+          : '点小鱼钓上来，点 ♪ 可以先听'
       }}
     </p>
     <big-button variant="listen" :disabled="locked || celebrating" @click="replayPrompt">

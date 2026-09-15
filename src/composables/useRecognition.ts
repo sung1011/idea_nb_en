@@ -5,6 +5,7 @@ export function canUseRecognition(): boolean {
 export function createRecognizer(handlers: {
   onResult: (transcript: string) => void
   onEnd?: () => void
+  onError?: (error: string) => void
 }) {
   const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition
   if (!Ctor) return null
@@ -21,7 +22,8 @@ export function createRecognizer(handlers: {
     }
     handlers.onResult(bits.join(' ').trim())
   }
-  rec.onerror = () => {
+  rec.onerror = (event) => {
+    handlers.onError?.(event.error)
     handlers.onEnd?.()
   }
   rec.onend = () => {
