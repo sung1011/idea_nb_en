@@ -4,50 +4,49 @@ import { useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
-
-type Bucket = 'animal' | 'prop'
+import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { shuffle } from '../data/playGallery'
 
 type SortItem = {
   id: string
-  emoji: string
   word: string
-  bucket: Bucket
+  emoji: string
 }
 
 const router = useRouter()
+const family = getCurrentFamily()
 const { backPath, backLabel } = usePlayMode()
 
-const items: SortItem[] = [
-  { id: 'cat', emoji: '🐱', word: 'cat', bucket: 'animal' },
-  { id: 'hat', emoji: '🎩', word: 'hat', bucket: 'prop' },
-  { id: 'mat', emoji: '🧶', word: 'mat', bucket: 'prop' },
-]
+const baskets: SortItem[] = family.targets.map((word) => ({
+  id: word,
+  word,
+  emoji: wordEmoji(word, family),
+}))
 
-const placed = ref<Record<string, Bucket | null>>({
-  cat: null,
-  hat: null,
-  mat: null,
-})
+const trayOrder = ref(shuffle(baskets.map((item) => item.id)))
+const placed = ref<Record<string, boolean>>({})
 const dragging = ref<string | null>(null)
 const ghost = ref({ x: 0, y: 0 })
-const prompt = ref('拖到对的篮子')
+const pulsing = ref('')
+const shaking = ref('')
 const celebrating = ref(false)
-const animalBox = ref<HTMLElement | null>(null)
-const propBox = ref<HTMLElement | null>(null)
+const prompt = ref('')
 
-const trayItems = computed(() => items.filter((item) => !placed.value[item.id]))
-const animalItems = computed(() => items.filter((item) => placed.value[item.id] === 'animal'))
-const propItems = computed(() => items.filter((item) => placed.value[item.id] === 'prop'))
-const allIn = computed(() => items.every((item) => placed.value[item.id]))
+const trayItems = computed(() =>
+  trayOrder.value
+    .map((id) => baskets.find((item) => item.id === id))
+    .filter((item): item is SortItem => !!item && !placed.value[item.id]),
+)
 
-function hit(el: HTMLElement | null, x: number, y: number) {
-  if (!el) return false
-  const box = el.getBoundingClientRect()
-  return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+function basketAt(x: number, y: number) {
+  const el = document.elementFromPoint(x, y)
+  const node = el?.closest('[data-basket]')
+  return node?.getAttribute('data-basket') ?? ''
 }
 
 function onDown(event: PointerEvent, id: string) {
   if (celebrating.value) return
+  pulsing.value = ''
   dragging.value = id
   ghost.value = { x: event.clientX, y: event.clientY }
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
@@ -60,7 +59,7 @@ function onMove(event: PointerEvent) {
 
 async function finish() {
   celebrating.value = true
-  prompt.value = 'Party sorted!'
+  prompt.value = 'Yes!'
   playSuccess()
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 800))
@@ -70,27 +69,28 @@ async function finish() {
 async function dropAt(x: number, y: number) {
   const id = dragging.value
   dragging.value = null
-  if (!id) return
-  const item = items.find((row) => row.id === id)
+  if (!id || celebrating.value) return
+  const item = baskets.find((row) => row.id === id)
   if (!item) return
 
-  let bucket: Bucket | null = null
-  if (hit(animalBox.value, x, y)) bucket = 'animal'
-  if (hit(propBox.value, x, y)) bucket = 'prop'
-  if (!bucket) return
+  const over = baskets.find((basket) => basket.id === basketAt(x, y))
+  if (!over) return
 
-  if (bucket !== item.bucket) {
+  if (over.id !== item.id) {
+    shaking.value = over.id
     playNudge()
-    prompt.value = '换一个篮子试试'
+    window.setTimeout(() => {
+      if (shaking.value === over.id) shaking.value = ''
+    }, 360)
     await speak(item.word)
     return
   }
 
-  placed.value = { ...placed.value, [id]: bucket }
+  placed.value = { ...placed.value, [id]: true }
   playPop()
   prompt.value = 'Yes!'
   await speak(item.word)
-  if (items.every((row) => placed.value[row.id])) {
+  if (baskets.every((row) => placed.value[row.id])) {
     await finish()
   }
 }
@@ -100,8 +100,18 @@ function onUp(event: PointerEvent) {
   void dropAt(event.clientX, event.clientY)
 }
 
+async function onboard() {
+  const first = baskets[0]
+  if (!first) return
+  pulsing.value = first.id
+  await speak(first.word)
+  await new Promise((resolve) => window.setTimeout(resolve, 900))
+  if (dragging.value) return
+  pulsing.value = ''
+}
+
 onMounted(() => {
-  void speak('Animals and party props')
+  void onboard()
 })
 
 onUnmounted(() => {
@@ -116,24 +126,25 @@ onUnmounted(() => {
       <star-bar />
     </header>
 
-    <div class="center">
-      <p class="gate-tag">拖一拖 · Drag Sort</p>
-      <h1 class="title-lg">{{ prompt }}</h1>
-      <p class="sub">小猫是动物，hat / mat 是派对道具</p>
+    <div class="center head">
+      <p class="gate-tag">Drag Sort</p>
+      <p class="prompt" :class="{ on: prompt }">{{ prompt }}</p>
     </div>
 
-    <div class="buckets">
-      <div ref="animalBox" class="bucket animal" :class="{ on: animalItems.length }">
-        <p>动物</p>
-        <div class="held">
-          <span v-for="item in animalItems" :key="item.id">{{ item.emoji }}</span>
-        </div>
-      </div>
-      <div ref="propBox" class="bucket prop" :class="{ on: propItems.length }">
-        <p>派对道具</p>
-        <div class="held">
-          <span v-for="item in propItems" :key="item.id">{{ item.emoji }}</span>
-        </div>
+    <div class="baskets">
+      <div
+        v-for="basket in baskets"
+        :key="basket.id"
+        :data-basket="basket.id"
+        class="basket"
+        :class="{
+          on: placed[basket.id],
+          pulse: pulsing === basket.id,
+          shake: shaking === basket.id,
+        }"
+      >
+        <span class="pic" aria-hidden="true">{{ basket.emoji }}</span>
+        <span v-if="placed[basket.id]" class="check" aria-hidden="true">⭐</span>
       </div>
     </div>
 
@@ -149,19 +160,16 @@ onUnmounted(() => {
         @pointerup="onUp"
         @pointercancel="dragging = null"
       >
-        <b>{{ item.emoji }}</b>
-        <small>{{ item.word }}</small>
+        {{ item.word }}
       </button>
     </div>
-
-    <p class="center hint">{{ allIn ? '都放好啦' : '按住拖进篮子' }}</p>
 
     <div
       v-if="dragging"
       class="ghost"
       :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
     >
-      {{ items.find((item) => item.id === dragging)?.emoji }}
+      {{ baskets.find((item) => item.id === dragging)?.word }}
     </div>
   </section>
 </template>
@@ -171,43 +179,64 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.head {
+  min-height: 64px;
+}
+
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
   color: #b45309;
 }
 
-.buckets {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  min-height: 180px;
-}
-
-.bucket {
-  border-radius: 24px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: inset 0 0 0 3px rgba(45, 58, 74, 0.06);
-}
-
-.bucket.on {
-  background: #e4f8ec;
-}
-
-.bucket p {
-  margin: 0 0 8px;
+.prompt {
+  margin: 6px 0 0;
+  min-height: 28px;
+  font-size: 24px;
   font-weight: 700;
-  text-align: center;
+  color: transparent;
 }
 
-.held {
-  min-height: 88px;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 40px;
+.prompt.on {
+  color: var(--ok);
+}
+
+.baskets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.basket {
+  position: relative;
+  min-height: 132px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 0 0 3px rgba(45, 58, 74, 0.06);
+  display: grid;
+  place-items: center;
+}
+
+.basket.on {
+  background: #e4f8ec;
+  box-shadow: inset 0 0 0 3px rgba(76, 175, 122, 0.35);
+}
+
+.basket.pulse {
+  animation: pulse 0.9s ease 2;
+}
+
+.pic {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.check {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-size: 22px;
 }
 
 .tray {
@@ -218,11 +247,14 @@ onUnmounted(() => {
 }
 
 .chip {
-  width: 96px;
-  min-height: 96px;
+  min-width: 96px;
+  min-height: 84px;
+  padding: 0 12px;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 8px 0 rgba(45, 58, 74, 0.12);
+  font-size: 28px;
+  font-weight: 700;
   touch-action: none;
 }
 
@@ -230,24 +262,19 @@ onUnmounted(() => {
   opacity: 0.35;
 }
 
-.chip b {
-  display: block;
-  font-size: 40px;
-}
-
-.hint {
-  margin: 8px 0 0;
-}
-
 .ghost {
   position: fixed;
   z-index: 20;
-  width: 72px;
-  height: 72px;
-  margin: -36px 0 0 -36px;
+  min-width: 88px;
+  min-height: 64px;
+  padding: 0 12px;
+  margin: -32px 0 0 -44px;
   display: grid;
   place-items: center;
-  font-size: 44px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 28px;
+  font-weight: 700;
   pointer-events: none;
   filter: drop-shadow(0 8px 0 rgba(45, 58, 74, 0.16));
 }
