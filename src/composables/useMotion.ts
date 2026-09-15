@@ -83,6 +83,70 @@ export function tweenSnapTo(target: unknown, dest: { x: number; y: number }): Pr
   })
 }
 
+export function tweenFlipReveal(target: unknown, onMid?: () => void): Promise<void> {
+  const el = asElement(target)
+  if (!el) return Promise.resolve()
+  return new Promise((resolve) => {
+    const tl = gsap.timeline({
+      onComplete: () => resolve(),
+    })
+    tl.to(el, {
+      rotateY: 90,
+      duration: 0.2,
+      ease: 'power2.in',
+      transformOrigin: '50% 50%',
+      onComplete: () => onMid?.(),
+    }).fromTo(
+      el,
+      { rotateY: -90 },
+      {
+        rotateY: 0,
+        duration: 0.28,
+        ease: 'back.out(1.6)',
+      },
+    )
+  })
+}
+
+export function tweenPopUp(target: unknown): Promise<void> {
+  const el = asElement(target)
+  if (!el) return Promise.resolve()
+  return new Promise((resolve) => {
+    gsap.fromTo(
+      el,
+      { y: 56, scale: 0.35, opacity: 0 },
+      {
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        duration: 0.4,
+        ease: 'back.out(2.4)',
+        transformOrigin: '50% 100%',
+        onComplete: () => resolve(),
+      },
+    )
+  })
+}
+
+export function tweenPopDown(target: unknown): Promise<void> {
+  const el = asElement(target)
+  if (!el) return Promise.resolve()
+  return new Promise((resolve) => {
+    gsap.to(el, {
+      y: 48,
+      scale: 0.45,
+      opacity: 0,
+      duration: 0.22,
+      ease: 'power2.in',
+      transformOrigin: '50% 100%',
+      onComplete: () => {
+        gsap.set(el, { y: 0, scale: 1, opacity: 1, clearProps: 'opacity,scale,y' })
+        resolve()
+      },
+    })
+  })
+}
+
 export function flyStarFrom(source: Element | null): Promise<void> {
   const bar = document.querySelector('.stars')
   if (!source || !bar) return Promise.resolve()

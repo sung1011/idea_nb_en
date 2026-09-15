@@ -10,6 +10,8 @@ export const playItems: PlayItem[] = [
   { id: 'soundFish', emoji: '🐠', name: 'Word Fish', zh: '读词钓鱼', path: '/sound-fish' },
   { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '跟读回音', path: '/echo-cave' },
   { id: 'tapTarget', emoji: '👆', name: 'Tap Target', zh: '点一点', path: '/tap-target' },
+  { id: 'flashFlip', emoji: '🃏', name: 'Flash Flip', zh: '闪卡翻翻', path: '/flash-flip' },
+  { id: 'whackWord', emoji: '🐹', name: 'Whack Word', zh: '地鼠词', path: '/whack-word' },
   { id: 'dragSort', emoji: '🧺', name: 'Drag Sort', zh: '拖一拖', path: '/drag-sort' },
   { id: 'singAlong', emoji: '🎵', name: 'Sing Along', zh: '唱一唱', path: '/sing-along' },
   { id: 'findScene', emoji: '🏝️', name: 'Find Scene', zh: '找一找', path: '/find-scene' },
