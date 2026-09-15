@@ -6,6 +6,7 @@ import starBar from '../components/starBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -34,6 +35,7 @@ async function onFind(word: string) {
   if (celebrating.value || found.value.includes(word)) return
   found.value = [...found.value, word]
   playPop()
+  unlockWord(word)
   prompt.value = `Found ${word}!`
   await speak(word)
   if (found.value.length >= targets.length) {

@@ -12,6 +12,7 @@ import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -64,6 +65,7 @@ async function passWord() {
   celebrating.value = true
   status.value = 'Yes!'
   playPop()
+  unlockWord(word.value)
   void tweenCelebrate(cardEl.value)
   await speak('Yes!')
   await new Promise((resolve) => window.setTimeout(resolve, 450))

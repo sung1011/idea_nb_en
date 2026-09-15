@@ -7,7 +7,7 @@
 - Vue 3 + Vite + TypeScript + Vue Router（hash 路由，静态托管更稳）
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
-- 无后端；进度在 `localStorage` 键 `starWords.v1`
+- 无后端；进度在 `localStorage` 键 `starWords.v1`；单词图鉴解锁在 `starWords.atlas.v1`
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`develop` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 无插画资源：emoji + CSS 形状
@@ -19,6 +19,8 @@
 首页 → 动物岛大厅 → 读词钓鱼（Word Fish） → Echo Cave → Day Complete → 回首页
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
+
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前 `-at` 的 cat / hat / mat，以及配置里已有的 `-ap` / `-an`）。已解锁：emoji + 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即解锁并写入本地：点一点点对、拖一拖拖对、钓鱼钓到、回音洞跟读通过；找一找点中也算成功使用。逛图鉴、解锁本身都不发当日星星。
 
 **玩法一览**列出 6 种玩法（原两关 + 点一点 / 拖一拖 / 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星。动物岛主按钮「完整一日」仍只走原两关。
 
@@ -65,6 +67,7 @@
 ```
 src/data/phonicsFamily.ts      音族配置
 src/composables/useProgress.ts 星星 / 贴纸 / 当日进度
+src/composables/useWordAtlas.ts 单词图鉴解锁（localStorage）
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
 src/composables/useSpeech.ts   TTS
 src/composables/useSfx.ts      Howler 点按 / 成功 / 轻晃
@@ -72,9 +75,10 @@ src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
-src/views/homeView.vue         首页（去动物岛 + 玩法一览 + 弱工坊）
+src/views/homeView.vue         首页（去动物岛 + 玩法一览 + 弱工坊 / 图鉴）
 src/views/animalIslandView.vue 动物岛大厅（完整一日）
 src/views/letterWorkshopView.vue 字母工坊复习页
+src/views/wordAtlasView.vue    单词图鉴
 src/views/playGalleryView.vue  玩法一览
 src/components/findSceneStage.vue 找一找 Pixi 场景
 src/components/soundFishStage.vue 读词钓鱼 Pixi 池塘

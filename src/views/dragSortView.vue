@@ -7,6 +7,7 @@ import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSn
 import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
@@ -153,6 +154,7 @@ async function dropAt(x: number, y: number) {
   await tweenSnapTo(ghostEl.value, { x: hit.cx, y: hit.cy })
   placed.value = { ...placed.value, [word]: true }
   playPop()
+  unlockWord(word)
   prompt.value = 'Yes!'
   dragging.value = null
   hoverWord.value = null

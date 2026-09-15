@@ -92,3 +92,30 @@ export function getCurrentFamily(): PhonicsFamily {
 export function wordEmoji(word: string, family = getCurrentFamily()): string {
   return family.wordArt[word]?.emoji ?? '⭐'
 }
+
+export type AtlasWord = {
+  word: string
+  emoji: string
+  familyId: string
+  family: string
+}
+
+/** Every phonics-family target is a Word Atlas slot, including unused families. */
+export function listAllFamilyWords(): AtlasWord[] {
+  const seen = new Set<string>()
+  const words: AtlasWord[] = []
+  for (const family of Object.values(families)) {
+    for (const word of family.targets) {
+      const key = word.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      words.push({
+        word,
+        emoji: wordEmoji(word, family),
+        familyId: family.id,
+        family: family.family,
+      })
+    }
+  }
+  return words
+}

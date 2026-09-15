@@ -6,6 +6,7 @@ import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { flyStarFrom, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
@@ -55,6 +56,7 @@ async function onTap(word: string, event: MouseEvent) {
     locked.value = true
     celebrating.value = true
     playPop()
+    unlockWord(word)
     prompt.value = 'Yes!'
     void flyStarFrom(target)
     await speak('Yes!')

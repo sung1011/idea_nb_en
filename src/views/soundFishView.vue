@@ -12,6 +12,7 @@ import {
   matchSpokenWord,
 } from '../composables/useRecognition'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -85,6 +86,7 @@ async function catchWord(word: string) {
   stopMic()
   prompt.value = `Yes! ${word}`
   playPop()
+  unlockWord(word)
   await stageRef.value?.liftFish(word)
   caught.value = [...caught.value, word]
   await speak(word)
