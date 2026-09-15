@@ -6,7 +6,6 @@ import echoCaveView from './views/echoCaveView.vue'
 import findSceneView from './views/findSceneView.vue'
 import homeView from './views/homeView.vue'
 import letterWorkshopView from './views/letterWorkshopView.vue'
-import onsetHuntView from './views/onsetHuntView.vue'
 import playGalleryView from './views/playGalleryView.vue'
 import singAlongView from './views/singAlongView.vue'
 import soundFishView from './views/soundFishView.vue'
@@ -25,7 +24,6 @@ export const router = createRouter({
     { path: '/echo-cave', name: 'echoCave', component: echoCaveView },
     { path: '/tap-target', name: 'tapTarget', component: tapTargetView },
     { path: '/drag-sort', name: 'dragSort', component: dragSortView },
-    { path: '/onset-hunt', name: 'onsetHunt', component: onsetHuntView },
     { path: '/sing-along', name: 'singAlong', component: singAlongView },
     { path: '/find-scene', name: 'findScene', component: findSceneView },
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },

@@ -12,7 +12,6 @@ export const playItems: PlayItem[] = [
   { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '跟读回音', path: '/echo-cave' },
   { id: 'tapTarget', emoji: '👆', name: 'Tap Target', zh: '点一点', path: '/tap-target' },
   { id: 'dragSort', emoji: '🧺', name: 'Drag Sort', zh: '拖一拖', path: '/drag-sort' },
-  { id: 'onsetHunt', emoji: '🔎', name: 'Onset Hunt', zh: '找尾巴', path: '/onset-hunt' },
   { id: 'singAlong', emoji: '🎵', name: 'Sing Along', zh: '唱一唱', path: '/sing-along' },
   { id: 'findScene', emoji: '🏝️', name: 'Find Scene', zh: '找一找', path: '/find-scene' },
 ]
