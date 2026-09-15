@@ -8,6 +8,7 @@ import {
   createRecognizer,
   looselyHeard,
 } from '../composables/useRecognition'
+import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
@@ -15,6 +16,7 @@ import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
+const { isReview, backPath, backLabel } = usePlayMode()
 
 const wordIndex = ref(0)
 const listening = ref(false)
@@ -42,10 +44,12 @@ async function finishGate() {
   celebrating.value = true
   status.value = 'Echo complete!'
   playSuccess()
-  completeGate('echoCave')
+  if (!isReview.value) {
+    completeGate('echoCave')
+  }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push('/day-complete')
+  void router.push(isReview.value ? '/letter-workshop' : '/day-complete')
 }
 
 async function passWord() {
@@ -119,13 +123,13 @@ onUnmounted(() => {
 <template>
   <section class="screen screen-cave cave">
     <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push('/')">回家</button>
+      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
       <star-bar />
     </header>
 
     <div class="center">
       <p class="gate-tag">Gate 3 · Echo Cave</p>
-      <h1 class="title-lg">跟我读</h1>
+      <h1 class="title-lg">跟小猫喊朋友</h1>
       <p class="sub">{{ status }}</p>
     </div>
 

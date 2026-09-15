@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
@@ -16,6 +17,7 @@ type Bubble = {
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
+const { isReview, playPath, backPath, backLabel } = usePlayMode()
 
 const trialIndex = ref(0)
 const failCount = ref(0)
@@ -88,10 +90,12 @@ async function finishGate() {
   celebrating.value = true
   prompt.value = 'Nice listening!'
   playSuccess()
-  completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
+  if (!isReview.value) {
+    completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
+  }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push('/word-morph')
+  void router.push(playPath('/word-morph'))
 }
 
 async function passTrial() {
@@ -151,17 +155,18 @@ onUnmounted(() => {
 <template>
   <section class="screen fish">
     <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push('/')">回家</button>
+      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
       <star-bar />
     </header>
 
     <div class="center head">
       <p class="gate-tag">Gate 1 · Sound Fish</p>
       <h1 class="title-lg">听一听，点泡泡</h1>
-      <p class="sub">{{ prompt }} · {{ trial?.ipa }}</p>
+      <p class="sub">小猫请客 · {{ prompt }} · {{ trial?.ipa }}</p>
     </div>
 
     <div class="pond">
+      <div class="host floaty" aria-hidden="true">🐱</div>
       <div class="fishy floaty" aria-hidden="true">🐠</div>
       <button
         v-for="(bubble, index) in bubbles"
@@ -214,6 +219,13 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #7fd8e8 0%, #3db8c7 70%, #2a9aa8 100%);
   box-shadow: inset 0 -18px 0 rgba(14, 80, 90, 0.12);
   overflow: hidden;
+}
+
+.host {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 36px;
 }
 
 .fishy {

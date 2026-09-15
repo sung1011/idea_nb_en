@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
@@ -10,6 +11,7 @@ import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
+const { isReview, playPath, backPath, backLabel } = usePlayMode()
 
 const sequence = family.morphSequence
 const step = ref(0)
@@ -29,10 +31,12 @@ async function speakWord(word: string) {
 
 async function finishGate() {
   playSuccess()
-  completeGate('wordMorph', { decoration: family.rewards.wordMorphDecoration.id })
+  if (!isReview.value) {
+    completeGate('wordMorph', { decoration: family.rewards.wordMorphDecoration.id })
+  }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push('/echo-cave')
+  void router.push(playPath('/echo-cave'))
 }
 
 async function onPick(onset: string) {
@@ -67,14 +71,14 @@ onUnmounted(() => {
 <template>
   <section class="screen morph">
     <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push('/')">回家</button>
+      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
       <star-bar />
     </header>
 
     <div class="center">
       <p class="gate-tag">Gate 2 · Word Morph</p>
       <h1 class="title-lg">{{ prompt }}</h1>
-      <p class="sub">只换第一个字母，a 和 t 锁住啦</p>
+      <p class="sub">只换第一个字母，a 和 t 锁住啦 · hat / mat 是派对道具</p>
     </div>
 
     <div class="stage card center" :class="{ popin: celebrating }">

@@ -38,6 +38,7 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/h/', letter: 'H', speak: 'h' },
       { ipa: '/m/', letter: 'M', speak: 'm' },
     ],
+    // Animals island: cat hosts the party; hat/mat are party props, not animals.
     wordArt: {
       cat: { emoji: '🐱', label: 'cat' },
       hat: { emoji: '🎩', label: 'hat' },
@@ -45,8 +46,8 @@ export const families: Record<string, PhonicsFamily> = {
     },
     morphSequence: ['cat', 'hat', 'mat', 'cat'],
     rewards: {
-      soundFishSticker: { id: 'ear', label: '耳朵' },
-      wordMorphDecoration: { id: 'rug', label: '小地毯' },
+      soundFishSticker: { id: 'ear', label: '派对耳朵' },
+      wordMorphDecoration: { id: 'rug', label: '派对垫' },
     },
   },
   '-ap': {
