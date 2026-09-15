@@ -1,6 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import animalIslandView from './views/animalIslandView.vue'
-import blendBlocksView from './views/blendBlocksView.vue'
 import dayCompleteView from './views/dayCompleteView.vue'
 import dragSortView from './views/dragSortView.vue'
 import echoCaveView from './views/echoCaveView.vue'
@@ -26,7 +25,6 @@ export const router = createRouter({
     { path: '/echo-cave', name: 'echoCave', component: echoCaveView },
     { path: '/tap-target', name: 'tapTarget', component: tapTargetView },
     { path: '/drag-sort', name: 'dragSort', component: dragSortView },
-    { path: '/blend-blocks', name: 'blendBlocks', component: blendBlocksView },
     { path: '/onset-hunt', name: 'onsetHunt', component: onsetHuntView },
     { path: '/sing-along', name: 'singAlong', component: singAlongView },
     { path: '/find-scene', name: 'findScene', component: findSceneView },
