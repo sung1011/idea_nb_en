@@ -2,18 +2,13 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import soundFishStage from '../components/soundFishStage.vue'
+import type { PondBubble } from '../components/soundFishStage.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
-import { tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
-
-type Bubble = {
-  letter: string
-  correct: boolean
-  key: string
-}
 
 const router = useRouter()
 const family = getCurrentFamily()
@@ -22,7 +17,7 @@ const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
 const trialIndex = ref(0)
 const failCount = ref(0)
-const bubbles = ref<Bubble[]>([])
+const bubbles = ref<PondBubble[]>([])
 const highlight = ref('')
 const shaking = ref('')
 const locked = ref(true)
@@ -44,12 +39,11 @@ function shuffle<T>(list: T[]): T[] {
 
 function makeBubbles(letter: string) {
   const extra = shuffle(family.distractors).slice(0, 2).map((item) => item.toUpperCase())
-  const mix = shuffle([
+  bubbles.value = shuffle([
     { letter: letter.toUpperCase(), correct: true, key: `ok-${letter}` },
     { letter: extra[0], correct: false, key: `no-${extra[0]}` },
     { letter: extra[1], correct: false, key: `no-${extra[1]}` },
   ])
-  bubbles.value = mix
 }
 
 async function playPhoneme() {
@@ -123,7 +117,7 @@ async function autoHelp() {
   await passTrial()
 }
 
-async function onTap(bubble: Bubble) {
+async function onTap(bubble: PondBubble) {
   if (locked.value || demoing.value) return
   if (bubble.correct) {
     locked.value = true
@@ -135,13 +129,7 @@ async function onTap(bubble: Bubble) {
   failCount.value += 1
   shaking.value = bubble.letter
   playNudge()
-  const bubbleEl = document.querySelector(`[data-letter="${bubble.letter}"]`)
-  if (bubbleEl instanceof HTMLElement) {
-    const prev = bubbleEl.style.animation
-    bubbleEl.style.animation = 'none'
-    await tweenShake(bubbleEl)
-    bubbleEl.style.animation = prev
-  }
+  await new Promise((resolve) => window.setTimeout(resolve, 360))
   if (shaking.value === bubble.letter) shaking.value = ''
   await speak(trial.value.speak)
   if (failCount.value >= 2) {
@@ -171,29 +159,15 @@ onUnmounted(() => {
       <p class="sub">小猫请客 · {{ prompt }} · {{ trial?.ipa }}</p>
     </div>
 
-    <div class="pond">
-      <div class="host floaty" aria-hidden="true">🐱</div>
-      <div class="fishy floaty" aria-hidden="true">🐠</div>
-      <button
-        v-for="(bubble, index) in bubbles"
-        :key="bubble.key"
-        class="bubble"
-        :data-letter="bubble.letter"
-        :class="{
-          highlight: highlight === bubble.letter,
-          shake: shaking === bubble.letter,
-          cheer: celebrating && bubble.correct,
-          delay0: index === 0,
-          delay1: index === 1,
-          delay2: index === 2,
-        }""
-        type="button"
-        :disabled="locked"
-        @click="onTap(bubble)"
-      >
-        {{ bubble.letter }}
-      </button>
-    </div>
+    <sound-fish-stage
+      :bubbles="bubbles"
+      :highlight="highlight"
+      :shaking="shaking"
+      :locked="locked"
+      :demoing="demoing"
+      :celebrating="celebrating"
+      @tap="onTap"
+    />
 
     <p class="center hint">{{ progressText }} · 点错会再听一遍</p>
     <big-button variant="listen" :disabled="locked && !demoing" @click="playPhoneme">
@@ -215,71 +189,6 @@ onUnmounted(() => {
 
 .head {
   margin-bottom: 4px;
-}
-
-.pond {
-  position: relative;
-  flex: 1;
-  min-height: 280px;
-  margin: 8px -6px;
-  border-radius: 36px;
-  background: linear-gradient(180deg, #7fd8e8 0%, #3db8c7 70%, #2a9aa8 100%);
-  box-shadow: inset 0 -18px 0 rgba(14, 80, 90, 0.12);
-  overflow: hidden;
-}
-
-.host {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  font-size: 36px;
-}
-
-.fishy {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  font-size: 42px;
-}
-
-.bubble {
-  position: absolute;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0e4b6b;
-  font-size: 44px;
-  font-weight: 700;
-  box-shadow: 0 8px 0 rgba(14, 80, 90, 0.16);
-  animation: floaty 2.8s ease-in-out infinite;
-}
-
-.bubble.delay0 {
-  left: 28px;
-  top: 88px;
-}
-
-.bubble.delay1 {
-  right: 28px;
-  top: 58px;
-  animation-delay: 0.4s;
-}
-
-.bubble.delay2 {
-  left: 50%;
-  margin-left: -48px;
-  bottom: 36px;
-  animation-delay: 0.8s;
-}
-
-.bubble.highlight {
-  animation: pulse 0.9s ease;
-  background: #ffe27a;
-}
-
-.bubble.cheer {
-  background: #c8f5d4;
 }
 
 .hint {
