@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, allDoneToday } = useProgress()
+const { state, gatesDone, gateTotal, allDoneToday } = useProgress()
+const heroEl = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  void tweenCelebrate(heroEl.value)
+})
 
 function goIsland() {
   void router.push('/animal-island')
@@ -20,6 +27,10 @@ function goGallery() {
 function goWorkshop() {
   void router.push('/letter-workshop')
 }
+
+function goAtlas() {
+  void router.push('/word-atlas')
+}
 </script>
 
 <template>
@@ -29,7 +40,7 @@ function goWorkshop() {
       <p class="day-chip">打卡 {{ state.dayStars }} 天</p>
     </header>
 
-    <div class="hero center">
+    <div ref="heroEl" class="hero center">
       <p class="eyebrow">每日主题岛</p>
       <h1 class="title-xl">Star Words</h1>
       <p class="zh-title">星词岛</p>
@@ -45,14 +56,17 @@ function goWorkshop() {
         </div>
       </div>
       <p class="progress-line" :class="{ done: allDoneToday }">
-        今日进度 {{ gatesDone }}/3
+        今日进度 {{ gatesDone }}/{{ gateTotal }}
         <template v-if="allDoneToday"> · 派对完成</template>
       </p>
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
-    <button class="workshop-link" type="button" @click="goWorkshop">字母工坊 / 复习音族</button>
+    <div class="weak-links">
+      <button class="workshop-link" type="button" @click="goWorkshop">字母工坊 / 复习音族</button>
+      <button class="workshop-link" type="button" @click="goAtlas">单词图鉴</button>
+    </div>
   </section>
 </template>
 
@@ -129,8 +143,15 @@ function goWorkshop() {
   margin-top: 10px;
 }
 
-.workshop-link {
+.weak-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
   margin-top: 8px;
+}
+
+.workshop-link {
   min-height: 48px;
   background: transparent;
   color: var(--muted);

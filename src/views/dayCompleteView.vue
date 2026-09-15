@@ -1,26 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { useProgress } from '../composables/useProgress'
+import { tweenCelebrate } from '../composables/useMotion'
 import { playSuccess, speak } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, allDoneToday, hasDecoration, hasSticker } = useProgress()
+const { state, allDoneToday, hasSticker } = useProgress()
 
-const rugOn = computed(() => hasDecoration(family.rewards.wordMorphDecoration.id))
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
+const burstEl = ref<HTMLElement | null>(null)
 const starsLine = computed(() =>
   allDoneToday.value
     ? '小猫把朋友请来啦，星星已收进动物岛。'
-    : '先把三关玩完，派对星星会亮起来。',
+    : '先把两关玩完，派对星星会亮起来。',
 )
 
 onMounted(() => {
   playSuccess()
+  void tweenCelebrate(burstEl.value)
   void speak('You did it!')
 })
 </script>
@@ -33,7 +35,7 @@ onMounted(() => {
     </header>
 
     <div class="center grow party">
-      <div class="burst popin" aria-hidden="true">🐱🎉</div>
+      <div ref="burstEl" class="burst popin" aria-hidden="true">🐱🎉</div>
       <h1 class="title-xl">Day Complete</h1>
       <p class="zh">派对成功</p>
       <p class="sub">{{ starsLine }}</p>
@@ -56,11 +58,6 @@ onMounted(() => {
           <span>👂</span>
           贴纸「{{ family.rewards.soundFishSticker.label }}」
           {{ earOn ? '已贴上' : '待解锁' }}
-        </p>
-        <p class="reward" :class="{ on: rugOn }">
-          <span>🧶</span>
-          装饰「{{ family.rewards.wordMorphDecoration.label }}」
-          {{ rugOn ? '已放到派对上' : '待解锁' }}
         </p>
       </div>
     </div>

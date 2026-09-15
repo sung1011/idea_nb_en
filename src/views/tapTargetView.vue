@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
+import { flyStarFrom, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
@@ -47,13 +49,16 @@ async function finish() {
   void router.push('/play-gallery')
 }
 
-async function onTap(word: string) {
+async function onTap(word: string, event: MouseEvent) {
   if (locked.value) return
+  const target = event.currentTarget instanceof Element ? event.currentTarget : null
   if (word === trialWord.value) {
     locked.value = true
     celebrating.value = true
     playPop()
+    unlockWord(word)
     prompt.value = 'Yes!'
+    void flyStarFrom(target)
     await speak('Yes!')
     await new Promise((resolve) => window.setTimeout(resolve, 450))
     if (trialIndex.value >= family.targets.length - 1) {
@@ -66,9 +71,8 @@ async function onTap(word: string) {
   }
   shaking.value = word
   playNudge()
-  window.setTimeout(() => {
-    if (shaking.value === word) shaking.value = ''
-  }, 360)
+  await tweenShake(target)
+  if (shaking.value === word) shaking.value = ''
   await speak(`Where is the ${trialWord.value}?`)
 }
 
@@ -102,7 +106,7 @@ onUnmounted(() => {
         :class="{ cheer: celebrating && choice.word === trialWord, shake: shaking === choice.word }"
         type="button"
         :disabled="locked"
-        @click="onTap(choice.word)"
+        @click="onTap(choice.word, $event)"
       >
         <span>{{ choice.emoji }}</span>
         <small>{{ choice.word }}</small>

@@ -1,113 +1,169 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { dragDirective } from '@vueuse/gesture'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
+import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
+import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
-type SortItem = {
-  id: string
-  word: string
-  emoji: string
+type DragState = {
+  first: boolean
+  last: boolean
+  dragging: boolean
+  xy: [number, number]
 }
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { backPath, backLabel } = usePlayMode()
+const { afterGate, backPath, backLabel } = usePlayMode()
+const vDrag = dragDirective()
 
-const baskets: SortItem[] = family.targets.map((word) => ({
-  id: word,
-  word,
-  emoji: wordEmoji(word, family),
-}))
-
-const trayOrder = ref(shuffle(baskets.map((item) => item.id)))
-const placed = ref<Record<string, boolean>>({})
-const dragging = ref<string | null>(null)
-const ghost = ref({ x: 0, y: 0 })
-const pulsing = ref('')
-const shaking = ref('')
-const celebrating = ref(false)
-const prompt = ref('')
-
-const trayItems = computed(() =>
-  trayOrder.value
-    .map((id) => baskets.find((item) => item.id === id))
-    .filter((item): item is SortItem => !!item && !placed.value[item.id]),
+const words = family.targets.slice(0, 3)
+const baskets = ref(shuffle([...words]))
+const trayOrder = ref(shuffle([...words]))
+const placed = ref<Record<string, boolean>>(
+  Object.fromEntries(words.map((word) => [word, false])),
 )
+const dragging = ref<string | null>(null)
+const hoverWord = ref<string | null>(null)
+const locked = ref(true)
+const celebrating = ref(false)
+const busy = ref(false)
+const prompt = ref('')
+const ghostEl = ref<HTMLElement | null>(null)
+const titleEl = ref<HTMLElement | null>(null)
+const origin = ref({ x: 0, y: 0 })
 
-function basketAt(x: number, y: number) {
-  const el = document.elementFromPoint(x, y)
-  const node = el?.closest('[data-basket]')
-  return node?.getAttribute('data-basket') ?? ''
+const trayItems = computed(() => trayOrder.value.filter((word) => !placed.value[word]))
+const demoWord = words.includes('cat') ? 'cat' : words[0]
+const dragOptions = {
+  preventWindowScrollY: true,
+  useTouch: true,
+  filterTaps: false,
 }
 
-function onDown(event: PointerEvent, id: string) {
-  if (celebrating.value) return
-  pulsing.value = ''
-  dragging.value = id
-  ghost.value = { x: event.clientX, y: event.clientY }
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+function basketEl(word: string): HTMLElement | null {
+  return document.querySelector(`[data-basket="${word}"]`)
 }
 
-function onMove(event: PointerEvent) {
-  if (!dragging.value) return
-  ghost.value = { x: event.clientX, y: event.clientY }
+function moveGhost(x: number, y: number) {
+  if (ghostEl.value) {
+    ghostEl.value.style.left = `${x}px`
+    ghostEl.value.style.top = `${y}px`
+  }
+}
+
+function onChipDrag(word: string) {
+  return (state: DragState) => {
+    if (locked.value || celebrating.value || busy.value) return
+    if (dragging.value && dragging.value !== word) return
+
+    const [x, y] = state.xy
+    const hit = nearestBasket(x, y)
+
+    if (state.first) {
+      dragging.value = word
+      origin.value = { x, y }
+      const pulled = magnetPoint(x, y, hit)
+      hoverWord.value = hit && hit.dist <= SNAP_RANGE ? hit.word : null
+      playPop()
+      void speak(word)
+      void nextTick(() => moveGhost(pulled.x, pulled.y))
+      return
+    }
+
+    if (state.dragging) {
+      const pulled = magnetPoint(x, y, hit)
+      moveGhost(pulled.x, pulled.y)
+      hoverWord.value = hit && hit.dist <= SNAP_RANGE ? hit.word : null
+    }
+
+    if (state.last) {
+      void dropAt(x, y)
+    }
+  }
+}
+
+async function onboard() {
+  locked.value = true
+  prompt.value = demoWord
+  await speak(demoWord)
+  const target = basketEl(demoWord)
+  if (target) {
+    target.classList.add('pulse')
+    await tweenPulse(target)
+    target.classList.remove('pulse')
+  }
+  locked.value = false
 }
 
 async function finish() {
   celebrating.value = true
-  prompt.value = 'Yes!'
+  prompt.value = 'Party sorted!'
   playSuccess()
+  await tweenCelebrate(titleEl.value)
   await speak('Great job!')
-  await new Promise((resolve) => window.setTimeout(resolve, 800))
-  void router.push('/play-gallery')
+  await new Promise((resolve) => window.setTimeout(resolve, 400))
+  void router.push(afterGate('/play-gallery'))
 }
 
 async function dropAt(x: number, y: number) {
-  const id = dragging.value
-  dragging.value = null
-  if (!id || celebrating.value) return
-  const item = baskets.find((row) => row.id === id)
-  if (!item) return
-
-  const over = baskets.find((basket) => basket.id === basketAt(x, y))
-  if (!over) return
-
-  if (over.id !== item.id) {
-    shaking.value = over.id
-    playNudge()
-    window.setTimeout(() => {
-      if (shaking.value === over.id) shaking.value = ''
-    }, 360)
-    await speak(item.word)
+  const word = dragging.value
+  if (!word || locked.value || celebrating.value) {
+    dragging.value = null
+    hoverWord.value = null
     return
   }
 
-  placed.value = { ...placed.value, [id]: true }
+  busy.value = true
+  const hit = nearestBasket(x, y)
+  const snapped = Boolean(hit && hit.dist <= SNAP_RANGE)
+
+  if (!snapped || !hit) {
+    await tweenSnapTo(ghostEl.value, origin.value)
+    dragging.value = null
+    hoverWord.value = null
+    busy.value = false
+    return
+  }
+
+  if (hit.word !== word) {
+    playNudge()
+    prompt.value = word
+    hoverWord.value = hit.word
+    await Promise.all([tweenShake(hit.el), tweenSnapTo(ghostEl.value, origin.value)])
+    dragging.value = null
+    hoverWord.value = null
+    await speak(word)
+    const correct = basketEl(word)
+    if (correct) {
+      correct.classList.add('pulse')
+      await tweenPulse(correct)
+      correct.classList.remove('pulse')
+    }
+    busy.value = false
+    return
+  }
+
+  hoverWord.value = word
+  await tweenSnapTo(ghostEl.value, { x: hit.cx, y: hit.cy })
+  placed.value = { ...placed.value, [word]: true }
   playPop()
+  unlockWord(word)
   prompt.value = 'Yes!'
-  await speak(item.word)
-  if (baskets.every((row) => placed.value[row.id])) {
+  dragging.value = null
+  hoverWord.value = null
+  await speak(word)
+  await tweenPulse(hit.el)
+  busy.value = false
+  if (words.every((item) => placed.value[item])) {
     await finish()
   }
-}
-
-function onUp(event: PointerEvent) {
-  if (!dragging.value) return
-  void dropAt(event.clientX, event.clientY)
-}
-
-async function onboard() {
-  const first = baskets[0]
-  if (!first) return
-  pulsing.value = first.id
-  await speak(first.word)
-  await new Promise((resolve) => window.setTimeout(resolve, 700))
-  if (dragging.value) return
-  pulsing.value = ''
 }
 
 onMounted(() => {
@@ -126,50 +182,46 @@ onUnmounted(() => {
       <star-bar />
     </header>
 
-    <div class="center head">
+    <div class="center">
       <p class="gate-tag">Drag Sort</p>
-      <p class="prompt" :class="{ on: prompt }">{{ prompt }}</p>
+      <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
     </div>
 
-    <div class="baskets">
+    <div class="buckets">
       <div
-        v-for="basket in baskets"
-        :key="basket.id"
-        :data-basket="basket.id"
-        class="basket"
+        v-for="word in baskets"
+        :key="word"
+        :data-basket="word"
+        class="bucket"
         :class="{
-          on: placed[basket.id],
-          pulse: pulsing === basket.id,
-          shake: shaking === basket.id,
+          on: placed[word],
+          hover: hoverWord === word,
         }"
+        :aria-label="word"
       >
-        <span class="pic" aria-hidden="true">{{ basket.emoji }}</span>
-        <span v-if="placed[basket.id]" class="check" aria-hidden="true">⭐</span>
+        <span class="pic" aria-hidden="true">{{ wordEmoji(word, family) }}</span>
+        <span class="bowl" aria-hidden="true" />
+        <span v-if="placed[word]" class="landed">{{ word }}</span>
       </div>
     </div>
 
     <div class="tray">
       <button
-        v-for="item in trayItems"
-        :key="item.id"
+        v-for="word in trayItems"
+        :key="word"
+        v-drag="onChipDrag(word)"
         class="chip"
         type="button"
-        :class="{ dragging: dragging === item.id }"
-        @pointerdown="onDown($event, item.id)"
-        @pointermove="onMove"
-        @pointerup="onUp"
-        @pointercancel="dragging = null"
+        :class="{ dragging: dragging === word }"
+        :aria-label="word"
+        :drag-options="dragOptions"
       >
-        {{ item.word }}
+        {{ word }}
       </button>
     </div>
 
-    <div
-      v-if="dragging"
-      class="ghost"
-      :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
-    >
-      {{ baskets.find((item) => item.id === dragging)?.word }}
+    <div ref="ghostEl" class="ghost" :class="{ show: Boolean(dragging) }">
+      {{ dragging }}
     </div>
   </section>
 </template>
@@ -179,85 +231,99 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.head {
-  min-height: 64px;
-}
-
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
   color: #b45309;
 }
 
-.prompt {
-  margin: 6px 0 0;
-  min-height: 28px;
-  font-size: 24px;
-  font-weight: 700;
-  color: transparent;
-}
-
-.prompt.on {
-  color: var(--ok);
-}
-
-.baskets {
+.buckets {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 8px;
+  gap: 8px;
+  min-height: 188px;
 }
 
-.basket {
+.bucket {
   position: relative;
-  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 176px;
+  padding: 12px 6px 14px;
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 3px rgba(45, 58, 74, 0.06);
-  display: grid;
-  place-items: center;
 }
 
-.basket.on {
+.bucket.on {
   background: #e4f8ec;
-  box-shadow: inset 0 0 0 3px rgba(76, 175, 122, 0.35);
 }
 
-.basket.pulse {
+.bucket.hover {
+  box-shadow: inset 0 0 0 4px rgba(255, 159, 67, 0.55);
+}
+
+.bucket.pulse {
   background: #ffe27a;
   box-shadow: 0 0 0 8px rgba(255, 226, 122, 0.45);
-  animation: pulse 0.9s ease 3;
 }
 
 .pic {
-  font-size: 56px;
+  font-size: 52px;
   line-height: 1;
+  filter: drop-shadow(0 6px 0 rgba(45, 58, 74, 0.08));
 }
 
-.check {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  font-size: 22px;
+.bowl {
+  width: 78%;
+  height: 28px;
+  margin-top: 4px;
+  border-radius: 0 0 46px 46px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #e8b86d 0 8px,
+      #d7a257 8px 12px
+    ),
+    linear-gradient(180deg, #f3d19a 0%, #c9843a 100%);
+  box-shadow:
+    inset 0 6px 0 rgba(255, 255, 255, 0.28),
+    0 6px 0 rgba(45, 58, 74, 0.1);
+}
+
+.landed {
+  margin-top: 8px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
 }
 
 .tray {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: auto;
 }
 
 .chip {
   min-width: 96px;
-  min-height: 84px;
-  padding: 0 12px;
+  min-height: 72px;
+  padding: 8px 14px;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 8px 0 rgba(45, 58, 74, 0.12);
-  font-size: 28px;
-  font-weight: 700;
   touch-action: none;
+  user-select: none;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
 }
 
 .chip.dragging {
@@ -266,18 +332,31 @@ onUnmounted(() => {
 
 .ghost {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 20;
   min-width: 88px;
   min-height: 64px;
-  padding: 0 12px;
+  padding: 8px 14px;
   margin: -32px 0 0 -44px;
   display: grid;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 22px;
   background: #fff;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 750;
   pointer-events: none;
-  filter: drop-shadow(0 8px 0 rgba(45, 58, 74, 0.16));
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 10px 0 rgba(45, 58, 74, 0.16);
+}
+
+.ghost.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.center .title-lg {
+  min-height: 36px;
 }
 </style>

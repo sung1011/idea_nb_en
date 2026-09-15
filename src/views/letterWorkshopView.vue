@@ -36,8 +36,8 @@ function startReview() {
       </ul>
     </div>
 
-    <p class="hint center">复习重玩三关，不会再发首次通关星星。</p>
-    <big-button variant="soft" @click="startReview">复习 {{ family.family }} 三关</big-button>
+    <p class="hint center">复习重玩两关，不会再发首次通关星星。</p>
+    <big-button variant="soft" @click="startReview">复习 {{ family.family }} 两关</big-button>
   </section>
 </template>
 

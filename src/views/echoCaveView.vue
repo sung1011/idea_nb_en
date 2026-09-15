@@ -10,7 +10,9 @@ import {
 } from '../composables/useRecognition'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
-import { playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { tweenCelebrate, tweenShake } from '../composables/useMotion'
+import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -24,6 +26,7 @@ const celebrating = ref(false)
 const locked = ref(false)
 const status = ref('Listen, then say it.')
 const micOk = canUseRecognition()
+const cardEl = ref<HTMLElement | null>(null)
 
 const word = computed(() => family.targets[wordIndex.value] ?? family.targets[0])
 const art = computed(() => wordEmoji(word.value, family))
@@ -44,6 +47,7 @@ async function finishGate() {
   celebrating.value = true
   status.value = 'Echo complete!'
   playSuccess()
+  await tweenCelebrate(cardEl.value)
   if (!isPractice.value) {
     completeGate('echoCave')
   }
@@ -60,7 +64,9 @@ async function passWord() {
   stopMic()
   celebrating.value = true
   status.value = 'Yes!'
-  playSuccess()
+  playPop()
+  unlockWord(word.value)
+  void tweenCelebrate(cardEl.value)
   await speak('Yes!')
   await new Promise((resolve) => window.setTimeout(resolve, 450))
   if (wordIndex.value >= family.targets.length - 1) {
@@ -81,6 +87,8 @@ function onHeard(transcript: string) {
   }
   status.value = 'Nice try! Tap when ready.'
   listening.value = false
+  playNudge()
+  void tweenShake(cardEl.value)
 }
 
 function startListen() {
@@ -130,12 +138,12 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">Gate 3 · Echo Cave</p>
+      <p class="gate-tag">Gate 2 · Echo Cave</p>
       <h1 class="title-lg">跟小猫喊朋友</h1>
       <p class="sub">{{ status }}</p>
     </div>
 
-    <div class="echo card center" :class="{ popin: celebrating, listening }">
+    <div ref="cardEl" class="echo card center" :class="{ popin: celebrating, listening }">
       <div class="art">{{ art }}</div>
       <p class="word">{{ word }}</p>
       <div class="rings" aria-hidden="true">

@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
-export type GateId = 'soundFish' | 'wordMorph' | 'echoCave'
+export type GateId = 'soundFish' | 'echoCave'
 
 export type DailyProgress = {
   date: string
@@ -20,11 +20,10 @@ export type ProgressState = {
 
 const STORAGE_KEY = 'starWords.v1'
 
-const GATE_ORDER: GateId[] = ['soundFish', 'wordMorph', 'echoCave']
+const GATE_ORDER: GateId[] = ['soundFish', 'echoCave']
 
 const GATE_ROUTES: Record<GateId, string> = {
   soundFish: '/sound-fish',
-  wordMorph: '/word-morph',
   echoCave: '/echo-cave',
 }
 
@@ -42,7 +41,6 @@ function emptyDaily(date = todayKey()): DailyProgress {
     familyId: getCurrentFamily().id,
     gates: {
       soundFish: false,
-      wordMorph: false,
       echoCave: false,
     },
     dayComplete: false,
@@ -59,6 +57,19 @@ function defaultState(): ProgressState {
   }
 }
 
+function normalizeDaily(daily?: Partial<DailyProgress>): DailyProgress {
+  const base = emptyDaily(daily?.date ?? todayKey())
+  return {
+    ...base,
+    familyId: daily?.familyId ?? base.familyId,
+    dayComplete: Boolean(daily?.dayComplete),
+    gates: {
+      soundFish: Boolean(daily?.gates?.soundFish),
+      echoCave: Boolean(daily?.gates?.echoCave),
+    },
+  }
+}
+
 function loadState(): ProgressState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -70,7 +81,7 @@ function loadState(): ProgressState {
       ...parsed,
       decorations: parsed.decorations ?? [],
       stickers: parsed.stickers ?? [],
-      daily: { ...emptyDaily(), ...parsed.daily },
+      daily: normalizeDaily(parsed.daily),
     }
   } catch {
     return defaultState()
@@ -100,7 +111,8 @@ export function useProgress() {
   const gatesDone = computed(
     () => GATE_ORDER.filter((gate) => state.daily.gates[gate]).length,
   )
-  const allDoneToday = computed(() => gatesDone.value === GATE_ORDER.length)
+  const gateTotal = GATE_ORDER.length
+  const allDoneToday = computed(() => gatesDone.value === gateTotal)
   const nextGate = computed(() => GATE_ORDER.find((gate) => !state.daily.gates[gate]) ?? null)
   const nextRoute = computed(() => {
     if (nextGate.value) return GATE_ROUTES[nextGate.value]
@@ -152,6 +164,7 @@ export function useProgress() {
   return {
     state,
     gatesDone,
+    gateTotal,
     allDoneToday,
     nextGate,
     nextRoute,

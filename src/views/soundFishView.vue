@@ -2,152 +2,163 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import soundFishStage from '../components/soundFishStage.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
+import {
+  canUseRecognition,
+  createRecognizer,
+  matchSpokenWord,
+} from '../composables/useRecognition'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily } from '../data/phonicsFamily'
-
-type Bubble = {
-  letter: string
-  correct: boolean
-  key: string
-}
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
 const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
-const trialIndex = ref(0)
-const failCount = ref(0)
-const bubbles = ref<Bubble[]>([])
-const highlight = ref('')
-const shaking = ref('')
-const locked = ref(true)
-const demoing = ref(true)
+const words = family.targets
+const caught = ref<string[]>([])
+const locked = ref(false)
+const listening = ref(false)
 const celebrating = ref(false)
-const prompt = ref('Listen!')
+const prompt = ref('Read a word!')
+const micOk = ref(canUseRecognition())
+const stageRef = ref<{
+  liftFish: (word: string) => Promise<void>
+  nudgeRemaining: () => void
+} | null>(null)
 
-const trial = computed(() => family.warmupPhonemes[trialIndex.value])
-const progressText = computed(() => `${trialIndex.value + 1} / ${family.warmupPhonemes.length}`)
+const remaining = computed(() => words.filter((word) => !caught.value.includes(word)))
+const progressText = computed(() => `${caught.value.length} / ${words.length}`)
 
-function shuffle<T>(list: T[]): T[] {
-  const next = [...list]
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[next[i], next[j]] = [next[j], next[i]]
+let recognizer: ReturnType<typeof createRecognizer> = null
+
+function stopMic() {
+  listening.value = false
+  try {
+    recognizer?.stop()
+  } catch {
+    /* already stopped */
   }
-  return next
 }
 
-function makeBubbles(letter: string) {
-  const extra = shuffle(family.distractors).slice(0, 2).map((item) => item.toUpperCase())
-  const mix = shuffle([
-    { letter: letter.toUpperCase(), correct: true, key: `ok-${letter}` },
-    { letter: extra[0], correct: false, key: `no-${extra[0]}` },
-    { letter: extra[1], correct: false, key: `no-${extra[1]}` },
-  ])
-  bubbles.value = mix
+function startListen() {
+  if (!recognizer || !micOk.value || locked.value || !remaining.value.length) return
+  try {
+    recognizer.start()
+    listening.value = true
+    prompt.value = 'I am listening...'
+  } catch {
+    listening.value = false
+    prompt.value = '点小鱼也能钓上来'
+  }
 }
 
-async function playPhoneme() {
-  if (!trial.value) return
-  await speak('Listen!')
-  await speak(trial.value.speak)
-}
-
-function setupTrial(showDemo: boolean) {
-  if (!trial.value) return
-  failCount.value = 0
-  highlight.value = ''
-  shaking.value = ''
-  celebrating.value = false
-  makeBubbles(trial.value.letter)
-  locked.value = true
-  demoing.value = showDemo
-  prompt.value = showDemo ? 'Listen!' : 'Your turn!'
-}
-
-async function runDemo() {
-  setupTrial(true)
-  await playPhoneme()
-  highlight.value = trial.value.letter.toUpperCase()
-  await new Promise((resolve) => window.setTimeout(resolve, 1100))
-  highlight.value = ''
-  demoing.value = false
-  prompt.value = 'Your turn!'
-  locked.value = false
-}
-
-async function runPlay() {
-  setupTrial(false)
-  await playPhoneme()
-  locked.value = false
+async function replayPrompt() {
+  if (locked.value) return
+  stopMic()
+  prompt.value = remaining.value.length ? 'Read a word!' : 'Nice fishing!'
+  await speak('Read a word!')
+  if (micOk.value && remaining.value.length && !locked.value) {
+    window.setTimeout(() => startListen(), 250)
+  }
 }
 
 async function finishGate() {
   celebrating.value = true
-  prompt.value = 'Nice listening!'
+  prompt.value = 'Nice fishing!'
   playSuccess()
   if (!isPractice.value) {
     completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
   }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(afterGate('/word-morph'))
+  void router.push(afterGate('/echo-cave'))
 }
 
-async function passTrial() {
-  celebrating.value = true
-  playSuccess()
-  prompt.value = 'Yes!'
-  await speak('Yes!')
-  await new Promise((resolve) => window.setTimeout(resolve, 450))
-  if (trialIndex.value >= family.warmupPhonemes.length - 1) {
+async function catchWord(word: string) {
+  if (locked.value || caught.value.includes(word)) return
+  locked.value = true
+  stopMic()
+  prompt.value = `Yes! ${word}`
+  playPop()
+  unlockWord(word)
+  await stageRef.value?.liftFish(word)
+  caught.value = [...caught.value, word]
+  await speak(word)
+  if (!remaining.value.length) {
     await finishGate()
     return
   }
-  trialIndex.value += 1
-  await runPlay()
+  locked.value = false
+  prompt.value = 'Read a word!'
+  if (micOk.value) {
+    window.setTimeout(() => startListen(), 280)
+  } else {
+    prompt.value = '再说一个，或点下一条小鱼'
+  }
 }
 
-async function autoHelp() {
-  locked.value = true
-  prompt.value = 'Together!'
-  highlight.value = trial.value.letter.toUpperCase()
+function missSpeak() {
+  if (locked.value) return
+  listening.value = false
+  prompt.value = '再读一个词，或点小鱼'
   playNudge()
-  await speak(trial.value.speak)
-  await new Promise((resolve) => window.setTimeout(resolve, 600))
-  await passTrial()
+  stageRef.value?.nudgeRemaining()
+  void (async () => {
+    await speak('Try again!')
+    if (micOk.value && remaining.value.length && !locked.value) {
+      window.setTimeout(() => startListen(), 250)
+    }
+  })()
 }
 
-async function onTap(bubble: Bubble) {
-  if (locked.value || demoing.value) return
-  if (bubble.correct) {
-    locked.value = true
-    highlight.value = bubble.letter
-    playPop()
-    await passTrial()
+function onHeard(transcript: string) {
+  if (locked.value) return
+  const hit = matchSpokenWord(transcript, remaining.value)
+  if (hit) {
+    void catchWord(hit)
     return
   }
-  failCount.value += 1
-  shaking.value = bubble.letter
-  playNudge()
-  window.setTimeout(() => {
-    if (shaking.value === bubble.letter) shaking.value = ''
-  }, 360)
-  await speak(trial.value.speak)
-  if (failCount.value >= 2) {
-    await autoHelp()
+  missSpeak()
+}
+
+function onTapFish(word: string) {
+  void catchWord(word)
+}
+
+async function onHearFish(word: string) {
+  if (locked.value || caught.value.includes(word)) return
+  stopMic()
+  prompt.value = word
+  await speak(word)
+  if (micOk.value && remaining.value.length && !locked.value) {
+    window.setTimeout(() => startListen(), 250)
   }
 }
 
 onMounted(() => {
-  void runDemo()
+  recognizer = createRecognizer({
+    onResult: onHeard,
+    onEnd: () => {
+      listening.value = false
+    },
+    onError: (error) => {
+      if (error === 'not-allowed' || error === 'service-not-allowed') {
+        micOk.value = false
+        prompt.value = '点小鱼钓上来，或点 ♪ 先听'
+      }
+    },
+  })
+  void replayPrompt()
 })
 
 onUnmounted(() => {
+  stopMic()
   stopSpeech()
 })
 </script>
@@ -160,37 +171,31 @@ onUnmounted(() => {
     </header>
 
     <div class="center head">
-      <p class="gate-tag">Gate 1 · Sound Fish</p>
-      <h1 class="title-lg">听一听，点泡泡</h1>
-      <p class="sub">小猫请客 · {{ prompt }} · {{ trial?.ipa }}</p>
+      <p class="gate-tag">Gate 1 · Word Fish</p>
+      <h1 class="title-lg">读词钓鱼</h1>
+      <p class="sub">小猫请客 · {{ prompt }}</p>
     </div>
 
-    <div class="pond">
-      <div class="host floaty" aria-hidden="true">🐱</div>
-      <div class="fishy floaty" aria-hidden="true">🐠</div>
-      <button
-        v-for="(bubble, index) in bubbles"
-        :key="bubble.key"
-        class="bubble"
-        :class="{
-          highlight: highlight === bubble.letter,
-          shake: shaking === bubble.letter,
-          cheer: celebrating && bubble.correct,
-          delay0: index === 0,
-          delay1: index === 1,
-          delay2: index === 2,
-        }"
-        type="button"
-        :disabled="locked"
-        @click="onTap(bubble)"
-      >
-        {{ bubble.letter }}
-      </button>
-    </div>
+    <sound-fish-stage
+      ref="stageRef"
+      :words="words"
+      :caught="caught"
+      :locked="locked"
+      :listening="listening"
+      @tap="onTapFish"
+      @hear="onHearFish"
+    />
 
-    <p class="center hint">{{ progressText }} · 点错会再听一遍</p>
-    <big-button variant="listen" :disabled="locked && !demoing" @click="playPhoneme">
-      再听一次
+    <p class="center hint">
+      {{ progressText }} ·
+      {{
+        micOk
+          ? '读出鱼身上的单词，或点小鱼钓上来'
+          : '点小鱼钓上来，点 ♪ 可以先听'
+      }}
+    </p>
+    <big-button variant="listen" :disabled="locked || celebrating" @click="replayPrompt">
+      再听提示
     </big-button>
   </section>
 </template>
@@ -208,71 +213,6 @@ onUnmounted(() => {
 
 .head {
   margin-bottom: 4px;
-}
-
-.pond {
-  position: relative;
-  flex: 1;
-  min-height: 280px;
-  margin: 8px -6px;
-  border-radius: 36px;
-  background: linear-gradient(180deg, #7fd8e8 0%, #3db8c7 70%, #2a9aa8 100%);
-  box-shadow: inset 0 -18px 0 rgba(14, 80, 90, 0.12);
-  overflow: hidden;
-}
-
-.host {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  font-size: 36px;
-}
-
-.fishy {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  font-size: 42px;
-}
-
-.bubble {
-  position: absolute;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0e4b6b;
-  font-size: 44px;
-  font-weight: 700;
-  box-shadow: 0 8px 0 rgba(14, 80, 90, 0.16);
-  animation: floaty 2.8s ease-in-out infinite;
-}
-
-.bubble.delay0 {
-  left: 28px;
-  top: 88px;
-}
-
-.bubble.delay1 {
-  right: 28px;
-  top: 58px;
-  animation-delay: 0.4s;
-}
-
-.bubble.delay2 {
-  left: 50%;
-  margin-left: -48px;
-  bottom: 36px;
-  animation-delay: 0.8s;
-}
-
-.bubble.highlight {
-  animation: pulse 0.9s ease;
-  background: #ffe27a;
-}
-
-.bubble.cheer {
-  background: #c8f5d4;
 }
 
 .hint {

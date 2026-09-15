@@ -1,22 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, allDoneToday, nextRoute, hasDecoration, hasSticker } = useProgress()
+const { state, gatesDone, gateTotal, allDoneToday, nextRoute, hasSticker } = useProgress()
 
 const gates = [
-  { id: 'soundFish', emoji: '🐠', label: 'Sound Fish' },
-  { id: 'wordMorph', emoji: '🎩', label: 'Word Morph' },
+  { id: 'soundFish', emoji: '🐠', label: '读词钓鱼' },
   { id: 'echoCave', emoji: '🎤', label: 'Echo Cave' },
 ] as const
 
-const rugOn = computed(() => hasDecoration(family.rewards.wordMorphDecoration.id))
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
   if (allDoneToday.value) return '看今日奖励'
@@ -24,9 +23,17 @@ const startLabel = computed(() => {
   return '完整一日'
 })
 
+const hostEl = ref<HTMLElement | null>(null)
+const progressEl = ref<HTMLElement | null>(null)
+
 function go() {
   void router.push(nextRoute.value)
 }
+
+onMounted(() => {
+  void tweenCelebrate(hostEl.value)
+  if (allDoneToday.value) void tweenPulse(progressEl.value)
+})
 </script>
 
 <template>
@@ -50,9 +57,8 @@ function go() {
         <div class="wave" />
       </div>
       <div class="island">
-        <div class="guide floaty">🐱</div>
+        <div ref="hostEl" class="guide floaty">🐱</div>
         <div v-if="earOn" class="deco ear popin">👂</div>
-        <div v-if="rugOn" class="deco rug popin">🧶</div>
         <div class="prop hat" aria-hidden="true">🎩</div>
         <div class="palm">🌴</div>
       </div>
@@ -61,7 +67,7 @@ function go() {
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
 
     <div class="card progress-card">
-      <p class="progress-title">今日三关 · {{ gatesDone }}/3</p>
+      <p ref="progressEl" class="progress-title">今日两关 · {{ gatesDone }}/{{ gateTotal }}</p>
       <div class="gates">
         <div
           v-for="gate in gates"
@@ -78,7 +84,7 @@ function go() {
         {{
           allDoneToday
             ? '今日派对已完成，星星已收好。'
-            : '家长小记：没有对错惩罚，做错会再听一遍。'
+            : '家长小记：没有对错惩罚，读错会再试一次。'
         }}
       </p>
     </div>
@@ -178,11 +184,6 @@ function go() {
 .ear {
   left: 18px;
   top: -8px;
-}
-
-.rug {
-  right: 28px;
-  top: 18px;
 }
 
 .prop.hat {
