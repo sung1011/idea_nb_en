@@ -33,7 +33,7 @@ npm run build
 - **Word Morph**：锁住 `a` `t`，只换首字母：cat → hat → mat → cat（cat 是派对主人，hat / mat 是派对道具）
 - **Echo Cave**：TTS 范读后跟读；有 `SpeechRecognition` 就听，没有或失败可点「我说好了」
 - **Tap Target 点一点**：听 “Where is the cat?”，在 3–4 个图里点对
-- **Drag Sort 拖一拖**：把 cat / hat / mat 拖进「动物 / 派对道具」篮子
+- **Drag Sort 拖一拖**：读 cat / hat / mat，把纯英文单词芯片拖到对应图片篮子（篮子无中文，芯片无图；英语 TTS 演示）
 - **Blend Blocks 积木拼读**：c-a-t 积木依次发声，按顺序点，拼出单词
 - **Onset Hunt 找尾巴**：听开头音，三图里选出谁是这个音开头
 - **Sing Along 唱一唱**：两句 chant 高亮，点「我唱好了」（不测音高）
