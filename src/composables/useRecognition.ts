@@ -30,12 +30,37 @@ export function createRecognizer(handlers: {
   return rec
 }
 
+function normalizeSaid(transcript: string): string {
+  return transcript.toLowerCase().replace(/[^a-z]/g, '')
+}
+
+function looseScore(said: string, word: string): number {
+  const target = word.toLowerCase()
+  if (!said || !target) return 0
+  if (said === target || said.includes(target)) return 3
+  if (target.includes(said) && said.length >= 2) return 2
+  if (target.length >= 2 && said.includes(target.slice(1))) return 1
+  return 0
+}
+
 /** Always loose: any spoken attempt or a matching word counts. */
 export function looselyHeard(transcript: string, word: string): boolean {
-  const said = transcript.toLowerCase().replace(/[^a-z]/g, '')
+  const said = normalizeSaid(transcript)
   if (!said) return false
-  const target = word.toLowerCase()
-  if (said.includes(target)) return true
-  if (target.length >= 2 && said.includes(target.slice(1))) return true
+  if (looseScore(said, word) > 0) return true
   return said.length >= 2
+}
+
+/** Pick the best remaining word. Shared rime (e.g. “at”) takes the first remaining fish. */
+export function matchSpokenWord(transcript: string, words: string[]): string | null {
+  const said = normalizeSaid(transcript)
+  if (!said) return null
+  const ranked = words
+    .map((word) => ({ word, score: looseScore(said, word) }))
+    .filter((item) => item.score > 0)
+  if (!ranked.length) return null
+  ranked.sort((a, b) => b.score - a.score)
+  const best = ranked[0]
+  const ties = ranked.filter((item) => item.score === best.score)
+  return ties[0]?.word ?? null
 }

@@ -2,47 +2,49 @@
 import gsap from 'gsap'
 import { Application, Circle, Container, FillGradient, Graphics, Text } from 'pixi.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-
-export type PondBubble = {
-  letter: string
-  correct: boolean
-  key: string
-}
+import { wordEmoji } from '../data/phonicsFamily'
 
 const props = defineProps<{
-  bubbles: PondBubble[]
-  highlight: string
-  shaking: string
+  words: string[]
+  caught: string[]
   locked: boolean
-  demoing: boolean
-  celebrating: boolean
+  listening: boolean
 }>()
 
 const emit = defineEmits<{
-  tap: [bubble: PondBubble]
+  tap: [word: string]
+  hear: [word: string]
 }>()
 
-type BubbleMark = {
-  bubble: PondBubble
+type FishMark = {
+  word: string
   node: Container
-  disc: Graphics
-  base: { x: number; y: number }
+  body: Graphics
+  speaker: Container
+  lane: number
+  color: number
+  caught: boolean
 }
 
 const host = ref<HTMLElement | null>(null)
+const palette = [0xff8a65, 0x8b7cf6, 0x4caf7a, 0xffc56d, 0x3db8c7]
 
 let app: Application | null = null
 let dead = false
 let bg: Graphics | null = null
 let deco: Container | null = null
+let bucket: Container | null = null
+let hookLine: Graphics | null = null
+let hookIcon: Text | null = null
 let observer: ResizeObserver | null = null
-const marks: BubbleMark[] = []
+const marks: FishMark[] = []
 
-const slots = [
-  (width: number, height: number) => ({ x: width * 0.22, y: height * 0.42 }),
-  (width: number, height: number) => ({ x: width * 0.78, y: height * 0.32 }),
-  (width: number, height: number) => ({ x: width * 0.5, y: height * 0.72 }),
-]
+function emojiFont(size: number) {
+  return {
+    fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+    fontSize: size,
+  }
+}
 
 function paintPond(width: number, height: number) {
   if (!bg) return
@@ -51,109 +53,137 @@ function paintPond(width: number, height: number) {
     start: { x: 0, y: 0 },
     end: { x: 0, y: 1 },
     colorStops: [
-      { offset: 0, color: '#7fd8e8' },
-      { offset: 0.7, color: '#3db8c7' },
+      { offset: 0, color: '#9ee4ef' },
+      { offset: 0.55, color: '#3db8c7' },
       { offset: 1, color: '#2a9aa8' },
     ],
   })
   bg.clear()
   bg.rect(0, 0, width, height)
   bg.fill(water)
-  bg.ellipse(width * 0.3, height + 8, width * 0.55, 36)
-  bg.fill({ color: 0x1d7a86, alpha: 0.18 })
-  bg.ellipse(width * 0.75, height + 4, width * 0.4, 28)
-  bg.fill({ color: 0x1d7a86, alpha: 0.14 })
+  bg.ellipse(width * 0.28, height + 10, width * 0.5, 34)
+  bg.fill({ color: 0x1d7a86, alpha: 0.16 })
+  bg.ellipse(width * 0.78, height + 6, width * 0.42, 28)
+  bg.fill({ color: 0x1d7a86, alpha: 0.12 })
 }
 
-function paintDeco(width: number) {
+function paintDeco(width: number, height: number) {
   if (!deco) return
   deco.removeChildren()
-  const fish = new Text({
-    text: '🐠',
-    style: { fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif', fontSize: 42 },
-  })
-  fish.anchor.set(0.5)
-  fish.position.set(36, 36)
-  const cat = new Text({
-    text: '🐱',
-    style: { fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif', fontSize: 36 },
-  })
+  const cat = new Text({ text: '🐱', style: emojiFont(34) })
   cat.anchor.set(0.5)
-  cat.position.set(width - 36, 36)
-  deco.addChild(fish, cat)
+  cat.position.set(width - 36, 34)
+  const reed = new Text({ text: '🌿', style: emojiFont(28) })
+  reed.anchor.set(0.5)
+  reed.position.set(28, height - 28)
+  const lily = new Text({ text: '🪷', style: emojiFont(26) })
+  lily.anchor.set(0.5)
+  lily.position.set(width - 42, height - 30)
+  deco.addChild(cat, reed, lily)
 }
 
-function discColor(bubble: PondBubble): number {
-  if (props.highlight === bubble.letter) return 0xffe27a
-  if (props.celebrating && bubble.correct) return 0xc8f5d4
-  return 0xffffff
+function bucketPoint(width: number) {
+  return { x: width * 0.5, y: 52 }
 }
 
-function paintDisc(disc: Graphics, color: number) {
+function paintBucket() {
+  const netBox = bucket
+  if (!netBox || !app) return
+  netBox.removeChildren()
+  const { width } = app.screen
+  const point = bucketPoint(width)
+  netBox.position.set(point.x, point.y)
+
+  const bowl = new Graphics()
+  bowl.roundRect(-62, -6, 124, 52, 18)
+  bowl.fill({ color: 0xf4b400, alpha: 0.95 })
+  bowl.roundRect(-54, 8, 108, 30, 14)
+  bowl.fill({ color: 0xffe27a, alpha: 0.88 })
+  const net = new Text({ text: '🧺', style: emojiFont(36) })
+  net.anchor.set(0.5)
+  net.position.set(-38, 8)
+  const title = new Text({
+    text: 'net',
+    style: { fontFamily: 'Fredoka, "PingFang SC", sans-serif', fontSize: 14, fill: 0x4a2808, fontWeight: '700' },
+  })
+  title.anchor.set(0.5)
+  title.position.set(18, -16)
+  netBox.addChild(bowl, net, title)
+
+  const caughtWords = marks.filter((item) => item.caught).map((item) => item.word)
+  caughtWords.forEach((word, index) => {
+    const chip = new Text({
+      text: `${wordEmoji(word)} ${word}`,
+      style: {
+        fontFamily: 'Fredoka, "PingFang SC", sans-serif',
+        fontSize: 13,
+        fill: 0x0e4b6b,
+        fontWeight: '700',
+      },
+    })
+    chip.anchor.set(0.5)
+    chip.position.set(16 + (index - (caughtWords.length - 1) / 2) * 8, 18)
+    netBox.addChild(chip)
+  })
+}
+
+function paintFishBody(disc: Graphics, color: number, glow: boolean) {
   disc.clear()
-  disc.circle(0, 6, 48)
+  disc.ellipse(-6, 8, 62, 34)
   disc.fill({ color: 0x0e505a, alpha: 0.16 })
-  disc.circle(0, 0, 48)
-  disc.fill({ color, alpha: 0.96 })
-  disc.circle(-14, -14, 11)
-  disc.fill({ color: 0xffffff, alpha: 0.38 })
+  disc.ellipse(0, 0, 62, 34)
+  disc.fill({ color, alpha: glow ? 1 : 0.96 })
+  disc.poly([58, 0, 86, -22, 86, 22])
+  disc.fill({ color, alpha: glow ? 1 : 0.96 })
+  disc.circle(-18, -10, 8)
+  disc.fill({ color: 0xffffff, alpha: 0.42 })
 }
 
 function restyle() {
   for (const mark of marks) {
-    paintDisc(mark.disc, discColor(mark.bubble))
+    paintFishBody(mark.body, mark.color, props.listening && !mark.caught)
   }
 }
 
-function shakeLetter(letter: string) {
-  const mark = marks.find((item) => item.bubble.letter === letter)
-  if (!mark) return
-  const start = mark.base.x
-  gsap.fromTo(
-    mark.node,
-    { x: start - 8 },
-    {
-      x: start + 8,
-      duration: 0.06,
-      yoyo: true,
-      repeat: 7,
-      ease: 'power1.inOut',
-      onComplete: () => {
-        mark.node.x = start
-      },
-    },
-  )
+function laneY(height: number, lane: number) {
+  const rows = [0.38, 0.58, 0.78]
+  return height * (rows[lane % rows.length] ?? 0.58)
 }
 
-function popLetter(letter: string) {
-  const mark = marks.find((item) => item.bubble.letter === letter)
-  if (!mark) return
-  gsap.fromTo(
-    mark.node.scale,
-    { x: 1, y: 1 },
-    { x: 1.22, y: 1.22, duration: 0.16, yoyo: true, repeat: 1, ease: 'back.out(2.4)' },
-  )
+function startSwim(mark: FishMark) {
+  if (!app || mark.caught) return
+  const { width, height } = app.screen
+  const left = 78
+  const right = Math.max(left + 40, width - 78)
+  const dest = mark.node.x > (left + right) / 2 ? left : right
+  const dist = Math.abs(dest - mark.node.x)
+  gsap.killTweensOf(mark.node)
+  gsap.to(mark.node, {
+    x: dest,
+    y: laneY(height, mark.lane) + (dest > mark.node.x ? -6 : 6),
+    duration: Math.max(2.4, dist / 58),
+    ease: 'sine.inOut',
+    onComplete: () => startSwim(mark),
+  })
 }
 
-function placeBubbles() {
+function placeFish() {
   if (!app) return
   const { width, height } = app.screen
   if (width < 8 || height < 8) return
   paintPond(width, height)
-  paintDeco(width)
+  paintDeco(width, height)
+  paintBucket()
   marks.forEach((mark, index) => {
-    const point = (slots[index] ?? slots[0])(width, height)
-    mark.base = point
-    mark.node.position.set(point.x, point.y)
-    gsap.killTweensOf(mark.node)
-    gsap.to(mark.node, {
-      y: point.y - 8,
-      duration: 1.5,
-      delay: index * 0.18,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inOut',
-    })
+    if (mark.caught) {
+      mark.node.visible = false
+      return
+    }
+    mark.node.visible = true
+    const x = width * (0.22 + (index % 3) * 0.28)
+    const y = laneY(height, mark.lane)
+    mark.node.position.set(x, y)
+    startSwim(mark)
   })
 }
 
@@ -166,36 +196,157 @@ function clearMarks() {
   marks.length = 0
 }
 
+function makeFish(word: string, index: number): FishMark {
+  const color = palette[index % palette.length]
+  const node = new Container()
+  const body = new Graphics()
+  paintFishBody(body, color, false)
+  const art = new Text({ text: wordEmoji(word), style: emojiFont(26) })
+  art.anchor.set(0.5)
+  art.position.set(-28, -2)
+  const label = new Text({
+    text: word,
+    style: {
+      fontFamily: 'Fredoka, "PingFang SC", sans-serif',
+      fontSize: 28,
+      fontWeight: '700',
+      fill: 0xffffff,
+    },
+  })
+  label.anchor.set(0.5)
+  label.position.set(10, -1)
+  const speaker = new Container()
+  const speakerDisc = new Graphics()
+  speakerDisc.circle(0, 0, 28)
+  speakerDisc.fill({ color: 0xffffff, alpha: 0.96 })
+  speakerDisc.circle(0, 0, 28)
+  speakerDisc.stroke({ color: 0x0e4b6b, width: 2, alpha: 0.18 })
+  const speakerIcon = new Text({ text: '🔊', style: emojiFont(20) })
+  speakerIcon.anchor.set(0.5)
+  speaker.addChild(speakerDisc, speakerIcon)
+  speaker.position.set(18, -46)
+  speaker.eventMode = 'static'
+  speaker.cursor = 'pointer'
+  speaker.hitArea = new Circle(0, 0, 30)
+  speaker.on('pointertap', (event) => {
+    event.stopPropagation()
+    if (props.locked) return
+    const mark = marks.find((item) => item.word === word)
+    if (!mark || mark.caught) return
+    emit('hear', word)
+  })
+
+  node.addChild(body, art, label, speaker)
+  node.eventMode = 'static'
+  node.cursor = 'pointer'
+  node.hitArea = new Circle(0, 0, 70)
+  node.on('pointertap', (event) => {
+    event.stopPropagation()
+    if (props.locked) return
+    const mark = marks.find((item) => item.word === word)
+    if (!mark || mark.caught) return
+    emit('tap', word)
+  })
+  app?.stage.addChild(node)
+  return { word, node, body, speaker, lane: index, color, caught: props.caught.includes(word) }
+}
+
 function rebuildMarks() {
   if (!app) return
   clearMarks()
-  for (const bubble of props.bubbles) {
-    const node = new Container()
-    const disc = new Graphics()
-    paintDisc(disc, discColor(bubble))
-    const label = new Text({
-      text: bubble.letter,
-      style: {
-        fontFamily: 'Fredoka, "PingFang SC", sans-serif',
-        fontSize: 44,
-        fontWeight: '700',
-        fill: 0x0e4b6b,
+  props.words.forEach((word, index) => {
+    marks.push(makeFish(word, index))
+  })
+  if (hookLine) app.stage.addChild(hookLine)
+  if (hookIcon) app.stage.addChild(hookIcon)
+  if (bucket) app.stage.addChild(bucket)
+  placeFish()
+}
+
+function hideHook() {
+  if (hookLine) hookLine.visible = false
+  if (hookIcon) hookIcon.visible = false
+}
+
+function drawHook(x: number, fromY: number, toY: number) {
+  if (!hookLine || !hookIcon) return
+  hookLine.visible = true
+  hookIcon.visible = true
+  hookLine.clear()
+  hookLine.moveTo(x, fromY)
+  hookLine.lineTo(x, toY)
+  hookLine.stroke({ width: 3, color: 0x4a2808, alpha: 0.85 })
+  hookIcon.position.set(x, toY)
+}
+
+function liftFish(word: string): Promise<void> {
+  const mark = marks.find((item) => item.word === word)
+  if (!mark || mark.caught || !app) return Promise.resolve()
+  mark.caught = true
+  mark.node.eventMode = 'none'
+  mark.speaker.eventMode = 'none'
+  gsap.killTweensOf(mark.node)
+  gsap.killTweensOf(mark.node.scale)
+
+  const { width } = app.screen
+  const dest = bucketPoint(width)
+  const startX = mark.node.x
+  const startY = mark.node.y
+  const topY = 8
+  const hook = { y: topY }
+
+  return new Promise((resolve) => {
+    drawHook(startX, topY, hook.y)
+    const tl = gsap.timeline({
+      onComplete: () => {
+        hideHook()
+        mark.node.visible = false
+        mark.node.scale.set(1)
+        paintBucket()
+        resolve()
       },
     })
-    label.anchor.set(0.5)
-    node.addChild(disc, label)
-    node.eventMode = 'static'
-    node.cursor = 'pointer'
-    node.hitArea = new Circle(0, 0, 52)
-    node.on('pointertap', (event) => {
-      event.stopPropagation()
-      if (props.locked || props.demoing) return
-      emit('tap', bubble)
+    tl.to(hook, {
+      y: startY - 36,
+      duration: 0.28,
+      ease: 'power2.in',
+      onUpdate: () => drawHook(startX, topY, hook.y),
     })
-    app.stage.addChild(node)
-    marks.push({ bubble, node, disc, base: { x: 0, y: 0 } })
+    tl.to(mark.node.scale, { x: 1.12, y: 1.12, duration: 0.12, yoyo: true, repeat: 1, ease: 'back.out(2)' }, '>-0.02')
+    tl.to(
+      mark.node,
+      {
+        x: dest.x + 18,
+        y: dest.y + 8,
+        duration: 0.55,
+        ease: 'power2.inOut',
+        onUpdate: () => drawHook(mark.node.x, topY, mark.node.y - 28),
+      },
+      '>-0.04',
+    )
+    tl.to(mark.node.scale, { x: 0.22, y: 0.22, duration: 0.18, ease: 'power1.in' }, '>-0.08')
+  })
+}
+
+function nudgeRemaining() {
+  for (const mark of marks) {
+    if (mark.caught) continue
+    const start = mark.node.x
+    gsap.fromTo(
+      mark.node,
+      { x: start - 7 },
+      {
+        x: start + 7,
+        duration: 0.06,
+        yoyo: true,
+        repeat: 5,
+        ease: 'power1.inOut',
+        onComplete: () => {
+          if (!mark.caught) mark.node.x = start
+        },
+      },
+    )
   }
-  placeBubbles()
 }
 
 function layout() {
@@ -203,8 +354,18 @@ function layout() {
   const { width, height } = app.screen
   if (width < 8 || height < 8) return
   paintPond(width, height)
-  paintDeco(width)
-  placeBubbles()
+  paintDeco(width, height)
+  paintBucket()
+  for (const mark of marks) {
+    if (mark.caught) {
+      mark.node.visible = false
+      continue
+    }
+    mark.node.y = laneY(height, mark.lane)
+    if (mark.node.x < 70) mark.node.x = 70
+    if (mark.node.x > width - 70) mark.node.x = width - 70
+    startSwim(mark)
+  }
 }
 
 async function boot() {
@@ -234,6 +395,17 @@ async function boot() {
   deco = new Container()
   deco.eventMode = 'none'
   stage.stage.addChild(deco)
+
+  hookLine = new Graphics()
+  hookLine.eventMode = 'none'
+  hookIcon = new Text({ text: '🪝', style: emojiFont(28) })
+  hookIcon.anchor.set(0.5)
+  hookIcon.eventMode = 'none'
+  hideHook()
+
+  bucket = new Container()
+  bucket.eventMode = 'none'
+
   rebuildMarks()
 
   observer = new ResizeObserver(() => {
@@ -255,34 +427,45 @@ onUnmounted(() => {
   dead = true
   observer?.disconnect()
   observer = null
+  hideHook()
   clearMarks()
   deco = null
   bg = null
+  bucket = null
+  hookLine = null
+  hookIcon = null
   app?.destroy(true, true)
   app = null
 })
 
 watch(
-  () => props.bubbles.map((item) => item.key).join('|'),
+  () => props.words.join('|'),
   () => {
     if (app) rebuildMarks()
   },
 )
 
 watch(
-  () => [props.highlight, props.celebrating] as const,
-  ([letter]) => {
-    restyle()
-    if (letter) popLetter(letter)
-  },
+  () => props.listening,
+  () => restyle(),
 )
 
 watch(
-  () => props.shaking,
-  (letter) => {
-    if (letter) shakeLetter(letter)
+  () => props.caught.join('|'),
+  () => {
+    for (const word of props.caught) {
+      const mark = marks.find((item) => item.word === word)
+      if (!mark || mark.caught) continue
+      mark.caught = true
+      gsap.killTweensOf(mark.node)
+      mark.node.visible = false
+      mark.node.eventMode = 'none'
+    }
+    paintBucket()
   },
 )
+
+defineExpose({ liftFish, nudgeRemaining })
 </script>
 
 <template>
@@ -297,7 +480,7 @@ watch(
   margin: 8px -6px;
   border-radius: 36px;
   overflow: hidden;
-  background: linear-gradient(180deg, #7fd8e8 0%, #3db8c7 70%, #2a9aa8 100%);
+  background: linear-gradient(180deg, #9ee4ef 0%, #3db8c7 55%, #2a9aa8 100%);
   box-shadow: inset 0 -18px 0 rgba(14, 80, 90, 0.12);
 }
 

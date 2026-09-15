@@ -7,7 +7,7 @@ export type PlayItem = {
 }
 
 export const playItems: PlayItem[] = [
-  { id: 'soundFish', emoji: '🐠', name: 'Sound Fish', zh: '听音点泡', path: '/sound-fish' },
+  { id: 'soundFish', emoji: '🐠', name: 'Word Fish', zh: '读词钓鱼', path: '/sound-fish' },
   { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '跟读回音', path: '/echo-cave' },
   { id: 'tapTarget', emoji: '👆', name: 'Tap Target', zh: '点一点', path: '/tap-target' },
   { id: 'dragSort', emoji: '🧺', name: 'Drag Sort', zh: '拖一拖', path: '/drag-sort' },

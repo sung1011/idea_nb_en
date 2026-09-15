@@ -12,7 +12,7 @@ const family = getCurrentFamily()
 const { state, gatesDone, gateTotal, allDoneToday, nextRoute, hasSticker } = useProgress()
 
 const gates = [
-  { id: 'soundFish', emoji: '🐠', label: 'Sound Fish' },
+  { id: 'soundFish', emoji: '🐠', label: '读词钓鱼' },
   { id: 'echoCave', emoji: '🎤', label: 'Echo Cave' },
 ] as const
 
@@ -84,7 +84,7 @@ onMounted(() => {
         {{
           allDoneToday
             ? '今日派对已完成，星星已收好。'
-            : '家长小记：没有对错惩罚，做错会再听一遍。'
+            : '家长小记：没有对错惩罚，读错会再试一次。'
         }}
       </p>
     </div>

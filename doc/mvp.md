@@ -6,16 +6,16 @@
 
 - Vue 3 + Vite + TypeScript + Vue Router（hash 路由，静态托管更稳）
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
-- 找一找 / 声音钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
+- 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
 - 无后端；进度在 `localStorage` 键 `starWords.v1`
-- TTS：`speechSynthesis`；回音洞：`SpeechRecognition`（不可用则点按通过）
+- TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 无插画资源：emoji + CSS 形状
 
 ## 信息架构
 
 每日主路径 = **主题岛**（第一座：动物岛）。每座岛复用同一套受保护的自然拼读两关。
 
-首页 → 动物岛大厅 → Sound Fish → Echo Cave → Day Complete → 回首页
+首页 → 动物岛大厅 → 读词钓鱼（Word Fish） → Echo Cave → Day Complete → 回首页
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
@@ -25,7 +25,7 @@
 
 **Find Scene（找一找）**在 Vue 壳里嵌 Pixi 画布：派对场景点出 cat / hat / mat。目标会轻轻浮动；点对发光加星标并读词，点到树/气球/礼物或空地轻轻提醒。试玩走 `?demo=1`，不加当日星星。不把整站改成 Pixi。
 
-**Sound Fish（声音钓鱼）**同样用 Pixi 池塘画布：听音素后点字母泡泡。演示会高亮正确泡泡；点错轻晃并再听；两次未中一起过关。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。
+**读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：当前音族 `targets`（如 cat / hat / mat）各是一条带英文单词的鱼，鱼身不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。路由仍为 `/sound-fish`。
 
 当日两关进度按本地日期重置。每日路径里重复玩同一关不再加星。
 
@@ -48,13 +48,13 @@
 
 叙事：小猫是派对主人；hat / mat 是派对道具，不是动物。
 
-同文件已写好 `-ap` / `-an`。切换：改 `currentFamilyId`。
+同文件已写好 `-ap` / `-an`。切换：改 `currentFamilyId`。读词钓鱼只用 `targets`；`warmupPhonemes` 仍留在配置里，本关不再走音素试次。
 
 ## 两关奖励
 
 | 关卡 | 行为要点 | 奖励 |
 | --- | --- | --- |
-| Sound Fish | 3 次音素试次；演示高亮一次；错 2 次自动带过 | +1 星，贴纸「派对耳朵」 |
+| 读词钓鱼 / Word Fish | 读出或点中池里全部单词鱼；挂钩吊进网 | +1 星，贴纸「派对耳朵」 |
 | Echo Cave | 听后跟读；识别宽松成功；永远可点「我说好了」 | +1 星，当日目标完成，打卡天数 +1 |
 
 奖励 id 仍为 `ear`，避免旧存档失效。旧存档里的 `rug` 不再展示。无惩罚 UI：不出现红叉、不计分对比、不因失败阻断。触控热区偏大，面向约 5 岁儿童。
@@ -76,7 +76,7 @@ src/views/animalIslandView.vue 动物岛大厅（完整一日）
 src/views/letterWorkshopView.vue 字母工坊复习页
 src/views/playGalleryView.vue  玩法一览
 src/components/findSceneStage.vue 找一找 Pixi 场景
-src/components/soundFishStage.vue 声音钓鱼 Pixi 池塘
+src/components/soundFishStage.vue 读词钓鱼 Pixi 池塘
 src/views/*.vue                六种玩法 + Day Complete
 ```
 

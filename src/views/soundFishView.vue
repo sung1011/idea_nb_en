@@ -3,10 +3,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import soundFishStage from '../components/soundFishStage.vue'
-import type { PondBubble } from '../components/soundFishStage.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
+import {
+  canUseRecognition,
+  createRecognizer,
+  matchSpokenWord,
+} from '../composables/useRecognition'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
@@ -15,75 +19,57 @@ const family = getCurrentFamily()
 const { completeGate } = useProgress()
 const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
-const trialIndex = ref(0)
-const failCount = ref(0)
-const bubbles = ref<PondBubble[]>([])
-const highlight = ref('')
-const shaking = ref('')
-const locked = ref(true)
-const demoing = ref(true)
+const words = family.targets
+const caught = ref<string[]>([])
+const locked = ref(false)
+const listening = ref(false)
 const celebrating = ref(false)
-const prompt = ref('Listen!')
+const prompt = ref('Read a word!')
+const micOk = canUseRecognition()
+const stageRef = ref<{
+  liftFish: (word: string) => Promise<void>
+  nudgeRemaining: () => void
+} | null>(null)
 
-const trial = computed(() => family.warmupPhonemes[trialIndex.value])
-const progressText = computed(() => `${trialIndex.value + 1} / ${family.warmupPhonemes.length}`)
+const remaining = computed(() => words.filter((word) => !caught.value.includes(word)))
+const progressText = computed(() => `${caught.value.length} / ${words.length}`)
 
-function shuffle<T>(list: T[]): T[] {
-  const next = [...list]
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[next[i], next[j]] = [next[j], next[i]]
+let recognizer: ReturnType<typeof createRecognizer> = null
+
+function stopMic() {
+  listening.value = false
+  try {
+    recognizer?.stop()
+  } catch {
+    /* already stopped */
   }
-  return next
 }
 
-function makeBubbles(letter: string) {
-  const extra = shuffle(family.distractors).slice(0, 2).map((item) => item.toUpperCase())
-  bubbles.value = shuffle([
-    { letter: letter.toUpperCase(), correct: true, key: `ok-${letter}` },
-    { letter: extra[0], correct: false, key: `no-${extra[0]}` },
-    { letter: extra[1], correct: false, key: `no-${extra[1]}` },
-  ])
+function startListen() {
+  if (!recognizer || locked.value || !remaining.value.length) return
+  try {
+    recognizer.start()
+    listening.value = true
+    prompt.value = 'I am listening...'
+  } catch {
+    listening.value = false
+    prompt.value = '点小鱼也能钓上来'
+  }
 }
 
-async function playPhoneme() {
-  if (!trial.value) return
-  await speak('Listen!')
-  await speak(trial.value.speak)
-}
-
-function setupTrial(showDemo: boolean) {
-  if (!trial.value) return
-  failCount.value = 0
-  highlight.value = ''
-  shaking.value = ''
-  celebrating.value = false
-  makeBubbles(trial.value.letter)
-  locked.value = true
-  demoing.value = showDemo
-  prompt.value = showDemo ? 'Listen!' : 'Your turn!'
-}
-
-async function runDemo() {
-  setupTrial(true)
-  await playPhoneme()
-  highlight.value = trial.value.letter.toUpperCase()
-  await new Promise((resolve) => window.setTimeout(resolve, 1100))
-  highlight.value = ''
-  demoing.value = false
-  prompt.value = 'Your turn!'
-  locked.value = false
-}
-
-async function runPlay() {
-  setupTrial(false)
-  await playPhoneme()
-  locked.value = false
+async function replayPrompt() {
+  if (locked.value) return
+  stopMic()
+  prompt.value = remaining.value.length ? 'Read a word!' : 'Nice fishing!'
+  await speak('Read a word!')
+  if (micOk && remaining.value.length && !locked.value) {
+    window.setTimeout(() => startListen(), 250)
+  }
 }
 
 async function finishGate() {
   celebrating.value = true
-  prompt.value = 'Nice listening!'
+  prompt.value = 'Nice fishing!'
   playSuccess()
   if (!isPractice.value) {
     completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
@@ -93,55 +79,78 @@ async function finishGate() {
   void router.push(afterGate('/echo-cave'))
 }
 
-async function passTrial() {
-  celebrating.value = true
-  playSuccess()
-  prompt.value = 'Yes!'
-  await speak('Yes!')
-  await new Promise((resolve) => window.setTimeout(resolve, 450))
-  if (trialIndex.value >= family.warmupPhonemes.length - 1) {
+async function catchWord(word: string) {
+  if (locked.value || caught.value.includes(word)) return
+  locked.value = true
+  stopMic()
+  prompt.value = `Yes! ${word}`
+  playPop()
+  await stageRef.value?.liftFish(word)
+  caught.value = [...caught.value, word]
+  await speak(word)
+  if (!remaining.value.length) {
     await finishGate()
     return
   }
-  trialIndex.value += 1
-  await runPlay()
+  locked.value = false
+  prompt.value = 'Read a word!'
+  if (micOk) {
+    window.setTimeout(() => startListen(), 280)
+  } else {
+    prompt.value = '再说一个，或点下一条小鱼'
+  }
 }
 
-async function autoHelp() {
-  locked.value = true
-  prompt.value = 'Together!'
-  highlight.value = trial.value.letter.toUpperCase()
+function missSpeak() {
+  if (locked.value) return
+  listening.value = false
+  prompt.value = '再读一个词，或点小鱼'
   playNudge()
-  await speak(trial.value.speak)
-  await new Promise((resolve) => window.setTimeout(resolve, 600))
-  await passTrial()
+  stageRef.value?.nudgeRemaining()
+  void (async () => {
+    await speak('Try again!')
+    if (micOk && remaining.value.length && !locked.value) {
+      window.setTimeout(() => startListen(), 250)
+    }
+  })()
 }
 
-async function onTap(bubble: PondBubble) {
-  if (locked.value || demoing.value) return
-  if (bubble.correct) {
-    locked.value = true
-    highlight.value = bubble.letter
-    playPop()
-    await passTrial()
+function onHeard(transcript: string) {
+  if (locked.value) return
+  const hit = matchSpokenWord(transcript, remaining.value)
+  if (hit) {
+    void catchWord(hit)
     return
   }
-  failCount.value += 1
-  shaking.value = bubble.letter
-  playNudge()
-  await new Promise((resolve) => window.setTimeout(resolve, 360))
-  if (shaking.value === bubble.letter) shaking.value = ''
-  await speak(trial.value.speak)
-  if (failCount.value >= 2) {
-    await autoHelp()
+  missSpeak()
+}
+
+function onTapFish(word: string) {
+  void catchWord(word)
+}
+
+async function onHearFish(word: string) {
+  if (locked.value || caught.value.includes(word)) return
+  stopMic()
+  prompt.value = word
+  await speak(word)
+  if (micOk && remaining.value.length && !locked.value) {
+    window.setTimeout(() => startListen(), 250)
   }
 }
 
 onMounted(() => {
-  void runDemo()
+  recognizer = createRecognizer({
+    onResult: onHeard,
+    onEnd: () => {
+      listening.value = false
+    },
+  })
+  void replayPrompt()
 })
 
 onUnmounted(() => {
+  stopMic()
   stopSpeech()
 })
 </script>
@@ -154,24 +163,31 @@ onUnmounted(() => {
     </header>
 
     <div class="center head">
-      <p class="gate-tag">Gate 1 · Sound Fish</p>
-      <h1 class="title-lg">听一听，点泡泡</h1>
-      <p class="sub">小猫请客 · {{ prompt }} · {{ trial?.ipa }}</p>
+      <p class="gate-tag">Gate 1 · Word Fish</p>
+      <h1 class="title-lg">读词钓鱼</h1>
+      <p class="sub">小猫请客 · {{ prompt }}</p>
     </div>
 
     <sound-fish-stage
-      :bubbles="bubbles"
-      :highlight="highlight"
-      :shaking="shaking"
+      ref="stageRef"
+      :words="words"
+      :caught="caught"
       :locked="locked"
-      :demoing="demoing"
-      :celebrating="celebrating"
-      @tap="onTap"
+      :listening="listening"
+      @tap="onTapFish"
+      @hear="onHearFish"
     />
 
-    <p class="center hint">{{ progressText }} · 点错会再听一遍</p>
-    <big-button variant="listen" :disabled="locked && !demoing" @click="playPhoneme">
-      再听一次
+    <p class="center hint">
+      {{ progressText }} ·
+      {{
+        micOk
+          ? '读出鱼身上的单词，或点小鱼钓上来'
+          : '这台设备没有麦克风识别，点小鱼就能钓上来'
+      }}
+    </p>
+    <big-button variant="listen" :disabled="locked || celebrating" @click="replayPrompt">
+      再听提示
     </big-button>
   </section>
 </template>
