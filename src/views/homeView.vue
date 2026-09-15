@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { state, gatesDone, allDoneToday } = useProgress()
+const heroEl = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  void tweenCelebrate(heroEl.value)
+})
 
 function goIsland() {
   void router.push('/animal-island')
@@ -29,7 +36,7 @@ function goWorkshop() {
       <p class="day-chip">打卡 {{ state.dayStars }} 天</p>
     </header>
 
-    <div class="hero center">
+    <div ref="heroEl" class="hero center">
       <p class="eyebrow">每日主题岛</p>
       <h1 class="title-xl">Star Words</h1>
       <p class="zh-title">星词岛</p>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
@@ -24,9 +25,17 @@ const startLabel = computed(() => {
   return '完整一日'
 })
 
+const hostEl = ref<HTMLElement | null>(null)
+const progressEl = ref<HTMLElement | null>(null)
+
 function go() {
   void router.push(nextRoute.value)
 }
+
+onMounted(() => {
+  void tweenCelebrate(hostEl.value)
+  if (allDoneToday.value) void tweenPulse(progressEl.value)
+})
 </script>
 
 <template>
@@ -50,7 +59,7 @@ function go() {
         <div class="wave" />
       </div>
       <div class="island">
-        <div class="guide floaty">🐱</div>
+        <div ref="hostEl" class="guide floaty">🐱</div>
         <div v-if="earOn" class="deco ear popin">👂</div>
         <div v-if="rugOn" class="deco rug popin">🧶</div>
         <div class="prop hat" aria-hidden="true">🎩</div>
@@ -61,7 +70,7 @@ function go() {
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
 
     <div class="card progress-card">
-      <p class="progress-title">今日三关 · {{ gatesDone }}/3</p>
+      <p ref="progressEl" class="progress-title">今日三关 · {{ gatesDone }}/3</p>
       <div class="gates">
         <div
           v-for="gate in gates"

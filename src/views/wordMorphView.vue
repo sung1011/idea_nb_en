@@ -5,7 +5,8 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
-import { playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { tweenCelebrate, tweenShake } from '../composables/useMotion'
+import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -18,6 +19,7 @@ const step = ref(0)
 const currentWord = ref(sequence[0])
 const celebrating = ref(false)
 const locked = ref(false)
+const artEl = ref<HTMLElement | null>(null)
 
 const targetWord = computed(() => sequence[Math.min(step.value + 1, sequence.length - 1)])
 const art = computed(() => wordEmoji(currentWord.value, family))
@@ -31,6 +33,7 @@ async function speakWord(word: string) {
 
 async function finishGate() {
   playSuccess()
+  await tweenCelebrate(artEl.value)
   if (!isPractice.value) {
     completeGate('wordMorph', { decoration: family.rewards.wordMorphDecoration.id })
   }
@@ -39,15 +42,21 @@ async function finishGate() {
   void router.push(afterGate('/echo-cave'))
 }
 
-async function onPick(onset: string) {
+async function onPick(onset: string, event: MouseEvent) {
   if (locked.value || done.value) return
+  const btn = event.currentTarget instanceof Element ? event.currentTarget : null
   const nextWord = `${onset}${family.rime}`
   currentWord.value = nextWord
+  if (nextWord !== targetWord.value) {
+    playNudge()
+    await tweenShake(btn)
+    await speakWord(nextWord)
+    return
+  }
   playPop()
-  celebrating.value = nextWord === targetWord.value
+  celebrating.value = true
+  void tweenCelebrate(artEl.value)
   await speakWord(nextWord)
-  if (nextWord !== targetWord.value) return
-
   locked.value = true
   await new Promise((resolve) => window.setTimeout(resolve, 550))
   step.value += 1
@@ -82,7 +91,7 @@ onUnmounted(() => {
     </div>
 
     <div class="stage card center" :class="{ popin: celebrating }">
-      <div class="art" :class="{ popin: celebrating }">{{ art }}</div>
+      <div ref="artEl" class="art" :class="{ popin: celebrating }">{{ art }}</div>
       <p class="word-label">{{ currentWord }}</p>
       <div class="tiles" aria-label="单词字母">
         <button class="tile onset" type="button">{{ letters[0]?.toUpperCase() }}</button>
@@ -99,7 +108,7 @@ onUnmounted(() => {
         class="onset-btn"
         type="button"
         :disabled="locked"
-        @click="onPick(onset)"
+        @click="onPick(onset, $event)"
       >
         {{ onset.toUpperCase() }}
       </button>

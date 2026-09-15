@@ -18,7 +18,9 @@ type Marker = {
   word?: string
   node: Container
   glow: Graphics
+  spark: Text
   place: (width: number, height: number) => { x: number; y: number }
+  baseY: number
 }
 
 const host = ref<HTMLElement | null>(null)
@@ -50,6 +52,21 @@ function paintBackground(width: number, height: number) {
   bg.hitArea = new Rectangle(0, 0, width, height)
 }
 
+function startBob(marker: Marker) {
+  gsap.killTweensOf(marker.node)
+  if (marker.word && props.found.includes(marker.word)) {
+    marker.node.y = marker.baseY
+    return
+  }
+  gsap.to(marker.node, {
+    y: marker.baseY - 7,
+    duration: 1.6 + (marker.word ? 0.2 : 0),
+    yoyo: true,
+    repeat: -1,
+    ease: 'sine.inOut',
+  })
+}
+
 function layout() {
   if (!app) return
   const { width, height } = app.screen
@@ -57,19 +74,24 @@ function layout() {
   paintBackground(width, height)
   for (const marker of markers) {
     const point = marker.place(width, height)
+    marker.baseY = point.y
     marker.node.position.set(point.x, point.y)
+    startBob(marker)
   }
 }
 
 function markFound(word: string) {
   const marker = markers.find((item) => item.word === word)
-  if (!marker) return
+  if (!marker || marker.spark.visible) return
   marker.glow.visible = true
+  marker.spark.visible = true
   marker.node.eventMode = 'none'
+  gsap.killTweensOf(marker.node)
+  marker.node.y = marker.baseY
   gsap.fromTo(
     marker.node.scale,
     { x: 1, y: 1 },
-    { x: 1.16, y: 1.16, duration: 0.22, yoyo: true, repeat: 1, ease: 'power1.out' },
+    { x: 1.18, y: 1.18, duration: 0.24, yoyo: true, repeat: 1, ease: 'back.out(2)' },
   )
 }
 
@@ -100,9 +122,21 @@ function makeMarker(
 ): Marker {
   const node = new Container()
   const glow = new Graphics()
-  glow.circle(0, 0, radius)
-  glow.fill({ color: 0xffe27a, alpha: 0.55 })
+  glow.circle(0, 0, radius + 10)
+  glow.fill({ color: 0xffe27a, alpha: 0.62 })
+  glow.circle(0, 0, radius - 6)
+  glow.fill({ color: 0xfff6c2, alpha: 0.35 })
   glow.visible = false
+  const spark = new Text({
+    text: '✨',
+    style: {
+      fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+      fontSize: 22,
+    },
+  })
+  spark.anchor.set(0.5)
+  spark.position.set(radius - 6, -radius + 4)
+  spark.visible = false
   const label = new Text({
     text: emoji,
     style: {
@@ -111,7 +145,7 @@ function makeMarker(
     },
   })
   label.anchor.set(0.5)
-  node.addChild(glow, label)
+  node.addChild(glow, label, spark)
   node.eventMode = 'static'
   node.cursor = 'pointer'
   node.hitArea = new Circle(0, 0, radius)
@@ -127,7 +161,7 @@ function makeMarker(
     emit('miss')
   })
   app?.stage.addChild(node)
-  const marker = { word, node, glow, place }
+  const marker = { word, node, glow, spark, place, baseY: 0 }
   markers.push(marker)
   return marker
 }

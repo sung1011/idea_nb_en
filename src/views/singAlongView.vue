@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
-import { playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { tweenCelebrate } from '../composables/useMotion'
+import { playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const lit = ref(-1)
 const locked = ref(false)
 const celebrating = ref(false)
 const prompt = ref('Sing with me')
+const stageEl = ref<HTMLElement | null>(null)
 
 const word = computed(() => words[wordIndex.value] ?? words[0])
 const letters = computed(() => word.value.split(''))
@@ -42,6 +44,7 @@ async function finish() {
   celebrating.value = true
   prompt.value = 'What a song!'
   playSuccess()
+  await tweenCelebrate(stageEl.value)
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
   void router.push('/play-gallery')
@@ -51,8 +54,9 @@ async function sangIt() {
   if (locked.value) return
   locked.value = true
   celebrating.value = true
-  playSuccess()
+  playPop()
   prompt.value = `${word.value}!`
+  void tweenCelebrate(stageEl.value)
   await speak(word.value)
   await new Promise((resolve) => window.setTimeout(resolve, 500))
   if (wordIndex.value >= words.length - 1) {
@@ -85,7 +89,7 @@ onUnmounted(() => {
       <p class="sub">跟着念两句，不用唱准音高</p>
     </div>
 
-    <div class="card stage center" :class="{ popin: celebrating }">
+    <div ref="stageEl" class="card stage center" :class="{ popin: celebrating }">
       <div class="art">{{ wordEmoji(word, family) }}</div>
       <p class="line" :class="{ on: lit >= 0 && lit < 99 }">
         <span

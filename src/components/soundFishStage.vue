@@ -125,13 +125,13 @@ function shakeLetter(letter: string) {
   )
 }
 
-function pulseLetter(letter: string) {
+function popLetter(letter: string) {
   const mark = marks.find((item) => item.bubble.letter === letter)
   if (!mark) return
   gsap.fromTo(
     mark.node.scale,
     { x: 1, y: 1 },
-    { x: 1.14, y: 1.14, duration: 0.22, yoyo: true, repeat: 3, ease: 'power1.inOut' },
+    { x: 1.22, y: 1.22, duration: 0.16, yoyo: true, repeat: 1, ease: 'back.out(2.4)' },
   )
 }
 
@@ -273,7 +273,7 @@ watch(
   () => [props.highlight, props.celebrating] as const,
   ([letter]) => {
     restyle()
-    if (letter) pulseLetter(letter)
+    if (letter) popLetter(letter)
   },
 )
 
