@@ -105,7 +105,7 @@ async function onboard() {
   if (!first) return
   pulsing.value = first.id
   await speak(first.word)
-  await new Promise((resolve) => window.setTimeout(resolve, 900))
+  await new Promise((resolve) => window.setTimeout(resolve, 700))
   if (dragging.value) return
   pulsing.value = ''
 }
@@ -224,7 +224,9 @@ onUnmounted(() => {
 }
 
 .basket.pulse {
-  animation: pulse 0.9s ease 2;
+  background: #ffe27a;
+  box-shadow: 0 0 0 8px rgba(255, 226, 122, 0.45);
+  animation: pulse 0.9s ease 3;
 }
 
 .pic {
