@@ -9,15 +9,13 @@ import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, allDoneToday, nextRoute, hasDecoration, hasSticker } = useProgress()
+const { state, gatesDone, gateTotal, allDoneToday, nextRoute, hasSticker } = useProgress()
 
 const gates = [
   { id: 'soundFish', emoji: '🐠', label: 'Sound Fish' },
-  { id: 'wordMorph', emoji: '🎩', label: 'Word Morph' },
   { id: 'echoCave', emoji: '🎤', label: 'Echo Cave' },
 ] as const
 
-const rugOn = computed(() => hasDecoration(family.rewards.wordMorphDecoration.id))
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
   if (allDoneToday.value) return '看今日奖励'
@@ -61,7 +59,6 @@ onMounted(() => {
       <div class="island">
         <div ref="hostEl" class="guide floaty">🐱</div>
         <div v-if="earOn" class="deco ear popin">👂</div>
-        <div v-if="rugOn" class="deco rug popin">🧶</div>
         <div class="prop hat" aria-hidden="true">🎩</div>
         <div class="palm">🌴</div>
       </div>
@@ -70,7 +67,7 @@ onMounted(() => {
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
 
     <div class="card progress-card">
-      <p ref="progressEl" class="progress-title">今日三关 · {{ gatesDone }}/3</p>
+      <p ref="progressEl" class="progress-title">今日两关 · {{ gatesDone }}/{{ gateTotal }}</p>
       <div class="gates">
         <div
           v-for="gate in gates"
@@ -187,11 +184,6 @@ onMounted(() => {
 .ear {
   left: 18px;
   top: -8px;
-}
-
-.rug {
-  right: 28px;
-  top: 18px;
 }
 
 .prop.hat {

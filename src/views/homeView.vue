@@ -9,7 +9,7 @@ import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, allDoneToday } = useProgress()
+const { state, gatesDone, gateTotal, allDoneToday } = useProgress()
 const heroEl = ref<HTMLElement | null>(null)
 
 onMounted(() => {
@@ -52,7 +52,7 @@ function goWorkshop() {
         </div>
       </div>
       <p class="progress-line" :class="{ done: allDoneToday }">
-        今日进度 {{ gatesDone }}/3
+        今日进度 {{ gatesDone }}/{{ gateTotal }}
         <template v-if="allDoneToday"> · 派对完成</template>
       </p>
     </div>

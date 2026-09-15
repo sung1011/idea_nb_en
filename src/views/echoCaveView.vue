@@ -136,7 +136,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">Gate 3 · Echo Cave</p>
+      <p class="gate-tag">Gate 2 · Echo Cave</p>
       <h1 class="title-lg">跟小猫喊朋友</h1>
       <p class="sub">{{ status }}</p>
     </div>

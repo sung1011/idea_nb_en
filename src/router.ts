@@ -10,7 +10,6 @@ import playGalleryView from './views/playGalleryView.vue'
 import singAlongView from './views/singAlongView.vue'
 import soundFishView from './views/soundFishView.vue'
 import tapTargetView from './views/tapTargetView.vue'
-import wordMorphView from './views/wordMorphView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -20,7 +19,6 @@ export const router = createRouter({
     { path: '/letter-workshop', name: 'letterWorkshop', component: letterWorkshopView },
     { path: '/play-gallery', name: 'playGallery', component: playGalleryView },
     { path: '/sound-fish', name: 'soundFish', component: soundFishView },
-    { path: '/word-morph', name: 'wordMorph', component: wordMorphView },
     { path: '/echo-cave', name: 'echoCave', component: echoCaveView },
     { path: '/tap-target', name: 'tapTarget', component: tapTargetView },
     { path: '/drag-sort', name: 'dragSort', component: dragSortView },

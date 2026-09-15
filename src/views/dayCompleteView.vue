@@ -10,15 +10,14 @@ import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, allDoneToday, hasDecoration, hasSticker } = useProgress()
+const { state, allDoneToday, hasSticker } = useProgress()
 
-const rugOn = computed(() => hasDecoration(family.rewards.wordMorphDecoration.id))
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const burstEl = ref<HTMLElement | null>(null)
 const starsLine = computed(() =>
   allDoneToday.value
     ? '小猫把朋友请来啦，星星已收进动物岛。'
-    : '先把三关玩完，派对星星会亮起来。',
+    : '先把两关玩完，派对星星会亮起来。',
 )
 
 onMounted(() => {
@@ -59,11 +58,6 @@ onMounted(() => {
           <span>👂</span>
           贴纸「{{ family.rewards.soundFishSticker.label }}」
           {{ earOn ? '已贴上' : '待解锁' }}
-        </p>
-        <p class="reward" :class="{ on: rugOn }">
-          <span>🧶</span>
-          装饰「{{ family.rewards.wordMorphDecoration.label }}」
-          {{ rugOn ? '已放到派对上' : '待解锁' }}
         </p>
       </div>
     </div>

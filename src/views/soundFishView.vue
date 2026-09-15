@@ -90,7 +90,7 @@ async function finishGate() {
   }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(afterGate('/word-morph'))
+  void router.push(afterGate('/echo-cave'))
 }
 
 async function passTrial() {
