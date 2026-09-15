@@ -14,7 +14,9 @@ const { state, allDoneToday, hasDecoration, hasSticker } = useProgress()
 const rugOn = computed(() => hasDecoration(family.rewards.wordMorphDecoration.id))
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const starsLine = computed(() =>
-  allDoneToday.value ? '今天三关都完成啦，星星已收进小岛。' : '先把三关玩完，星星会亮起来。',
+  allDoneToday.value
+    ? '小猫把朋友请来啦，星星已收进动物岛。'
+    : '先把三关玩完，派对星星会亮起来。',
 )
 
 onMounted(() => {
@@ -31,9 +33,9 @@ onMounted(() => {
     </header>
 
     <div class="center grow party">
-      <div class="burst popin" aria-hidden="true">🎉</div>
+      <div class="burst popin" aria-hidden="true">🐱🎉</div>
       <h1 class="title-xl">Day Complete</h1>
-      <p class="zh">今日打卡成功</p>
+      <p class="zh">派对成功</p>
       <p class="sub">{{ starsLine }}</p>
 
       <div class="loot">
@@ -58,12 +60,12 @@ onMounted(() => {
         <p class="reward" :class="{ on: rugOn }">
           <span>🧶</span>
           装饰「{{ family.rewards.wordMorphDecoration.label }}」
-          {{ rugOn ? '已放上小岛' : '待解锁' }}
+          {{ rugOn ? '已放到派对上' : '待解锁' }}
         </p>
       </div>
     </div>
 
-    <big-button @click="router.push('/')">回小岛</big-button>
+    <big-button @click="router.push('/')">回家</big-button>
   </section>
 </template>
 

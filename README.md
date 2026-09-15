@@ -1,6 +1,6 @@
 # Star Words（星词岛）
 
-给大约 5 岁孩子的 Vue 3 移动端 H5：每天走完 **-at** 家族三关（Sound Fish → Word Morph → Echo Cave），收集星星，装点小岛。纯前端，无后端。
+给大约 5 岁孩子的 Vue 3 移动端 H5。每日主路径是 **动物岛**（Animals theme island）：先进入小岛大厅，再走完 **-at** 家族三关（Sound Fish → Word Morph → Echo Cave），收集星星。**字母工坊**只是弱复习入口，不是每日作业。纯前端，无后端。
 
 ## 本地运行
 
@@ -19,11 +19,13 @@ npm run build
 
 ## MVP 覆盖
 
-- **小岛首页**：标题、今日目标、星星、三关进度、开始/继续
+- **首页**：主按钮「去动物岛」；弱入口「字母工坊 / 复习音族」；展示今日进度
+- **动物岛大厅**：今日目标「帮小猫把 -at 朋友请来派对！」；进度 0/3；开始派对
 - **Sound Fish**：听音素，点字母泡泡；点错轻晃并重播；两次未中会一起过关
-- **Word Morph**：锁住 `a` `t`，只换首字母：cat → hat → mat → cat
+- **Word Morph**：锁住 `a` `t`，只换首字母：cat → hat → mat → cat（cat 是派对主人，hat / mat 是派对道具）
 - **Echo Cave**：TTS 范读后跟读；有 `SpeechRecognition` 就听，没有或失败可点「我说好了」
-- **Day Complete**：庆祝、展示星星与解锁物，回小岛
+- **Day Complete**：庆祝派对成功，展示星星与解锁物，回首页
+- **字母工坊**：列出 -at 词，可复习重玩三关；不发首次通关奖励
 - **本地存储**：星星、装饰/贴纸、按日期重置的当日进度
 - **数据驱动**：`src/data/phonicsFamily.ts` 已预留 `-ap` / `-an`，改 `currentFamilyId` 即可切换
 
