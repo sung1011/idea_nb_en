@@ -1,0 +1,214 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import bigButton from '../components/bigButton.vue'
+import starBar from '../components/starBar.vue'
+import {
+  canUseRecognition,
+  createRecognizer,
+  looselyHeard,
+} from '../composables/useRecognition'
+import { useProgress } from '../composables/useProgress'
+import { playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+
+const router = useRouter()
+const family = getCurrentFamily()
+const { completeGate } = useProgress()
+
+const wordIndex = ref(0)
+const listening = ref(false)
+const celebrating = ref(false)
+const locked = ref(false)
+const status = ref('Listen, then say it.')
+const micOk = canUseRecognition()
+
+const word = computed(() => family.targets[wordIndex.value] ?? family.targets[0])
+const art = computed(() => wordEmoji(word.value, family))
+const progressText = computed(() => `${wordIndex.value + 1} / ${family.targets.length}`)
+
+let recognizer: ReturnType<typeof createRecognizer> = null
+
+function stopMic() {
+  listening.value = false
+  try {
+    recognizer?.stop()
+  } catch {
+    /* already stopped */
+  }
+}
+
+async function finishGate() {
+  celebrating.value = true
+  status.value = 'Echo complete!'
+  playSuccess()
+  completeGate('echoCave')
+  await speak('Great job!')
+  await new Promise((resolve) => window.setTimeout(resolve, 700))
+  void router.push('/day-complete')
+}
+
+async function passWord() {
+  if (locked.value) return
+  locked.value = true
+  stopMic()
+  celebrating.value = true
+  status.value = 'Yes!'
+  playSuccess()
+  await speak('Yes!')
+  await new Promise((resolve) => window.setTimeout(resolve, 450))
+  if (wordIndex.value >= family.targets.length - 1) {
+    await finishGate()
+    return
+  }
+  wordIndex.value += 1
+  celebrating.value = false
+  locked.value = false
+  await playCurrent()
+}
+
+function onHeard(transcript: string) {
+  if (locked.value) return
+  if (looselyHeard(transcript, word.value)) {
+    void passWord()
+    return
+  }
+  status.value = 'Nice try! Tap when ready.'
+  listening.value = false
+}
+
+function startListen() {
+  if (!recognizer || locked.value) return
+  try {
+    recognizer.start()
+    listening.value = true
+    status.value = 'I am listening...'
+  } catch {
+    listening.value = false
+    status.value = '点「我说好了」也可以'
+  }
+}
+
+async function playCurrent() {
+  stopMic()
+  status.value = 'Listen, then say it.'
+  await speak(word.value)
+  if (micOk) {
+    window.setTimeout(() => startListen(), 250)
+  } else {
+    status.value = '说一说，或点「我说好了」'
+  }
+}
+
+onMounted(() => {
+  recognizer = createRecognizer({
+    onResult: onHeard,
+    onEnd: () => {
+      listening.value = false
+    },
+  })
+  void playCurrent()
+})
+
+onUnmounted(() => {
+  stopMic()
+  stopSpeech()
+})
+</script>
+
+<template>
+  <section class="screen screen-cave cave">
+    <header class="top-row">
+      <button class="ghost-btn" type="button" @click="router.push('/')">回家</button>
+      <star-bar />
+    </header>
+
+    <div class="center">
+      <p class="gate-tag">Gate 3 · Echo Cave</p>
+      <h1 class="title-lg">跟我读</h1>
+      <p class="sub">{{ status }}</p>
+    </div>
+
+    <div class="echo card center" :class="{ popin: celebrating, listening }">
+      <div class="art">{{ art }}</div>
+      <p class="word">{{ word }}</p>
+      <div class="rings" aria-hidden="true">
+        <span /><span /><span />
+      </div>
+    </div>
+
+    <p class="center hint">
+      {{ progressText }} · {{ micOk ? '可以说，也可以点按钮' : '这台设备没有麦克风识别，点按钮就好' }}
+    </p>
+    <big-button variant="listen" :disabled="locked" @click="playCurrent">再听一次</big-button>
+    <big-button :disabled="locked" @click="passWord">我说好了</big-button>
+  </section>
+</template>
+
+<style scoped>
+.cave {
+  gap: 12px;
+}
+
+.gate-tag {
+  margin: 8px 0 0;
+  font-weight: 700;
+  color: #f5d0fe;
+}
+
+.echo {
+  position: relative;
+  overflow: hidden;
+  min-height: 230px;
+  justify-content: center;
+}
+
+.echo.listening {
+  box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.45);
+}
+
+.art {
+  font-size: 84px;
+  line-height: 1;
+}
+
+.word {
+  margin: 8px 0 0;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.rings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rings span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.listening .rings span {
+  animation: pulse 1.6s ease-out infinite;
+}
+
+.listening .rings span:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.listening .rings span:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.hint {
+  color: #d9d0f5;
+}
+</style>
