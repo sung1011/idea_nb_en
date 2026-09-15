@@ -36,7 +36,7 @@ npm run build
 - **Drag Sort 拖一拖**：读 cat / hat / mat，把纯英文单词芯片拖到对应图片篮子（篮子无中文，芯片无图；英语 TTS 演示）
 - **Onset Hunt 找尾巴**：听开头音，三图里选出谁是这个音开头
 - **Sing Along 唱一唱**：两句 chant 高亮，点「我唱好了」（不测音高）
-- **Find Scene 找一找**：派对场景里点出 cat / hat / mat
+- **Find Scene 找一找**：派对场景用 Pixi 画布点出 cat / hat / mat（Vue 壳保留；试玩不加星）
 - **Day Complete**：庆祝派对成功，展示星星与解锁物，回首页
 - **字母工坊**：列出 -at 词，可复习重玩三关；不发首次通关奖励
 - **本地存储**：星星、装饰/贴纸、按日期重置的当日进度
@@ -46,4 +46,4 @@ npm run build
 
 ## 技术
 
-Vue 3 + Vite + TypeScript + Vue Router。状态用 composable + `localStorage`。语音用 Web Speech API（`speechSynthesis` / `SpeechRecognition`）。动效用 GSAP，短提示音用 Howler，拖一拖用 `@vueuse/gesture` 磁吸落篮。
+Vue 3 + Vite + TypeScript + Vue Router。状态用 composable + `localStorage`。语音用 Web Speech API（`speechSynthesis` / `SpeechRecognition`）。动效用 GSAP，短提示音用 Howler，拖一拖用 `@vueuse/gesture` 磁吸落篮。找一找场景用 PixiJS 画布，其它关仍是 Vue。
