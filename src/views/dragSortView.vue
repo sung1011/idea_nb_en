@@ -17,7 +17,6 @@ const trayOrder = ref(shuffle([...words]))
 const placed = ref<Record<string, boolean>>(
   Object.fromEntries(words.map((word) => [word, false])),
 )
-const boxEls = ref<Record<string, HTMLElement | null>>({})
 const dragging = ref<string | null>(null)
 const ghost = ref({ x: 0, y: 0 })
 const hoverWord = ref<string | null>(null)
@@ -30,20 +29,10 @@ const celebrating = ref(false)
 const trayItems = computed(() => trayOrder.value.filter((word) => !placed.value[word]))
 const demoWord = words.includes('cat') ? 'cat' : words[0]
 
-function setBox(word: string, el: HTMLElement | null) {
-  boxEls.value[word] = el
-}
-
 function hitWord(x: number, y: number): string | null {
-  for (const word of baskets.value) {
-    const el = boxEls.value[word]
-    if (!el) continue
-    const box = el.getBoundingClientRect()
-    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) {
-      return word
-    }
-  }
-  return null
+  const el = document.elementFromPoint(x, y)
+  const word = el?.closest('[data-basket]')?.getAttribute('data-basket')
+  return word && words.includes(word) ? word : null
 }
 
 function onDown(event: PointerEvent, word: string) {
@@ -146,7 +135,7 @@ onUnmounted(() => {
       <div
         v-for="word in baskets"
         :key="word"
-        :ref="(el) => setBox(word, el as HTMLElement | null)"
+        :data-basket="word"
         class="bucket"
         :class="{
           on: placed[word],
@@ -229,7 +218,9 @@ onUnmounted(() => {
 }
 
 .bucket.pulse {
-  animation: pulse 0.7s ease 2;
+  background: #ffe27a;
+  box-shadow: 0 0 0 8px rgba(255, 226, 122, 0.45);
+  animation: pulse 0.9s ease 3;
 }
 
 .pic {
