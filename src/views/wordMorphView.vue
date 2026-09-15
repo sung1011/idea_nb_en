@@ -11,7 +11,7 @@ import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
-const { isReview, playPath, backPath, backLabel } = usePlayMode()
+const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
 const sequence = family.morphSequence
 const step = ref(0)
@@ -31,12 +31,12 @@ async function speakWord(word: string) {
 
 async function finishGate() {
   playSuccess()
-  if (!isReview.value) {
+  if (!isPractice.value) {
     completeGate('wordMorph', { decoration: family.rewards.wordMorphDecoration.id })
   }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(playPath('/echo-cave'))
+  void router.push(afterGate('/echo-cave'))
 }
 
 async function onPick(onset: string) {

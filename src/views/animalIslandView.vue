@@ -21,7 +21,7 @@ const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
   if (allDoneToday.value) return '看今日奖励'
   if (gatesDone.value > 0) return '继续派对'
-  return '开始派对'
+  return '完整一日'
 })
 
 function go() {
@@ -84,6 +84,7 @@ function go() {
     </div>
 
     <big-button class="start-btn" @click="go">{{ startLabel }}</big-button>
+    <button class="gallery-link" type="button" @click="router.push('/play-gallery')">玩法一览</button>
   </section>
 </template>
 
@@ -246,5 +247,16 @@ function go() {
 
 .start-btn {
   margin-top: 14px;
+}
+
+.gallery-link {
+  margin-top: 8px;
+  min-height: 48px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 </style>
