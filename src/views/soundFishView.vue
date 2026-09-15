@@ -17,7 +17,7 @@ type Bubble = {
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
-const { isReview, playPath, backPath, backLabel } = usePlayMode()
+const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
 const trialIndex = ref(0)
 const failCount = ref(0)
@@ -90,12 +90,12 @@ async function finishGate() {
   celebrating.value = true
   prompt.value = 'Nice listening!'
   playSuccess()
-  if (!isReview.value) {
+  if (!isPractice.value) {
     completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
   }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(playPath('/word-morph'))
+  void router.push(afterGate('/word-morph'))
 }
 
 async function passTrial() {

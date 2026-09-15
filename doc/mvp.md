@@ -17,6 +17,8 @@
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 三关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
+**玩法一览**列出全部玩法（原三关 + 点一点 / 拖一拖 / 积木拼读 / 找尾巴 / 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星。动物岛主按钮「完整一日」仍只走原三关。
+
 当日三关进度按本地日期重置。每日路径里重复玩同一关不再加星。
 
 ## 音族配置
@@ -59,16 +61,19 @@ src/composables/useProgress.ts 星星 / 装饰 / 当日进度
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
 src/composables/useSpeech.ts   TTS + 轻提示音
 src/composables/useRecognition.ts 跟读识别
-src/views/homeView.vue         首页（去动物岛 + 弱工坊入口）
-src/views/animalIslandView.vue 动物岛大厅
+src/data/playGallery.ts        玩法一览条目
+src/views/homeView.vue         首页（去动物岛 + 玩法一览 + 弱工坊）
+src/views/animalIslandView.vue 动物岛大厅（完整一日）
 src/views/letterWorkshopView.vue 字母工坊复习页
-src/views/*.vue                三关 + Day Complete
+src/views/playGalleryView.vue  玩法一览
+src/views/*.vue                九种玩法 + Day Complete
 ```
 
 ## 未做（按规格）
 
 - 第二座主题岛
 - 完整工坊体验
+- 真唱音高打分
 - 拼读前的词汇热身关
 - 真人手绘角色
 - 家长后台（首页仅一行状态）

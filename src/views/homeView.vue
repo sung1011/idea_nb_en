@@ -13,6 +13,10 @@ function goIsland() {
   void router.push('/animal-island')
 }
 
+function goGallery() {
+  void router.push('/play-gallery')
+}
+
 function goWorkshop() {
   void router.push('/letter-workshop')
 }
@@ -47,6 +51,7 @@ function goWorkshop() {
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
+    <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
     <button class="workshop-link" type="button" @click="goWorkshop">字母工坊 / 复习音族</button>
   </section>
 </template>
@@ -118,6 +123,10 @@ function goWorkshop() {
 
 .start-btn {
   margin-top: auto;
+}
+
+.gallery-btn {
+  margin-top: 10px;
 }
 
 .workshop-link {

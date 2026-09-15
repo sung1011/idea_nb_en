@@ -16,7 +16,7 @@ import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
-const { isReview, backPath, backLabel } = usePlayMode()
+const { isPractice, isDemo, isReview, backPath, backLabel } = usePlayMode()
 
 const wordIndex = ref(0)
 const listening = ref(false)
@@ -44,12 +44,14 @@ async function finishGate() {
   celebrating.value = true
   status.value = 'Echo complete!'
   playSuccess()
-  if (!isReview.value) {
+  if (!isPractice.value) {
     completeGate('echoCave')
   }
   await speak('Great job!')
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(isReview.value ? '/letter-workshop' : '/day-complete')
+  void router.push(
+    isDemo.value ? '/play-gallery' : isReview.value ? '/letter-workshop' : '/day-complete',
+  )
 }
 
 async function passWord() {
