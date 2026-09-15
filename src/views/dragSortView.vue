@@ -8,7 +8,7 @@ import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composab
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type DragState = {
@@ -23,7 +23,7 @@ const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 const vDrag = dragDirective()
 
-const words = family.targets.slice(0, 3)
+const words = sampleWords(3)
 const baskets = ref(shuffle([...words]))
 const trayOrder = ref(shuffle([...words]))
 const placed = ref<Record<string, boolean>>(

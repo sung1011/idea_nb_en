@@ -13,13 +13,14 @@ import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenShake } from '../composables/useMotion'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
 const { isPractice, isDemo, isReview, backPath, backLabel } = usePlayMode()
 
+const words = sampleWords(3)
 const wordIndex = ref(0)
 const listening = ref(false)
 const celebrating = ref(false)
@@ -28,9 +29,9 @@ const status = ref('Listen, then say it.')
 const micOk = canUseRecognition()
 const cardEl = ref<HTMLElement | null>(null)
 
-const word = computed(() => family.targets[wordIndex.value] ?? family.targets[0])
+const word = computed(() => words[wordIndex.value] ?? words[0])
 const art = computed(() => wordEmoji(word.value, family))
-const progressText = computed(() => `${wordIndex.value + 1} / ${family.targets.length}`)
+const progressText = computed(() => `${wordIndex.value + 1} / ${words.length}`)
 
 let recognizer: ReturnType<typeof createRecognizer> = null
 
@@ -69,7 +70,7 @@ async function passWord() {
   void tweenCelebrate(cardEl.value)
   await speak(status.value)
   await new Promise((resolve) => window.setTimeout(resolve, 450))
-  if (wordIndex.value >= family.targets.length - 1) {
+  if (wordIndex.value >= words.length - 1) {
     await finishGate()
     return
   }

@@ -5,6 +5,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const props = defineProps<{
+  words: string[]
   found: string[]
   locked: boolean
 }>()
@@ -200,9 +201,15 @@ async function boot() {
   makeMarker('🌴', 42, 40, () => ({ x: 36, y: 44 }))
   makeMarker('🎈', 42, 40, (width) => ({ x: width - 40, y: 48 }))
   makeMarker('🎁', 34, 36, (width, height) => ({ x: width - 48, y: height - 86 }))
-  makeMarker(wordEmoji('cat', family), 52, 46, (width, height) => ({ x: width * 0.48, y: height * 0.4 }), 'cat')
-  makeMarker(wordEmoji('hat', family), 42, 44, (_width, height) => ({ x: 46, y: height - 96 }), 'hat')
-  makeMarker(wordEmoji('mat', family), 42, 44, (width, height) => ({ x: width - 108, y: height - 82 }), 'mat')
+  const spots: Array<(width: number, height: number) => { x: number; y: number }> = [
+    (width, height) => ({ x: width * 0.48, y: height * 0.4 }),
+    (_width, height) => ({ x: 46, y: height - 96 }),
+    (width, height) => ({ x: width - 108, y: height - 82 }),
+  ]
+  props.words.slice(0, 3).forEach((word, index) => {
+    const place = spots[index] ?? spots[0]
+    makeMarker(wordEmoji(word, family), index === 0 ? 52 : 42, index === 0 ? 46 : 44, place, word)
+  })
 
   for (const word of props.found) markFound(word)
   layout()

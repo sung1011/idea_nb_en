@@ -27,7 +27,7 @@ function startReview() {
 
     <div class="card family-card">
       <p class="family-title">{{ family.family }} 家族</p>
-      <p class="family-note">小猫请客用的派对词：主人 cat，道具 hat / mat</p>
+      <p class="family-note">图鉴里有 15 个派对词；每次玩只抽出几个，不用一次学完。</p>
       <ul class="word-list">
         <li v-for="word in family.targets" :key="word">
           <span class="word-emoji">{{ wordEmoji(word, family) }}</span>
@@ -70,6 +70,7 @@ function startReview() {
 
 .word-list {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin: 0;
   padding: 0;

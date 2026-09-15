@@ -7,7 +7,7 @@ import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake } fro
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, pickOtherWords, sampleWords, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type Mole = {
@@ -17,13 +17,13 @@ type Mole = {
 }
 
 const NEED_CORRECT = 4
-const decoy = { word: 'sun', emoji: '☀️' }
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
-const words = family.targets.slice(0, 3)
+const words = sampleWords(5)
+const extra = pickOtherWords(words, 1)
 const holes = [0, 1, 2, 3]
 const moles = ref<Mole[]>([])
 const wave = ref(0)
@@ -56,15 +56,15 @@ function wait(ms: number) {
 }
 
 function buildMoles(target: string): Mole[] {
-  const others = shuffle([...words.filter((word) => word !== target), decoy.word])
-  const picks = [target, others[0], others[1]]
+  const others = shuffle([...words.filter((word) => word !== target), ...extra])
+  const picks = [target, others[0], others[1]].filter(Boolean)
   const holeOrder = shuffle([...holes]).slice(0, picks.length)
   return holeOrder.map((hole, index) => {
     const word = picks[index]
     return {
       hole,
       word,
-      emoji: word === decoy.word ? decoy.emoji : wordEmoji(word, family),
+      emoji: wordEmoji(word, family),
     }
   })
 }

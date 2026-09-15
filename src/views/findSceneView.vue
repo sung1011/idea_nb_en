@@ -7,16 +7,16 @@ import { tweenCelebrate } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
-const targets = family.targets.slice(0, 3)
+const targets = sampleWords(3)
 const found = ref<string[]>([])
 const celebrating = ref(false)
-const prompt = ref('Find cat, hat, and mat!')
+const prompt = ref(`Find ${targets.join(', ')}!`)
 const titleEl = ref<HTMLElement | null>(null)
 
 const foundCount = computed(() => found.value.length)
@@ -52,7 +52,7 @@ function onMiss() {
 }
 
 onMounted(() => {
-  void speak('Find the cat, hat, and mat')
+  void speak(`Find the ${targets.join(', ')}`)
 })
 
 onUnmounted(() => {
@@ -70,17 +70,23 @@ onUnmounted(() => {
     <div class="center">
       <p class="gate-tag">找一找 · Find Scene</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
-      <p class="sub">点出派对里的 cat / hat / mat</p>
+      <p class="sub">点出派对里的 {{ targets.join(' / ') }}</p>
     </div>
 
-    <find-scene-stage :found="found" :locked="celebrating" @find="onFind" @miss="onMiss" />
+    <find-scene-stage
+      :words="targets"
+      :found="found"
+      :locked="celebrating"
+      @find="onFind"
+      @miss="onMiss"
+    />
 
     <div class="chips">
       <span v-for="word in targets" :key="word" :class="{ on: found.includes(word) }">
         {{ wordEmoji(word, family) }} {{ word }}
       </span>
     </div>
-    <p class="center hint">{{ foundCount }}/3 · 点到气球或树会轻轻提醒</p>
+    <p class="center hint">{{ foundCount }}/{{ targets.length }} · 点到气球或树会轻轻提醒</p>
   </section>
 </template>
 

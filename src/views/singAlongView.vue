@@ -6,13 +6,13 @@ import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { tweenCelebrate } from '../composables/useMotion'
 import { pickPraise, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { backPath, backLabel } = usePlayMode()
 
-const words = family.targets.slice(0, 3)
+const words = sampleWords(3)
 const wordIndex = ref(0)
 const lit = ref(-1)
 const locked = ref(false)

@@ -7,7 +7,7 @@ import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake } from '../com
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type CardFace = {
@@ -21,8 +21,7 @@ const router = useRouter()
 const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
-const decoy: CardFace = { word: 'sun', emoji: '☀️' }
-const words = family.targets.slice(0, 3)
+const words = sampleWords(4)
 const phase = ref<'study' | 'quiz'>('study')
 const quizStarted = ref(false)
 const studyIndex = ref(0)
@@ -56,8 +55,7 @@ function wait(ms: number) {
 }
 
 function makeChoices() {
-  const pool = words.map((word) => ({ word, emoji: wordEmoji(word, family) }))
-  choices.value = shuffle([...pool, decoy])
+  choices.value = shuffle(words.map((word) => ({ word, emoji: wordEmoji(word, family) })))
 }
 
 async function showStudyCard() {

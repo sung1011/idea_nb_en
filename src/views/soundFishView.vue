@@ -13,14 +13,14 @@ import {
 } from '../composables/useRecognition'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily } from '../data/phonicsFamily'
+import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate } = useProgress()
 const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
-const words = family.targets
+const words = sampleWords(3)
 const caught = ref<string[]>([])
 const locked = ref(false)
 const listening = ref(false)
