@@ -5,6 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
+import { tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
@@ -134,9 +135,14 @@ async function onTap(bubble: Bubble) {
   failCount.value += 1
   shaking.value = bubble.letter
   playNudge()
-  window.setTimeout(() => {
-    if (shaking.value === bubble.letter) shaking.value = ''
-  }, 360)
+  const bubbleEl = document.querySelector(`[data-letter="${bubble.letter}"]`)
+  if (bubbleEl instanceof HTMLElement) {
+    const prev = bubbleEl.style.animation
+    bubbleEl.style.animation = 'none'
+    await tweenShake(bubbleEl)
+    bubbleEl.style.animation = prev
+  }
+  if (shaking.value === bubble.letter) shaking.value = ''
   await speak(trial.value.speak)
   if (failCount.value >= 2) {
     await autoHelp()
@@ -172,6 +178,7 @@ onUnmounted(() => {
         v-for="(bubble, index) in bubbles"
         :key="bubble.key"
         class="bubble"
+        :data-letter="bubble.letter"
         :class="{
           highlight: highlight === bubble.letter,
           shake: shaking === bubble.letter,
@@ -179,7 +186,7 @@ onUnmounted(() => {
           delay0: index === 0,
           delay1: index === 1,
           delay2: index === 2,
-        }"
+        }""
         type="button"
         :disabled="locked"
         @click="onTap(bubble)"

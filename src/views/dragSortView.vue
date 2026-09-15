@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { dragDirective } from '@vueuse/gesture'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
+import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
+import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
+type DragState = {
+  first: boolean
+  last: boolean
+  dragging: boolean
+  xy: [number, number]
+}
+
 const router = useRouter()
 const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
+const vDrag = dragDirective()
 
 const words = family.targets.slice(0, 3)
 const baskets = ref(shuffle([...words]))
@@ -18,50 +29,75 @@ const placed = ref<Record<string, boolean>>(
   Object.fromEntries(words.map((word) => [word, false])),
 )
 const dragging = ref<string | null>(null)
-const ghost = ref({ x: 0, y: 0 })
 const hoverWord = ref<string | null>(null)
-const pulseWord = ref('')
-const shakeWord = ref('')
-const prompt = ref('')
 const locked = ref(true)
 const celebrating = ref(false)
+const busy = ref(false)
+const prompt = ref('')
+const ghostEl = ref<HTMLElement | null>(null)
+const titleEl = ref<HTMLElement | null>(null)
+const origin = ref({ x: 0, y: 0 })
 
 const trayItems = computed(() => trayOrder.value.filter((word) => !placed.value[word]))
 const demoWord = words.includes('cat') ? 'cat' : words[0]
-
-function hitWord(x: number, y: number): string | null {
-  const el = document.elementFromPoint(x, y)
-  const word = el?.closest('[data-basket]')?.getAttribute('data-basket')
-  return word && words.includes(word) ? word : null
+const dragOptions = {
+  preventWindowScrollY: true,
+  useTouch: true,
+  filterTaps: false,
 }
 
-function onDown(event: PointerEvent, word: string) {
-  if (locked.value || celebrating.value) return
-  dragging.value = word
-  ghost.value = { x: event.clientX, y: event.clientY }
-  hoverWord.value = hitWord(event.clientX, event.clientY)
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-  void speak(word)
+function basketEl(word: string): HTMLElement | null {
+  return document.querySelector(`[data-basket="${word}"]`)
 }
 
-function onMove(event: PointerEvent) {
-  if (!dragging.value) return
-  ghost.value = { x: event.clientX, y: event.clientY }
-  hoverWord.value = hitWord(event.clientX, event.clientY)
+function moveGhost(x: number, y: number) {
+  if (ghostEl.value) {
+    ghostEl.value.style.left = `${x}px`
+    ghostEl.value.style.top = `${y}px`
+  }
 }
 
-function clearDrag() {
-  dragging.value = null
-  hoverWord.value = null
+function onChipDrag(word: string) {
+  return (state: DragState) => {
+    if (locked.value || celebrating.value || busy.value) return
+    if (dragging.value && dragging.value !== word) return
+
+    const [x, y] = state.xy
+    const hit = nearestBasket(x, y)
+
+    if (state.first) {
+      dragging.value = word
+      origin.value = { x, y }
+      const pulled = magnetPoint(x, y, hit)
+      hoverWord.value = hit && hit.dist <= SNAP_RANGE ? hit.word : null
+      playPop()
+      void speak(word)
+      void nextTick(() => moveGhost(pulled.x, pulled.y))
+      return
+    }
+
+    if (state.dragging) {
+      const pulled = magnetPoint(x, y, hit)
+      moveGhost(pulled.x, pulled.y)
+      hoverWord.value = hit && hit.dist <= SNAP_RANGE ? hit.word : null
+    }
+
+    if (state.last) {
+      void dropAt(x, y)
+    }
+  }
 }
 
 async function onboard() {
   locked.value = true
   prompt.value = demoWord
   await speak(demoWord)
-  pulseWord.value = demoWord
-  await new Promise((resolve) => window.setTimeout(resolve, 900))
-  pulseWord.value = ''
+  const target = basketEl(demoWord)
+  if (target) {
+    target.classList.add('pulse')
+    await tweenPulse(target)
+    target.classList.remove('pulse')
+  }
   locked.value = false
 }
 
@@ -69,45 +105,63 @@ async function finish() {
   celebrating.value = true
   prompt.value = 'Party sorted!'
   playSuccess()
+  await tweenCelebrate(titleEl.value)
   await speak('Great job!')
-  await new Promise((resolve) => window.setTimeout(resolve, 800))
+  await new Promise((resolve) => window.setTimeout(resolve, 400))
   void router.push(afterGate('/play-gallery'))
 }
 
 async function dropAt(x: number, y: number) {
   const word = dragging.value
-  clearDrag()
-  if (!word || locked.value || celebrating.value) return
-
-  const bucket = hitWord(x, y)
-  if (!bucket) return
-
-  if (bucket !== word) {
-    playNudge()
-    shakeWord.value = bucket
-    prompt.value = word
-    window.setTimeout(() => {
-      if (shakeWord.value === bucket) shakeWord.value = ''
-    }, 360)
-    await speak(word)
-    pulseWord.value = word
-    await new Promise((resolve) => window.setTimeout(resolve, 800))
-    if (pulseWord.value === word) pulseWord.value = ''
+  if (!word || locked.value || celebrating.value) {
+    dragging.value = null
+    hoverWord.value = null
     return
   }
 
+  busy.value = true
+  const hit = nearestBasket(x, y)
+  const snapped = Boolean(hit && hit.dist <= SNAP_RANGE)
+
+  if (!snapped || !hit) {
+    await tweenSnapTo(ghostEl.value, origin.value)
+    dragging.value = null
+    hoverWord.value = null
+    busy.value = false
+    return
+  }
+
+  if (hit.word !== word) {
+    playNudge()
+    prompt.value = word
+    hoverWord.value = hit.word
+    await Promise.all([tweenShake(hit.el), tweenSnapTo(ghostEl.value, origin.value)])
+    dragging.value = null
+    hoverWord.value = null
+    await speak(word)
+    const correct = basketEl(word)
+    if (correct) {
+      correct.classList.add('pulse')
+      await tweenPulse(correct)
+      correct.classList.remove('pulse')
+    }
+    busy.value = false
+    return
+  }
+
+  hoverWord.value = word
+  await tweenSnapTo(ghostEl.value, { x: hit.cx, y: hit.cy })
   placed.value = { ...placed.value, [word]: true }
   playPop()
   prompt.value = 'Yes!'
+  dragging.value = null
+  hoverWord.value = null
   await speak(word)
+  await tweenPulse(hit.el)
+  busy.value = false
   if (words.every((item) => placed.value[item])) {
     await finish()
   }
-}
-
-function onUp(event: PointerEvent) {
-  if (!dragging.value) return
-  void dropAt(event.clientX, event.clientY)
 }
 
 onMounted(() => {
@@ -128,7 +182,7 @@ onUnmounted(() => {
 
     <div class="center">
       <p class="gate-tag">Drag Sort</p>
-      <h1 class="title-lg">{{ prompt }}</h1>
+      <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
     </div>
 
     <div class="buckets">
@@ -139,8 +193,6 @@ onUnmounted(() => {
         class="bucket"
         :class="{
           on: placed[word],
-          pulse: pulseWord === word,
-          shake: shakeWord === word,
           hover: hoverWord === word,
         }"
         :aria-label="word"
@@ -155,24 +207,18 @@ onUnmounted(() => {
       <button
         v-for="word in trayItems"
         :key="word"
+        v-drag="onChipDrag(word)"
         class="chip"
         type="button"
         :class="{ dragging: dragging === word }"
         :aria-label="word"
-        @pointerdown="onDown($event, word)"
-        @pointermove="onMove"
-        @pointerup="onUp"
-        @pointercancel="clearDrag"
+        :drag-options="dragOptions"
       >
         {{ word }}
       </button>
     </div>
 
-    <div
-      v-if="dragging"
-      class="ghost"
-      :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
-    >
+    <div ref="ghostEl" class="ghost" :class="{ show: Boolean(dragging) }">
       {{ dragging }}
     </div>
   </section>
@@ -220,7 +266,6 @@ onUnmounted(() => {
 .bucket.pulse {
   background: #ffe27a;
   box-shadow: 0 0 0 8px rgba(255, 226, 122, 0.45);
-  animation: pulse 0.9s ease 3;
 }
 
 .pic {
@@ -273,6 +318,7 @@ onUnmounted(() => {
   background: #fff;
   box-shadow: 0 8px 0 rgba(45, 58, 74, 0.12);
   touch-action: none;
+  user-select: none;
   font-size: 28px;
   font-weight: 750;
   letter-spacing: 0.02em;
@@ -284,6 +330,8 @@ onUnmounted(() => {
 
 .ghost {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 20;
   min-width: 88px;
   min-height: 64px;
@@ -296,7 +344,14 @@ onUnmounted(() => {
   font-size: 28px;
   font-weight: 750;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
   box-shadow: 0 10px 0 rgba(45, 58, 74, 0.16);
+}
+
+.ghost.show {
+  opacity: 1;
+  visibility: visible;
 }
 
 .center .title-lg {
