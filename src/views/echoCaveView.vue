@@ -11,7 +11,7 @@ import {
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenShake } from '../composables/useMotion'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
@@ -51,7 +51,7 @@ async function finishGate() {
   if (!isPractice.value) {
     completeGate('echoCave')
   }
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
   void router.push(
     isDemo.value ? '/play-gallery' : isReview.value ? '/letter-workshop' : '/day-complete',
@@ -63,11 +63,11 @@ async function passWord() {
   locked.value = true
   stopMic()
   celebrating.value = true
-  status.value = 'Yes!'
+  status.value = pickPraise('step')
   playPop()
   unlockWord(word.value)
   void tweenCelebrate(cardEl.value)
-  await speak('Yes!')
+  await speak(status.value)
   await new Promise((resolve) => window.setTimeout(resolve, 450))
   if (wordIndex.value >= family.targets.length - 1) {
     await finishGate()
@@ -85,10 +85,11 @@ function onHeard(transcript: string) {
     void passWord()
     return
   }
-  status.value = 'Nice try! Tap when ready.'
+  status.value = pickPraise('soft')
   listening.value = false
   playNudge()
   void tweenShake(cardEl.value)
+  void speak(status.value)
 }
 
 function startListen() {

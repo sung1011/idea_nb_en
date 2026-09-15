@@ -6,7 +6,7 @@ import starBar from '../components/starBar.vue'
 import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
 import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
@@ -107,7 +107,7 @@ async function finish() {
   prompt.value = 'Party sorted!'
   playSuccess()
   await tweenCelebrate(titleEl.value)
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 400))
   void router.push(afterGate('/play-gallery'))
 }
@@ -155,9 +155,10 @@ async function dropAt(x: number, y: number) {
   placed.value = { ...placed.value, [word]: true }
   playPop()
   unlockWord(word)
-  prompt.value = 'Yes!'
+  prompt.value = pickPraise('step')
   dragging.value = null
   hoverWord.value = null
+  await speak(prompt.value)
   await speak(word)
   await tweenPulse(hit.el)
   busy.value = false

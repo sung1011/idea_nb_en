@@ -5,7 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate } from '../composables/useMotion'
-import { playSuccess, speak } from '../composables/useSpeech'
+import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -23,7 +23,7 @@ const starsLine = computed(() =>
 onMounted(() => {
   playSuccess()
   void tweenCelebrate(burstEl.value)
-  void speak('You did it!')
+  void speak(pickPraise('finish'))
 })
 </script>
 

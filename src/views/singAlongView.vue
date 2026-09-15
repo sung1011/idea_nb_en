@@ -5,7 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { tweenCelebrate } from '../composables/useMotion'
-import { playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
 const router = useRouter()
@@ -45,7 +45,7 @@ async function finish() {
   prompt.value = 'What a song!'
   playSuccess()
   await tweenCelebrate(stageEl.value)
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
   void router.push('/play-gallery')
 }
@@ -55,8 +55,9 @@ async function sangIt() {
   locked.value = true
   celebrating.value = true
   playPop()
-  prompt.value = `${word.value}!`
+  prompt.value = pickPraise('step')
   void tweenCelebrate(stageEl.value)
+  await speak(prompt.value)
   await speak(word.value)
   await new Promise((resolve) => window.setTimeout(resolve, 500))
   if (wordIndex.value >= words.length - 1) {

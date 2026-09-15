@@ -5,7 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
@@ -118,7 +118,7 @@ async function finish() {
   prompt.value = 'You flipped them!'
   playSuccess()
   await tweenCelebrate(titleEl.value)
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   if (!alive) return
   await wait(700)
   void router.push(afterGate('/play-gallery'))
@@ -132,9 +132,9 @@ async function onTap(word: string, event: MouseEvent) {
     celebrating.value = true
     playPop()
     unlockWord(word)
-    prompt.value = 'Yes!'
+    prompt.value = pickPraise('step')
     void flyStarFrom(target)
-    await speak('Yes!')
+    await speak(prompt.value)
     if (!alive) return
     await wait(450)
     if (trialIndex.value >= words.length - 1) {

@@ -11,7 +11,7 @@ import {
   createRecognizer,
   matchSpokenWord,
 } from '../composables/useRecognition'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily } from '../data/phonicsFamily'
 
@@ -75,7 +75,7 @@ async function finishGate() {
   if (!isPractice.value) {
     completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
   }
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
   void router.push(afterGate('/echo-cave'))
 }
@@ -84,11 +84,13 @@ async function catchWord(word: string) {
   if (locked.value || caught.value.includes(word)) return
   locked.value = true
   stopMic()
-  prompt.value = `Yes! ${word}`
+  const cheer = pickPraise('step')
+  prompt.value = `${cheer} ${word}`
   playPop()
   unlockWord(word)
   await stageRef.value?.liftFish(word)
   caught.value = [...caught.value, word]
+  await speak(cheer)
   await speak(word)
   if (!remaining.value.length) {
     await finishGate()
@@ -110,7 +112,7 @@ function missSpeak() {
   playNudge()
   stageRef.value?.nudgeRemaining()
   void (async () => {
-    await speak('Try again!')
+    await speak(pickPraise('soft'))
     if (micOk.value && remaining.value.length && !locked.value) {
       window.setTimeout(() => startListen(), 250)
     }

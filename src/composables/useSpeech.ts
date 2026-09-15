@@ -1,4 +1,14 @@
+import { pickPraise, type PraiseKind } from '../data/praisePhrases'
+
 export { playNudge, playPop, playSuccess, playTap } from './useSfx'
+export { pickPraise }
+export type { PraiseKind }
+
+export async function speakPraise(kind: PraiseKind): Promise<string> {
+  const line = pickPraise(kind)
+  await speak(line)
+  return line
+}
 
 export function speak(text: string, lang = 'en-US'): Promise<void> {
   return new Promise((resolve) => {

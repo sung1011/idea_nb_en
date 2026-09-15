@@ -5,7 +5,7 @@ import findSceneStage from '../components/findSceneStage.vue'
 import starBar from '../components/starBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 
@@ -26,7 +26,7 @@ async function finish() {
   prompt.value = 'You found the party!'
   playSuccess()
   await tweenCelebrate(titleEl.value)
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 400))
   void router.push(afterGate('/play-gallery'))
 }
@@ -36,7 +36,8 @@ async function onFind(word: string) {
   found.value = [...found.value, word]
   playPop()
   unlockWord(word)
-  prompt.value = `Found ${word}!`
+  prompt.value = pickPraise('step')
+  await speak(prompt.value)
   await speak(word)
   if (found.value.length >= targets.length) {
     await finish()
@@ -46,7 +47,8 @@ async function onFind(word: string) {
 function onMiss() {
   if (celebrating.value) return
   playNudge()
-  prompt.value = 'Keep looking!'
+  prompt.value = pickPraise('soft')
+  void speak(prompt.value)
 }
 
 onMounted(() => {

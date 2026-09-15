@@ -10,6 +10,7 @@
 - 无后端；进度在 `localStorage` 键 `starWords.v1`；单词图鉴解锁在 `starWords.atlas.v1`
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
+- 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
 - 无插画资源：emoji + CSS 形状
 
 ## 信息架构
@@ -70,6 +71,7 @@
 
 ```
 src/data/phonicsFamily.ts      音族配置
+src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示）
 src/composables/useProgress.ts 星星 / 贴纸 / 当日进度
 src/composables/useWordAtlas.ts 单词图鉴解锁（localStorage）
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式

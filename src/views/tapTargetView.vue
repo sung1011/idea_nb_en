@@ -5,7 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { flyStarFrom, tweenShake } from '../composables/useMotion'
-import { playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
@@ -44,7 +44,7 @@ async function finish() {
   celebrating.value = true
   prompt.value = 'You found them!'
   playSuccess()
-  await speak('Great job!')
+  await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
   void router.push('/play-gallery')
 }
@@ -57,9 +57,9 @@ async function onTap(word: string, event: MouseEvent) {
     celebrating.value = true
     playPop()
     unlockWord(word)
-    prompt.value = 'Yes!'
+    prompt.value = pickPraise('step')
     void flyStarFrom(target)
-    await speak('Yes!')
+    await speak(prompt.value)
     await new Promise((resolve) => window.setTimeout(resolve, 450))
     if (trialIndex.value >= family.targets.length - 1) {
       await finish()
