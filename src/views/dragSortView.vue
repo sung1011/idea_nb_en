@@ -8,7 +8,8 @@ import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composab
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type DragState = {
@@ -19,7 +20,6 @@ type DragState = {
 }
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 const vDrag = dragDirective()
 
@@ -200,7 +200,9 @@ onUnmounted(() => {
         }"
         :aria-label="word"
       >
-        <span class="pic" aria-hidden="true">{{ wordEmoji(word, family) }}</span>
+        <span class="pic">
+          <word-pic :word="word" :size="88" />
+        </span>
         <span class="bowl" aria-hidden="true" />
         <span v-if="placed[word]" class="landed">{{ word }}</span>
       </div>
@@ -272,6 +274,8 @@ onUnmounted(() => {
 }
 
 .pic {
+  width: 88px;
+  height: 88px;
   font-size: 52px;
   line-height: 1;
   filter: drop-shadow(0 6px 0 rgba(45, 58, 74, 0.08));

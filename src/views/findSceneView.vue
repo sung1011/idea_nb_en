@@ -7,10 +7,10 @@ import { tweenCelebrate } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
 const targets = sampleWords(3)
@@ -83,7 +83,8 @@ onUnmounted(() => {
 
     <div class="chips">
       <span v-for="word in targets" :key="word" :class="{ on: found.includes(word) }">
-        {{ wordEmoji(word, family) }} {{ word }}
+        <word-pic :word="word" :size="28" />
+        {{ word }}
       </span>
     </div>
     <p class="center hint">{{ foundCount }}/{{ targets.length }} · 点到气球或树会轻轻提醒</p>
@@ -110,8 +111,10 @@ onUnmounted(() => {
 .chips span {
   flex: 1;
   min-height: 44px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border-radius: 14px;
   background: #f3f7fb;
   font-weight: 700;

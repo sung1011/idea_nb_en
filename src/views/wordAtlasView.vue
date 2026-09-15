@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
+import wordPic from '../components/wordPic.vue'
 import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, speak, stopSpeech } from '../composables/useSpeech'
 import { useWordAtlas } from '../composables/useWordAtlas'
@@ -9,6 +10,7 @@ import { useWordAtlas } from '../composables/useWordAtlas'
 type AtlasCard = {
   word: string
   emoji: string
+  image?: string
   unlocked: boolean
 }
 
@@ -65,7 +67,9 @@ function onLeave() {
             :aria-label="item.unlocked ? item.word : 'locked word'"
             @click="onTap(item, $event)"
           >
-            <span class="pic" aria-hidden="true">{{ item.emoji }}</span>
+            <span class="pic">
+              <word-pic :word="item.word" :size="64" />
+            </span>
             <span v-if="item.unlocked" class="word">{{ item.word }}</span>
             <span v-else class="mystery" aria-hidden="true">?</span>
           </button>
@@ -128,6 +132,8 @@ function onLeave() {
 }
 
 .pic {
+  width: 64px;
+  height: 64px;
   font-size: 42px;
   line-height: 1;
 }

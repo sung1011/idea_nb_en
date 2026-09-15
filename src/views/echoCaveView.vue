@@ -13,10 +13,10 @@ import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenShake } from '../composables/useMotion'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { completeGate } = useProgress()
 const { isPractice, isDemo, isReview, backPath, backLabel } = usePlayMode()
 
@@ -30,7 +30,6 @@ const micOk = canUseRecognition()
 const cardEl = ref<HTMLElement | null>(null)
 
 const word = computed(() => words[wordIndex.value] ?? words[0])
-const art = computed(() => wordEmoji(word.value, family))
 const progressText = computed(() => `${wordIndex.value + 1} / ${words.length}`)
 
 let recognizer: ReturnType<typeof createRecognizer> = null
@@ -146,7 +145,9 @@ onUnmounted(() => {
     </div>
 
     <div ref="cardEl" class="echo card center" :class="{ popin: celebrating, listening }">
-      <div class="art">{{ art }}</div>
+      <div class="art">
+        <word-pic :word="word" :size="140" />
+      </div>
       <p class="word">{{ word }}</p>
       <div class="rings" aria-hidden="true">
         <span /><span /><span />
@@ -184,6 +185,8 @@ onUnmounted(() => {
 }
 
 .art {
+  width: 140px;
+  height: 140px;
   font-size: 84px;
   line-height: 1;
 }

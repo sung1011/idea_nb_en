@@ -7,18 +7,17 @@ import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake } from '../com
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type CardFace = {
   word: string
-  emoji: string
 }
 
 const STUDY_LINGER_MS = 8000
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(4)
@@ -40,7 +39,6 @@ let alive = true
 const studyWord = computed(() => words[studyIndex.value] ?? words[0])
 const studyFace = computed<CardFace>(() => ({
   word: studyWord.value,
-  emoji: wordEmoji(studyWord.value, family),
 }))
 const trialWord = computed(() => words[trialIndex.value] ?? words[0])
 const progressText = computed(() => {
@@ -55,7 +53,7 @@ function wait(ms: number) {
 }
 
 function makeChoices() {
-  choices.value = shuffle(words.map((word) => ({ word, emoji: wordEmoji(word, family) })))
+  choices.value = shuffle(words.map((word) => ({ word })))
 }
 
 async function showStudyCard() {
@@ -179,7 +177,7 @@ onUnmounted(() => {
           <span>⭐</span>
         </div>
         <div v-else class="face front">
-          <span>{{ studyFace.emoji }}</span>
+          <word-pic :word="studyFace.word" :size="168" />
           <b>{{ studyFace.word }}</b>
         </div>
       </div>
@@ -198,7 +196,7 @@ onUnmounted(() => {
           :disabled="locked"
           @click="onTap(choice.word, $event)"
         >
-          <span>{{ choice.emoji }}</span>
+          <word-pic :word="choice.word" :size="72" />
           <small>{{ choice.word }}</small>
         </button>
       </div>
@@ -246,9 +244,9 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.face span {
-  font-size: 96px;
-  line-height: 1;
+.face :deep(.word-pic) {
+  width: 168px;
+  height: 168px;
 }
 
 .face.back span {
@@ -278,8 +276,9 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.target span {
-  font-size: 48px;
+.target :deep(.word-pic) {
+  width: 72px;
+  height: 72px;
 }
 
 .target.cheer {

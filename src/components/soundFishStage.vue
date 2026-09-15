@@ -2,7 +2,7 @@
 import gsap from 'gsap'
 import { Application, Circle, Container, FillGradient, Graphics, Rectangle, Text } from 'pixi.js'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { wordEmoji } from '../data/phonicsFamily'
+import { makeWordSprite } from '../composables/useWordSprite'
 
 const props = defineProps<{
   words: string[]
@@ -202,13 +202,12 @@ function clearMarks() {
   marks.length = 0
 }
 
-function makeFish(word: string, index: number): FishMark {
+async function makeFish(word: string, index: number): Promise<FishMark> {
   const color = palette[index % palette.length]
   const node = new Container()
   const body = new Graphics()
   paintFishBody(body, color, false)
-  const art = new Text({ text: wordEmoji(word), style: emojiFont(26) })
-  art.anchor.set(0.5)
+  const art = await makeWordSprite(word, 40)
   art.position.set(-28, -2)
   const label = new Text({
     text: word,
@@ -260,12 +259,14 @@ function makeFish(word: string, index: number): FishMark {
   return { word, node, body, speaker, lane: index, color, caught: props.caught.includes(word) }
 }
 
-function rebuildMarks() {
+async function rebuildMarks() {
   if (!app) return
   clearMarks()
-  props.words.forEach((word, index) => {
-    marks.push(makeFish(word, index))
-  })
+  for (const [index, word] of props.words.entries()) {
+    if (dead) return
+    marks.push(await makeFish(word, index))
+  }
+  if (!app || dead) return
   if (hookLine) app.stage.addChild(hookLine)
   if (hookIcon) app.stage.addChild(hookIcon)
   if (bucket) app.stage.addChild(bucket)
@@ -425,7 +426,7 @@ async function boot() {
   bucket = new Container()
   bucket.eventMode = 'none'
 
-  rebuildMarks()
+  await rebuildMarks()
 
   observer = new ResizeObserver(() => {
     if (!app || !host.value) return
@@ -460,7 +461,7 @@ onUnmounted(() => {
 watch(
   () => props.words.join('|'),
   () => {
-    if (app) rebuildMarks()
+    if (app) void rebuildMarks()
   },
 )
 

@@ -7,19 +7,18 @@ import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake } fro
 import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, pickOtherWords, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { pickOtherWords, sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 
 type Mole = {
   hole: number
   word: string
-  emoji: string
 }
 
 const NEED_CORRECT = 4
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(5)
@@ -64,7 +63,6 @@ function buildMoles(target: string): Mole[] {
     return {
       hole,
       word,
-      emoji: wordEmoji(word, family),
     }
   })
 }
@@ -180,7 +178,7 @@ onUnmounted(() => {
           :aria-label="moleByHole[hole]?.word"
           @click="onTap(moleByHole[hole] as Mole, $event)"
         >
-          <span>{{ moleByHole[hole]?.emoji }}</span>
+          <word-pic :word="moleByHole[hole]?.word ?? ''" :size="64" />
           <small>{{ moleByHole[hole]?.word }}</small>
         </button>
       </div>
@@ -251,9 +249,9 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.mole span {
-  font-size: 44px;
-  line-height: 1;
+.mole :deep(.word-pic) {
+  width: 64px;
+  height: 64px;
 }
 
 .mole small {

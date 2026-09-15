@@ -6,10 +6,10 @@ import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { tweenCelebrate } from '../composables/useMotion'
 import { pickPraise, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
-import { getCurrentFamily, sampleWords, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
-const family = getCurrentFamily()
 const { backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(3)
@@ -91,7 +91,9 @@ onUnmounted(() => {
     </div>
 
     <div ref="stageEl" class="card stage center" :class="{ popin: celebrating }">
-      <div class="art">{{ wordEmoji(word, family) }}</div>
+      <div class="art">
+        <word-pic :word="word" :size="120" />
+      </div>
       <p class="line" :class="{ on: lit >= 0 && lit < 99 }">
         <span
           v-for="(letter, index) in letters"
@@ -127,6 +129,8 @@ onUnmounted(() => {
 }
 
 .art {
+  width: 120px;
+  height: 120px;
   font-size: 76px;
   line-height: 1;
 }

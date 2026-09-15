@@ -2,7 +2,7 @@
 import gsap from 'gsap'
 import { Application, Circle, Container, FillGradient, Graphics, Rectangle, Text } from 'pixi.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import { makeWordSprite } from '../composables/useWordSprite'
 
 const props = defineProps<{
   words: string[]
@@ -25,7 +25,6 @@ type Marker = {
 }
 
 const host = ref<HTMLElement | null>(null)
-const family = getCurrentFamily()
 
 let app: Application | null = null
 let dead = false
@@ -167,6 +166,50 @@ function makeMarker(
   return marker
 }
 
+async function makeWordMarker(
+  word: string,
+  size: number,
+  radius: number,
+  place: Marker['place'],
+): Promise<Marker> {
+  const node = new Container()
+  const glow = new Graphics()
+  glow.circle(0, 0, radius + 10)
+  glow.fill({ color: 0xffe27a, alpha: 0.62 })
+  glow.circle(0, 0, radius - 6)
+  glow.fill({ color: 0xfff6c2, alpha: 0.35 })
+  glow.visible = false
+  const spark = new Text({
+    text: '✨',
+    style: {
+      fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+      fontSize: 22,
+    },
+  })
+  spark.anchor.set(0.5)
+  spark.position.set(radius - 6, -radius + 4)
+  spark.visible = false
+  const art = await makeWordSprite(word, size)
+  if (dead) {
+    art.destroy()
+    return { word, node, glow, spark, place, baseY: 0 }
+  }
+  node.addChild(glow, art, spark)
+  node.eventMode = 'static'
+  node.cursor = 'pointer'
+  node.hitArea = new Circle(0, 0, radius)
+  node.on('pointertap', (event) => {
+    event.stopPropagation()
+    if (props.locked) return
+    if (props.found.includes(word)) return
+    emit('find', word)
+  })
+  app?.stage.addChild(node)
+  const marker = { word, node, glow, spark, place, baseY: 0 }
+  markers.push(marker)
+  return marker
+}
+
 async function boot() {
   const el = host.value
   if (!el) return
@@ -206,10 +249,11 @@ async function boot() {
     (_width, height) => ({ x: 46, y: height - 96 }),
     (width, height) => ({ x: width - 108, y: height - 82 }),
   ]
-  props.words.slice(0, 3).forEach((word, index) => {
+  for (const [index, word] of props.words.slice(0, 3).entries()) {
+    if (dead) return
     const place = spots[index] ?? spots[0]
-    makeMarker(wordEmoji(word, family), index === 0 ? 52 : 42, index === 0 ? 46 : 44, place, word)
-  })
+    await makeWordMarker(word, index === 0 ? 96 : 84, index === 0 ? 50 : 46, place)
+  }
 
   for (const word of props.found) markFound(word)
   layout()

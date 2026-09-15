@@ -7,6 +7,19 @@ export type WarmupPhoneme = {
 export type WordArt = {
   emoji: string
   label: string
+  image?: string
+}
+
+export function wordCardSrc(word: string): string {
+  return `${import.meta.env.BASE_URL}word-cards/${word.toLowerCase()}.png`
+}
+
+function clayArt(word: string, emoji: string): WordArt {
+  return {
+    emoji,
+    label: word,
+    image: wordCardSrc(word),
+  }
 }
 
 export type PhonicsFamily = {
@@ -50,21 +63,21 @@ export const families: Record<string, PhonicsFamily> = {
     ],
     // Animals island word bank: cat hosts; others are party friends / props.
     wordArt: {
-      cat: { emoji: '🐱', label: 'cat' },
-      hat: { emoji: '🎩', label: 'hat' },
-      mat: { emoji: '🧶', label: 'mat' },
-      bat: { emoji: '🦇', label: 'bat' },
-      rat: { emoji: '🐀', label: 'rat' },
-      cup: { emoji: '🥤', label: 'cup' },
-      dog: { emoji: '🐶', label: 'dog' },
-      pig: { emoji: '🐷', label: 'pig' },
-      duck: { emoji: '🦆', label: 'duck' },
-      bird: { emoji: '🐦', label: 'bird' },
-      fish: { emoji: '🐟', label: 'fish' },
-      cake: { emoji: '🎂', label: 'cake' },
-      ball: { emoji: '⚽', label: 'ball' },
-      sun: { emoji: '☀️', label: 'sun' },
-      star: { emoji: '⭐', label: 'star' },
+      cat: clayArt('cat', '🐱'),
+      hat: clayArt('hat', '🎩'),
+      mat: clayArt('mat', '🧶'),
+      bat: clayArt('bat', '🦇'),
+      rat: clayArt('rat', '🐀'),
+      cup: clayArt('cup', '🥤'),
+      dog: clayArt('dog', '🐶'),
+      pig: clayArt('pig', '🐷'),
+      duck: clayArt('duck', '🦆'),
+      bird: clayArt('bird', '🐦'),
+      fish: clayArt('fish', '🐟'),
+      cake: clayArt('cake', '🎂'),
+      ball: clayArt('ball', '⚽'),
+      sun: clayArt('sun', '☀️'),
+      star: clayArt('star', '⭐'),
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '派对耳朵' },
@@ -121,6 +134,10 @@ export function wordEmoji(word: string, family = getCurrentFamily()): string {
   return family.wordArt[word]?.emoji ?? '✨'
 }
 
+export function wordImage(word: string, family = getCurrentFamily()): string | undefined {
+  return family.wordArt[word]?.image
+}
+
 function shuffledCopy<T>(list: T[]): T[] {
   const next = [...list]
   for (let i = next.length - 1; i > 0; i -= 1) {
@@ -148,6 +165,7 @@ export function pickOtherWords(
 export type AtlasWord = {
   word: string
   emoji: string
+  image?: string
   familyId: string
   family: string
 }
@@ -164,6 +182,7 @@ export function listAllFamilyWords(): AtlasWord[] {
       words.push({
         word,
         emoji: wordEmoji(word, family),
+        image: family.wordArt[word]?.image,
         familyId: family.id,
         family: family.family,
       })

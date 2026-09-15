@@ -2,7 +2,8 @@
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
-import { getCurrentFamily, wordEmoji } from '../data/phonicsFamily'
+import wordPic from '../components/wordPic.vue'
+import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
@@ -30,7 +31,9 @@ function startReview() {
       <p class="family-note">图鉴里有 15 个派对词；每次玩只抽出几个，不用一次学完。</p>
       <ul class="word-list">
         <li v-for="word in family.targets" :key="word">
-          <span class="word-emoji">{{ wordEmoji(word, family) }}</span>
+          <span class="word-emoji">
+            <word-pic :word="word" :size="40" />
+          </span>
           <b>{{ word }}</b>
         </li>
       </ul>
@@ -89,6 +92,8 @@ function startReview() {
 }
 
 .word-emoji {
+  width: 40px;
+  height: 40px;
   font-size: 26px;
 }
 
