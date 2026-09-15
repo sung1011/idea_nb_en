@@ -21,7 +21,7 @@ npm run build
 
 地址：https://sung1011.github.io/idea_nb_en/
 
-推到 `develop` 后，GitHub Actions 会自动构建并发布。仓库需在 **Settings → Pages → Source** 选一次 **GitHub Actions**（若还没选过）。
+推到 `main` 后，GitHub Actions 会自动构建并发布。仓库需在 **Settings → Pages → Source** 选一次 **GitHub Actions**（若还没选过）。
 
 ## 玩法一览（试玩全部玩法）
 

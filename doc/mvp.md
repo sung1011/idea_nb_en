@@ -8,7 +8,7 @@
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
 - 无后端；进度在 `localStorage` 键 `starWords.v1`；单词图鉴解锁在 `starWords.atlas.v1`
-- 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`develop` 推送后由 GitHub Actions 发到 GitHub Pages
+- 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 无插画资源：emoji + CSS 形状
 
