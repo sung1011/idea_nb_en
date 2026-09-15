@@ -9,13 +9,19 @@ npm install
 npm run dev
 ```
 
-浏览器打开终端里的本地地址（默认 `http://localhost:5173`）。手机预览可用同一 Wi-Fi 下的局域网地址。
+浏览器打开终端里的本地地址（默认 `http://localhost:5173/idea_nb_en/`）。手机预览可用同一 Wi-Fi 下的局域网地址。
 
 ```bash
 npm run build
 ```
 
 产物在 `dist/`，可直接当静态页部署。`npm run preview` 可本地预览打包结果。
+
+## 在线预览（GitHub Pages）
+
+地址：https://sung1011.github.io/idea_nb_en/
+
+推到 `develop` 后，GitHub Actions 会自动构建并发布。仓库需在 **Settings → Pages → Source** 选一次 **GitHub Actions**（若还没选过）。
 
 ## 玩法一览（试玩全部玩法）
 

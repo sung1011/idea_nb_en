@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [vue()],
-  base: './',
+  base: '/idea_nb_en/',
   server: {
     host: true,
     port: 5173,
