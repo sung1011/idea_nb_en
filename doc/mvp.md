@@ -11,7 +11,7 @@
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
-- 动物岛 15 词使用 Style-5 描边软陶词卡（`public/word-cards/{word}.png`，路径走 Vite `base`）；无图或加载失败时回退 emoji / 文字
+- 动物岛 15 词使用 Style-5 描边软陶词卡（`public/word-cards/{word}.webp`，512px 长边，路径走 Vite `base`）；无图或加载失败时回退 emoji / 文字
 
 ## 信息架构
 
@@ -49,7 +49,7 @@ targets: [
 ]
 ```
 
-每局用 `sampleWords` 抽一小撮：钓鱼 / 回音 / 拖一拖 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部 15 个（外加 `-ap` / `-an` 槽位）。15 词的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.png`（`import.meta.env.BASE_URL`）。
+每局用 `sampleWords` 抽一小撮：钓鱼 / 回音 / 拖一拖 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部 15 个（外加 `-ap` / `-an` 槽位）。15 词的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` 会预加载本局抽到的词卡。
 
 叙事：小猫是派对主人；hat / mat 等仍是派对道具或朋友。
 
@@ -69,7 +69,7 @@ targets: [
 ```
 src/data/phonicsFamily.ts      音族配置（动物岛 15 词 + sampleWords + 词卡 image）
 src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示）
-public/word-cards/{word}.png   Style-5 描边软陶词卡（15 词）
+public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
 src/composables/useProgress.ts 星星 / 贴纸 / 当日进度

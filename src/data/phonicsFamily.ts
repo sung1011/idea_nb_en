@@ -11,7 +11,7 @@ export type WordArt = {
 }
 
 export function wordCardSrc(word: string): string {
-  return `${import.meta.env.BASE_URL}word-cards/${word.toLowerCase()}.png`
+  return `${import.meta.env.BASE_URL}word-cards/${word.toLowerCase()}.webp`
 }
 
 function clayArt(word: string, emoji: string): WordArt {
@@ -138,6 +138,18 @@ export function wordImage(word: string, family = getCurrentFamily()): string | u
   return family.wordArt[word]?.image
 }
 
+/** Warm the browser cache for a small sampled set (gates / atlas extras). */
+export function preloadWordCards(words: string[], family = getCurrentFamily()): void {
+  if (typeof Image === 'undefined') return
+  for (const word of words) {
+    const src = wordImage(word, family)
+    if (!src) continue
+    const img = new Image()
+    img.decoding = 'async'
+    img.src = src
+  }
+}
+
 function shuffledCopy<T>(list: T[]): T[] {
   const next = [...list]
   for (let i = next.length - 1; i > 0; i -= 1) {
@@ -149,7 +161,9 @@ function shuffledCopy<T>(list: T[]): T[] {
 
 /** One-run subset so a session stays short. */
 export function sampleWords(count: number, family = getCurrentFamily()): string[] {
-  return shuffledCopy(family.targets).slice(0, Math.min(count, family.targets.length))
+  const picked = shuffledCopy(family.targets).slice(0, Math.min(count, family.targets.length))
+  preloadWordCards(picked, family)
+  return picked
 }
 
 export function pickOtherWords(
@@ -159,7 +173,9 @@ export function pickOtherWords(
 ): string[] {
   const blocked = new Set(exclude.map((word) => word.toLowerCase()))
   const pool = shuffledCopy(family.targets.filter((word) => !blocked.has(word.toLowerCase())))
-  return pool.slice(0, count)
+  const picked = pool.slice(0, count)
+  preloadWordCards(picked, family)
+  return picked
 }
 
 export type AtlasWord = {

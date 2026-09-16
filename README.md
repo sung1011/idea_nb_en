@@ -43,7 +43,7 @@ npm run build
 - **Drag Sort 拖一拖**：每局抽 3 词，把纯英文单词芯片拖到对应词卡篮子（篮子无中文，芯片无图；英语 TTS 演示）
 - **Sing Along 唱一唱**：每局抽 3 词，两句 chant 高亮，点「我唱好了」（不测音高）
 - **Find Scene 找一找**：派对场景用 Pixi 画布点出本局 3 个词卡（Vue 壳保留；试玩不加星）
-- **词卡资源**：`public/word-cards/{word}.png`（Style-5 描边软陶），路径走 Vite `base` `/idea_nb_en/`；图鉴与各关出图优先用词卡，加载失败回退 emoji
+- **词卡资源**：`public/word-cards/{word}.webp`（Style-5 描边软陶，512px WebP），路径走 Vite `base` `/idea_nb_en/`；图鉴与各关出图优先用词卡，加载失败回退 emoji
 - **Day Complete**：庆祝派对成功，展示星星与解锁物，回首页
 - **字母工坊**：列出当前 15 个派对词，可复习重玩两关；不发首次通关奖励
 - **本地存储**：星星、贴纸、按日期重置的当日进度；图鉴解锁词存在 `starWords.atlas.v1`

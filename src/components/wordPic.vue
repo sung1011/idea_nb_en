@@ -40,6 +40,7 @@ watch(
       :src="src"
       :alt="decorative ? '' : word"
       :aria-hidden="decorative ? true : undefined"
+      decoding="async"
       @error="failed = true"
     />
     <span v-else :aria-hidden="decorative ? true : undefined">{{ wordEmoji(word) }}</span>
