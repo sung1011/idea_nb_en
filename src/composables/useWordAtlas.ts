@@ -1,21 +1,16 @@
 import { computed } from 'vue'
 import { listAllFamilyWords } from '../data/phonicsFamily'
-import { isWordUnlocked, markWordSeen, persistState } from './progressStore'
+import { isWordUnlocked, unlockWord } from './progressStore'
 
 const atlasWords = listAllFamilyWords()
 
-/** First successful use of a family word. Does not award daily stars. */
-export function unlockWord(word: string): boolean {
-  return markWordSeen(word)
-}
-
-export { isWordUnlocked }
+export { isWordUnlocked, unlockWord }
 
 export function useWordAtlas() {
   const items = computed(() =>
     atlasWords.map((item) => ({
       ...item,
-      unlocked: persistState.lifetime.unlockedWords.includes(item.word.toLowerCase()),
+      unlocked: isWordUnlocked(item.word),
     })),
   )
   const unlockedCount = computed(() => items.value.filter((item) => item.unlocked).length)

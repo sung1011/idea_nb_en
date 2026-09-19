@@ -6,6 +6,7 @@ import starBar from '../components/starBar.vue'
 import { usePlayMode } from '../composables/usePlayMode'
 import { tweenCelebrate } from '../composables/useMotion'
 import { pickPraise, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
+import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
 import { sampleWords } from '../data/phonicsFamily'
 
@@ -55,6 +56,7 @@ async function sangIt() {
   locked.value = true
   celebrating.value = true
   playPop()
+  unlockWord(word.value)
   prompt.value = pickPraise('step')
   void tweenCelebrate(stageEl.value)
   await speak(prompt.value)

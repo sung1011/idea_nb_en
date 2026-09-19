@@ -587,6 +587,14 @@ export function markWordSeen(word: string): boolean {
   return true
 }
 
+/**
+ * Atlas unlock on a meaningful play success (correct tap / match / catch /
+ * hear-pass). Unknown words ignored. No daily stars. Cleared by reset-all.
+ */
+export function unlockWord(word: string): boolean {
+  return markWordSeen(word)
+}
+
 export function isWordUnlocked(word: string): boolean {
   return persistState.lifetime.unlockedWords.includes(normalizeWord(word))
 }

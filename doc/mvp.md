@@ -24,7 +24,7 @@
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
-**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即解锁并写入本地：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼钓到、回音洞跟读通过；找一找点中也算成功使用。逛图鉴、解锁本身都不发当日星星。
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
 
 **玩法一览**列出 7 种玩法（主线四关 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星、不推进 `chainStep`。动物岛主按钮「今日主线」走完整四关链。点一点已移除。
 
@@ -32,11 +32,11 @@
 
 **Whack Word（地鼠词）**是约 45–60 秒的点选关：从词库抽出 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波 3 只（目标 + 干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。奇数日作为主线第一关，通关后 `completeGate('whackWord')`，同样进入拖一拖。试玩走 `?demo=1`，不加当日星星、不推进主线；点对解锁单词图鉴。
 
-**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。主线通关后 `completeGate('dragSort')`，`chainStep` 进到 `fish`。试玩仍走 `?demo=1`。
+**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。主线通关后 `completeGate('dragSort')`，`chainStep` 进到 `fish`。试玩仍走 `?demo=1`。拖对解锁单词图鉴。
 
-**Find Scene（找一找）**在 Vue 壳里嵌 Pixi 画布：派对场景点出本局抽出的 3 个词（目标用词卡图）。目标会轻轻浮动；点对发光加星标并读词，点到树/气球/礼物或空地轻轻提醒。试玩走 `?demo=1`，不加当日星星。不把整站改成 Pixi。
+**Find Scene（找一找）**在 Vue 壳里嵌 Pixi 画布：派对场景点出本局抽出的 3 个词（目标用词卡图）。目标会轻轻浮动；点对发光加星标并读词，点到树/气球/礼物或空地轻轻提醒。试玩走 `?demo=1`，不加当日星星。点中目标解锁单词图鉴。不把整站改成 Pixi。
 
-**读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：每局从 15 词抽出 3 条带英文单词的鱼，鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。路由仍为 `/sound-fish`。
+**读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：每局从 15 词抽出 3 条带英文单词的鱼，鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。读对或点鱼钓到解锁图鉴；只点喇叭听 TTS 不解锁。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。路由仍为 `/sound-fish`。
 
 当日主线进度按上海日历日重置。每日路径里重复玩同一关不再加星。找一找 / 唱一唱仍只从玩法一览进入。
 
@@ -114,9 +114,9 @@ src/views/*.vue                七种玩法 + Day Complete
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
 - `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed, rewardSticker? }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7）
-- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
+- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回当天空白存档（不删词卡图片）。首页与动物岛大厅齿轮 → 设置弹窗 →「初始化」→「真的清空吗？」后调用，然后回首页
-- 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
+- 同一上海日历日完成当日链最多 +1 岛日，封顶 7。图鉴解锁走 `unlockWord`（底层 `markWordSeen`）：主线点对 / 拖对 / 钓到 / 跟读通过，以及一览找一找点中、唱一唱「我唱好了」；只记已知音族词，不加星
 - 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。完成页再发一张：优先目录里还未拥有的 id，当天写入 `today.rewardSticker`，同日再进不重复发
 - `claimDayCompleteRewards()`：需已通关回声（或 `today.completed`）。首次：标记完成、岛日 +1、发贴纸；同日再调只返回已领贴纸，不加岛日
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）

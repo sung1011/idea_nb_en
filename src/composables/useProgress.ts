@@ -19,6 +19,7 @@ import {
   resetAllProgress,
   routeAfterGate,
   routeForChainStep,
+  unlockWord,
   warmupKindForDate,
 } from './progressStore'
 
@@ -50,6 +51,7 @@ export {
   routeAfterGate,
   routeForChainStep,
   todayKey,
+  unlockWord,
   warmupKindForDate,
 } from './progressStore'
 
@@ -138,6 +140,7 @@ export function useProgress() {
     addStar,
     completeGate,
     markWordSeen,
+    unlockWord,
     grantSticker,
     completeDailyIfReady,
     claimDayCompleteRewards,
