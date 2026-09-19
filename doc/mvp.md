@@ -7,7 +7,7 @@
 - Vue 3 + Vite + TypeScript + Vue Router（hash 路由，静态托管更稳）
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
-- 无后端；进度在 `localStorage` 键 `starWords.v1`；单词图鉴解锁在 `starWords.atlas.v1`
+- 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 动物岛日格 / 当日任务）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁移，之后只读写 v2，避免两套互相覆盖
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
@@ -72,8 +72,10 @@ src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示�
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
-src/composables/useProgress.ts 星星 / 贴纸 / 当日进度
-src/composables/useWordAtlas.ts 单词图鉴解锁（localStorage）
+src/data/stickers.ts           贴纸目录（5 个占位 id，发奖 UI 后做）
+src/composables/progressStore.ts 进度数据模型 + localStorage 迁移
+src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 岛日 / 当日任务
+src/composables/useWordAtlas.ts 单词图鉴只读视图（写入走 progressStore）
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
 src/composables/useSpeech.ts   TTS
 src/composables/useSfx.ts      Howler 点按 / 成功 / 轻晃
@@ -93,8 +95,21 @@ src/components/soundFishStage.vue 读词钓鱼 Pixi 池塘
 src/views/*.vue                七种玩法 + Day Complete
 ```
 
+## 进度 store（本阶段已落地，UI 后做）
+
+`useProgress()` / `progressStore` 提供后续关卡条 / 完成页 / 图鉴册 / 岛 7 格要用的薄 API，不在本阶段画这些界面。
+
+- `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
+- `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。当前主路径仍是钓鱼 → 回音；`chainStep` 已预留 `warmup | drag | fish | echo | complete`（闪卡/地鼠 → 拖一拖 → 钓鱼 → 回音 → 完成）
+- `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7）
+- helpers：`addStar(n)`、`completeGate(gateId)`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`
+- 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
+- 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）
+- 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`
+
 ## 未做（按规格）
 
+- 今日目标条 UI、完整五日链路由、完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

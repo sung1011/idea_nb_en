@@ -46,7 +46,7 @@ npm run build
 - **词卡资源**：`public/word-cards/{word}.webp`（Style-5 描边软陶，512px WebP），路径走 Vite `base` `/idea_nb_en/`；图鉴与各关出图优先用词卡，加载失败回退 emoji
 - **Day Complete**：庆祝派对成功，展示星星与解锁物，回首页
 - **字母工坊**：列出当前 15 个派对词，可复习重玩两关；不发首次通关奖励
-- **本地存储**：星星、贴纸、按日期重置的当日进度；图鉴解锁词存在 `starWords.atlas.v1`
+- **本地存储**：统一键 `starWords.v2`（当日星星 / 终身星星 / 贴纸 / 图鉴解锁 / 动物岛 0–7 日 / 当日任务）。旧键 `starWords.v1` 与 `starWords.atlas.v1` 会在首次读取时迁入。日期按 Asia/Shanghai 日历日重置当日进度
 - **数据驱动**：`src/data/phonicsFamily.ts` 当前 `-at` 词库 15 个，并已预留 `-ap` / `-an`
 
 游戏内角色口语以英语为主；家长说明用中文。点对 / 通关表扬从英语词库随机抽，不总是 Yes / Great job。没有红叉、没有失败卡死、没有比分。
