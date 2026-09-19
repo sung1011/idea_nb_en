@@ -86,6 +86,7 @@ src/components/settingsButton.vue 首页 / 大厅齿轮入口
 src/components/settingsDialog.vue 设置弹窗（初始化需二次确认）
 src/components/todayGoalBar.vue 今日目标条（大厅 / 首页，内嵌今日星星条）
 src/components/todayStarBar.vue 今日星星条（空/实星，主线关卡顶栏 + 完成页）
+src/components/islandDayCells.vue 动物岛大厅 7 日亮格（读 `animalsIslandDays`，只展示）
 src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 今日星星条；试玩/复习改显示总星星）
 src/composables/useWordAtlas.ts 单词图鉴只读视图（写入走 progressStore）
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
@@ -96,7 +97,7 @@ src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
 src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 弱工坊 / 图鉴 + 设置）
-src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 今日主线四关 + 设置）
+src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 7 日亮格 + 今日主线四关 + 设置）
 src/views/letterWorkshopView.vue 字母工坊复习页
 src/views/wordAtlasView.vue    单词图鉴
 src/views/playGalleryView.vue  玩法一览
@@ -127,6 +128,15 @@ src/views/*.vue                七种玩法 + Day Complete
 
 `todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）和**动物岛大厅**（岛名下、小岛场景上）。只显示一条主任务，不是关卡清单。
 
+## 动物岛 7 日亮格
+
+`islandDayCells` 挂在**动物岛大厅**（小岛场景下、今日主线四关卡上）。只展示终身岛日，不是第二座岛入口。
+
+- 读 `lifetime.animalsIslandDays`（0–7，与兼容字段 `state.dayStars` 同一值）
+- 文案「小岛亮了 n/7 天」；已亮格画太阳并高亮，未亮格淡色虚线圆里写天数
+- 当日首次通关推进岛日后回大厅会亮多一格；设置「初始化」后回到 0/7
+- 7/7 时整条变暖色，旁注「小岛天天都亮啦，明天还来玩」，不解锁下一座岛
+
 - 主任务文案来自 `mainTaskId` 小表（`src/data/todayTasks.ts`）。默认 id `dailyChain`，文案「今天走完派对四关」（旧存档 `fishEcho` / `animalsIsland` 读同一句）
 - `mainTaskDone` / `completed` 时打勾并浅绿高亮，旁注「做好啦」
 - 有 `focusWord` 时多一行「多听一听 cat」
@@ -147,11 +157,11 @@ src/views/*.vue                七种玩法 + Day Complete
 - 当日首次通关：发 1 张贴纸（`nextStickerId`：未拥有的 `ear` / `paw` / `leaf` / `shell` / `sun`），`animalsIslandDays` +1（上海日历日一次，封顶 7），并标记 `today.completed`
 - 同日再进：展示已领贴纸与当前岛日，不重复发放
 - 中文儿童向文案展示贴纸名；完成页再展示大号今日星星条，本身不加星
-- 不在本阶段做贴纸图鉴整页或岛 7 格地图
+- 不在本阶段做贴纸图鉴整页；岛 7 格只在大厅展示亮/空，不解锁第二座岛
 
 ## 未做（按规格）
 
-- 贴纸图鉴页、动物岛 7 格视觉（后续串行阶段）
+- 贴纸图鉴页（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

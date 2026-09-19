@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import islandDayCells from '../components/islandDayCells.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
@@ -96,6 +97,8 @@ onMounted(() => {
     </div>
 
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
+
+    <island-day-cells class="island-days-bar" />
 
     <div class="card progress-card">
       <p ref="progressEl" class="progress-title">今日主线 · {{ gatesDone }}/{{ gateTotal }}</p>
@@ -248,6 +251,10 @@ onMounted(() => {
   margin: 0 0 4px;
   font-size: 14px;
   color: var(--muted);
+}
+
+.island-days-bar {
+  margin: 2px 0 4px;
 }
 
 .progress-card {
