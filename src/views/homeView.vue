@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
@@ -38,7 +39,10 @@ function goAtlas() {
   <section class="screen home">
     <header class="top-row">
       <star-bar />
-      <p class="day-chip">打卡 {{ state.dayStars }} 天</p>
+      <div class="top-tools">
+        <p class="day-chip">打卡 {{ state.dayStars }} 天</p>
+        <settings-button />
+      </div>
     </header>
 
     <div ref="heroEl" class="hero center">
@@ -76,6 +80,12 @@ function goAtlas() {
 <style scoped>
 .home {
   gap: 10px;
+}
+
+.top-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .day-chip {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  variant?: 'primary' | 'soft' | 'listen'
+  variant?: 'primary' | 'soft' | 'listen' | 'danger'
 }>()
 </script>
 
@@ -42,5 +42,11 @@ defineProps<{
   background: linear-gradient(180deg, #a78bfa 0%, var(--grape) 100%);
   color: #fff;
   box-shadow: 0 8px 0 #5b4d9a;
+}
+
+.danger {
+  background: linear-gradient(180deg, #ffb199 0%, #ff8a65 100%);
+  color: #4a1808;
+  box-shadow: 0 8px 0 #e07050;
 }
 </style>

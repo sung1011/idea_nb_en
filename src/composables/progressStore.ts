@@ -469,6 +469,46 @@ function persist() {
   }
 }
 
+function removeProgressKeys() {
+  const known = [PROGRESS_STORAGE_KEY, LEGACY_PROGRESS_KEY, LEGACY_ATLAS_KEY]
+  try {
+    for (const key of known) localStorage.removeItem(key)
+    const leftover: string[] = []
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('starWords.')) leftover.push(key)
+    }
+    for (const key of leftover) localStorage.removeItem(key)
+  } catch {
+    /* private mode */
+  }
+}
+
+function writeLifetime(target: LifetimeProgress, source: LifetimeProgress) {
+  target.totalStars = source.totalStars
+  target.stickers = [...source.stickers]
+  target.unlockedWords = [...source.unlockedWords]
+  target.animalsIslandDays = source.animalsIslandDays
+}
+
+/** Wipe player progress only. Word-card images stay. */
+export function resetAllProgress(): void {
+  removeProgressKeys()
+  const fresh = emptyPersist()
+  persistState.version = fresh.version
+  persistState.dateKey = fresh.dateKey
+  writeToday(persistState.today, fresh.today)
+  writeLifetime(persistState.lifetime, fresh.lifetime)
+  persistState.familyId = fresh.familyId
+  for (const key of Object.keys(persistState.gates)) {
+    delete persistState.gates[key]
+  }
+  writeGates(persistState.gates, fresh.gates)
+  persistState.decorations = []
+  persistState.lastIslandDate = null
+  persist()
+}
+
 export function ensureToday() {
   const today = dateKey()
   const familyId = getCurrentFamily().id

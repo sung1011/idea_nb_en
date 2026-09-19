@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
@@ -65,7 +66,10 @@ onMounted(() => {
   <section class="screen island-lobby">
     <header class="top-row">
       <button class="ghost-btn" type="button" @click="router.push('/')">首页</button>
-      <star-bar />
+      <div class="top-tools">
+        <star-bar />
+        <settings-button />
+      </div>
     </header>
 
     <div class="hero center">
@@ -127,6 +131,12 @@ onMounted(() => {
 <style scoped>
 .island-lobby {
   gap: 10px;
+}
+
+.top-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .eyebrow {

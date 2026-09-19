@@ -79,8 +79,10 @@ src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
 src/data/stickers.ts           贴纸目录（5 个占位 id，发奖 UI 后做）
 src/data/todayTasks.ts         当日主任务文案（一条，不是清单）
-src/composables/progressStore.ts 进度数据模型 + localStorage 迁移
+src/composables/progressStore.ts 进度数据模型 + localStorage 迁移 + 初始化清档
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 岛日 / 当日任务
+src/components/settingsButton.vue 首页 / 大厅齿轮入口
+src/components/settingsDialog.vue 设置弹窗（初始化需二次确认）
 src/components/todayGoalBar.vue 今日目标条（大厅 / 首页，内嵌今日星星条）
 src/components/todayStarBar.vue 今日星星条（空/实星，主线关卡顶栏 + 完成页）
 src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 今日星星条；试玩/复习改显示总星星）
@@ -92,8 +94,8 @@ src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
-src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 弱工坊 / 图鉴）
-src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 今日主线四关）
+src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 弱工坊 / 图鉴 + 设置）
+src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 今日主线四关 + 设置）
 src/views/letterWorkshopView.vue 字母工坊复习页
 src/views/wordAtlasView.vue    单词图鉴
 src/views/playGalleryView.vue  玩法一览
@@ -111,7 +113,8 @@ src/views/*.vue                七种玩法 + Day Complete
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
 - `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7）
-- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`ensureTodayTask()`、`pickRotatingFocusWord()`
+- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
+- `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回当天空白存档（不删词卡图片）。首页与动物岛大厅齿轮 → 设置弹窗 →「初始化」→「真的清空吗？」后调用，然后回首页
 - 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
 - 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）
@@ -129,6 +132,10 @@ src/views/*.vue                七种玩法 + Day Complete
 - 主线四关顶栏（`gateTopBar`）同样挂今日星星条；点对飞星优先飞向空星位。动物岛关卡清单旁也有空/实星，方便对应「一关一星」
 - Day Complete 再展示一次大号今日星星条（此时通常 4/4），不再加星
 - `ensureTodayTask()`：上海日历日若缺主任务或焦点词，写入 `dailyChain`，并用日期哈希从当前 15 词库轮换 `focusWord`（同日稳定）。未完成的旧两关日会把空的 `chainStep=fish` 抬到 `warmup`
+
+## 设置
+
+首页与动物岛大厅右上角齿轮打开设置弹窗（关卡里没有，避免玩到一半误点）。「初始化」会先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键并回首页。不删 `public/word-cards`。
 
 ## 未做（按规格）
 

@@ -15,6 +15,7 @@ import {
   isChainStepDone,
   markWordSeen,
   persistState,
+  resetAllProgress,
   routeAfterGate,
   routeForChainStep,
   warmupKindForDate,
@@ -43,6 +44,7 @@ export {
   persistState,
   pickRotatingFocusWord,
   progressStore,
+  resetAllProgress,
   routeAfterGate,
   routeForChainStep,
   todayKey,
@@ -137,6 +139,7 @@ export function useProgress() {
     advanceIslandDayOncePerDate,
     hasDecoration,
     hasSticker,
+    resetAllProgress,
     gateRoutes: GATE_ROUTES,
   }
 }
