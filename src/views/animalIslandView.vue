@@ -127,6 +127,10 @@ onMounted(() => {
     </div>
 
     <big-button class="start-btn" @click="go">{{ startLabel }}</big-button>
+    <button class="album-btn" type="button" @click="router.push('/sticker-album')">
+      <span aria-hidden="true">📒</span>
+      贴纸相册
+    </button>
     <button class="gallery-link" type="button" @click="router.push('/play-gallery')">玩法一览</button>
   </section>
 </template>
@@ -316,6 +320,27 @@ onMounted(() => {
 
 .start-btn {
   margin-top: 14px;
+}
+
+.album-btn {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 56px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #fff7d6;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 750;
+  box-shadow: 0 6px 0 rgba(244, 180, 0, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.album-btn:active {
+  transform: translateY(2px);
 }
 
 .gallery-link {

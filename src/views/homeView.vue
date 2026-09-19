@@ -33,6 +33,10 @@ function goWorkshop() {
 function goAtlas() {
   void router.push('/word-atlas')
 }
+
+function goAlbum() {
+  void router.push('/sticker-album')
+}
 </script>
 
 <template>
@@ -70,6 +74,10 @@ function goAtlas() {
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
+    <button class="album-btn" type="button" @click="goAlbum">
+      <span aria-hidden="true">📒</span>
+      贴纸相册
+    </button>
     <div class="weak-links">
       <button class="workshop-link" type="button" @click="goWorkshop">字母工坊 / 复习音族</button>
       <button class="workshop-link" type="button" @click="goAtlas">单词图鉴</button>
@@ -158,6 +166,27 @@ function goAtlas() {
 
 .gallery-btn {
   margin-top: 10px;
+}
+
+.album-btn {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 56px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #fff7d6;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 750;
+  box-shadow: 0 6px 0 rgba(244, 180, 0, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.album-btn:active {
+  transform: translateY(2px);
 }
 
 .weak-links {

@@ -10,6 +10,7 @@ import letterWorkshopView from './views/letterWorkshopView.vue'
 import playGalleryView from './views/playGalleryView.vue'
 import singAlongView from './views/singAlongView.vue'
 import soundFishView from './views/soundFishView.vue'
+import stickerAlbumView from './views/stickerAlbumView.vue'
 import whackWordView from './views/whackWordView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
 
@@ -20,6 +21,7 @@ export const router = createRouter({
     { path: '/animal-island', name: 'animalIsland', component: animalIslandView },
     { path: '/letter-workshop', name: 'letterWorkshop', component: letterWorkshopView },
     { path: '/word-atlas', name: 'wordAtlas', component: wordAtlasView },
+    { path: '/sticker-album', name: 'stickerAlbum', component: stickerAlbumView },
     { path: '/play-gallery', name: 'playGallery', component: playGalleryView },
     { path: '/sound-fish', name: 'soundFish', component: soundFishView },
     { path: '/echo-cave', name: 'echoCave', component: echoCaveView },

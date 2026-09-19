@@ -26,6 +26,8 @@
 
 **单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
 
+**贴纸相册**是收集入口（首页暖色按钮、动物岛大厅「今日主线」下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去玩今日主线吧」。设置「初始化」后相册清空。
+
 **玩法一览**列出 7 种玩法（主线四关 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星、不推进 `chainStep`。动物岛主按钮「今日主线」走完整四关链。点一点已移除。
 
 **Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：从 15 词库抽出 4 个，先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。偶数日作为主线第一关，通关后 `completeGate('flashFlip')`，`chainStep` 进到 `drag`，再去拖一拖。试玩走 `?demo=1`，不加当日星星、不推进主线；点对解锁单词图鉴。
@@ -78,10 +80,11 @@ src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示�
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
-src/data/stickers.ts           贴纸目录（5 个占位 id；完成页按日发一张）
+src/data/stickers.ts           贴纸目录（5 个占位 id；完成页按日发一张，相册按格展示）
 src/data/todayTasks.ts         当日主任务文案（一条，不是清单）
 src/composables/progressStore.ts 进度数据模型 + localStorage 迁移 + 初始化清档
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 岛日 / 当日任务
+src/composables/useStickerAlbum.ts 贴纸相册只读视图（写入走 progressStore）
 src/components/settingsButton.vue 首页 / 大厅齿轮入口
 src/components/settingsDialog.vue 设置弹窗（初始化需二次确认）
 src/components/todayGoalBar.vue 今日目标条（大厅 / 首页，内嵌今日星星条）
@@ -96,10 +99,11 @@ src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
-src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 弱工坊 / 图鉴 + 设置）
-src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 7 日亮格 + 今日主线四关 + 设置）
+src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 贴纸相册 + 弱工坊 / 图鉴 + 设置）
+src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 7 日亮格 + 今日主线四关 + 贴纸相册 + 设置）
 src/views/letterWorkshopView.vue 字母工坊复习页
 src/views/wordAtlasView.vue    单词图鉴
+src/views/stickerAlbumView.vue 贴纸相册
 src/views/playGalleryView.vue  玩法一览
 src/views/flashFlipView.vue    闪卡翻翻
 src/views/whackWordView.vue    地鼠词
@@ -118,7 +122,7 @@ src/views/*.vue                七种玩法 + Day Complete
 - helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回当天空白存档（不删词卡图片）。首页与动物岛大厅齿轮 → 设置弹窗 →「初始化」→「真的清空吗？」后调用，然后回首页
 - 同一上海日历日完成当日链最多 +1 岛日，封顶 7。图鉴解锁走 `unlockWord`（底层 `markWordSeen`）：主线点对 / 拖对 / 钓到 / 跟读通过，以及一览找一找点中、唱一唱「我唱好了」；只记已知音族词，不加星
-- 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。完成页再发一张：优先目录里还未拥有的 id，当天写入 `today.rewardSticker`，同日再进不重复发
+- 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。完成页再发一张：优先目录里还未拥有的 id，当天写入 `today.rewardSticker`，同日再进不重复发。相册只读这些 id，不交易、不消耗
 - `claimDayCompleteRewards()`：需已通关回声（或 `today.completed`）。首次：标记完成、岛日 +1、发贴纸；同日再调只返回已领贴纸，不加岛日
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）
 - `completeGate(gateId)`：仅已知每日关（闪卡/地鼠/拖一拖/钓鱼/回音）首次通关 +1 星；重玩同一关 `starsAwarded=0`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用，因此不加当日星、不推进 `chainStep`
@@ -157,11 +161,19 @@ src/views/*.vue                七种玩法 + Day Complete
 - 当日首次通关：发 1 张贴纸（`nextStickerId`：未拥有的 `ear` / `paw` / `leaf` / `shell` / `sun`），`animalsIslandDays` +1（上海日历日一次，封顶 7），并标记 `today.completed`
 - 同日再进：展示已领贴纸与当前岛日，不重复发放
 - 中文儿童向文案展示贴纸名；完成页再展示大号今日星星条，本身不加星
-- 不在本阶段做贴纸图鉴整页；岛 7 格只在大厅展示亮/空，不解锁第二座岛
+- 完成页可点「看贴纸相册」；岛 7 格只在大厅展示亮/空，不解锁第二座岛
+
+## 贴纸相册
+
+`/sticker-album` 展示目录 5 格（`ear` / `paw` / `leaf` / `shell` / `sun`）。入口：首页暖色「贴纸相册」、动物岛大厅、完成页。
+
+- 读 `lifetime.stickers`（与 `hasSticker` 同一份）；拥有的格子亮色，未拥有剪影 + `?`
+- 一张都没有：文案「还没有贴纸，先去玩今日主线吧」，并给「去动物岛」
+- 设置「初始化」后 `lifetime.stickers` 清空，相册回到空态
+- 只看、不装饰小岛、不交换、不花费
 
 ## 未做（按规格）
 
-- 贴纸图鉴页（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

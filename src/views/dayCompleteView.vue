@@ -101,6 +101,7 @@ onMounted(() => {
     </div>
 
     <big-button @click="router.push('/')">回家</big-button>
+    <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
   </section>
 </template>
 
@@ -245,6 +246,17 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 650;
   text-align: center;
+}
+
+.album-link {
+  margin-top: 8px;
+  min-height: 48px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 @keyframes sparkle {

@@ -4,7 +4,7 @@ export type StickerDef = {
   emoji: string
 }
 
-/** Catalog ids. Day-complete grants one unused id per Shanghai day; album UI is later. */
+/** Catalog ids. Day-complete grants one unused id per Shanghai day; album reads these slots. */
 export const PLACEHOLDER_STICKERS: StickerDef[] = [
   { id: 'ear', label: '派对耳朵', emoji: '👂' },
   { id: 'paw', label: '软爪印', emoji: '🐾' },
