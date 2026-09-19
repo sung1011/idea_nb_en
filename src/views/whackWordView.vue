@@ -2,8 +2,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import starBar from '../components/starBar.vue'
-import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake } from '../composables/useMotion'
+import gateTopBar from '../components/gateTopBar.vue'
+import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
@@ -21,7 +21,7 @@ const NEED_CORRECT = 4
 
 const router = useRouter()
 const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
+const { isPractice, afterGate } = usePlayMode()
 
 const words = sampleWords(5)
 const extra = pickOtherWords(words, 1)
@@ -48,12 +48,6 @@ const moleByHole = computed(() => {
 
 function moleEl(hole: number): HTMLElement | null {
   return document.querySelector(`[data-mole-hole="${hole}"]`)
-}
-
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
 }
 
 function buildMoles(target: string): Mole[] {
@@ -103,11 +97,9 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
-  if (!isPractice.value) {
-    completeGate('whackWord')
-  }
+  const starsAwarded = isPractice.value ? 0 : completeGate('whackWord').starsAwarded
   if (!alive) return
-  await wait(700)
+  await waitAfterStar(starsAwarded)
   void router.push(afterGate(routeAfterGate('whackWord')))
 }
 
@@ -159,10 +151,7 @@ onUnmounted(() => {
 
 <template>
   <section class="screen whack">
-    <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
-      <star-bar />
-    </header>
+    <gate-top-bar />
 
     <div class="center">
       <p class="gate-tag">{{ isPractice ? '试玩 · 地鼠词' : '主线 · 地鼠词' }}</p>

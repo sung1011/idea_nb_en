@@ -8,7 +8,7 @@
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
 - 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 动物岛日格 / 当日任务）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁移，之后只读写 v2，避免两套互相覆盖
-- 今日目标条：首页与动物岛大厅顶部展示一条主任务 + 可选焦点词；缺省时按上海日历日写入 `mainTaskId=dailyChain`，并从 15 词库轮换 `focusWord`
+- 今日目标条：首页与动物岛大厅顶部展示一条主任务 + 可选焦点词 + **今日星星条**（4 颗空/实星）；缺省时按上海日历日写入 `mainTaskId=dailyChain`，并从 15 词库轮换 `focusWord`
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
@@ -81,7 +81,9 @@ src/data/stickers.ts           贴纸目录（5 个占位 id，发奖 UI 后做�
 src/data/todayTasks.ts         当日主任务文案（一条，不是清单）
 src/composables/progressStore.ts 进度数据模型 + localStorage 迁移
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 岛日 / 当日任务
-src/components/todayGoalBar.vue 今日目标条（大厅 / 首页）
+src/components/todayGoalBar.vue 今日目标条（大厅 / 首页，内嵌今日星星条）
+src/components/todayStarBar.vue 今日星星条（空/实星，主线关卡顶栏 + 完成页）
+src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 今日星星条；试玩/复习改显示总星星）
 src/composables/useWordAtlas.ts 单词图鉴只读视图（写入走 progressStore）
 src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
 src/composables/useSpeech.ts   TTS
@@ -104,7 +106,7 @@ src/views/*.vue                七种玩法 + Day Complete
 
 ## 进度 store
 
-`useProgress()` / `progressStore` 提供关卡条 / 完成页 / 图鉴册 / 岛 7 格要用的薄 API。今日目标条已接 `today`，其余界面后做。
+`useProgress()` / `progressStore` 提供关卡条 / 完成页 / 图鉴册 / 岛 7 格要用的薄 API。今日目标条与今日星星条已接 `today`。
 
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
 - `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
@@ -113,7 +115,8 @@ src/views/*.vue                七种玩法 + Day Complete
 - 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
 - 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）
-- 回声跟读通关即 `completeDailyIfReady`（最后一关，软通过：前面关卡漏了也不卡死孩子）
+- `completeGate(gateId)`：仅已知每日关（闪卡/地鼠/拖一拖/钓鱼/回音）首次通关 +1 星；重玩同一关 `starsAwarded=0`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用，因此不加当日星、不推进 `chainStep`
+- 回声跟读通关即 `completeDailyIfReady`（最后一关，软通过：前面关卡漏了也不卡死孩子；完成页本身不再加星）
 
 ## 今日目标条
 
@@ -122,12 +125,14 @@ src/views/*.vue                七种玩法 + Day Complete
 - 主任务文案来自 `mainTaskId` 小表（`src/data/todayTasks.ts`）。默认 id `dailyChain`，文案「今天走完派对四关」（旧存档 `fishEcho` / `animalsIsland` 读同一句）
 - `mainTaskDone` / `completed` 时打勾并浅绿高亮，旁注「做好啦」
 - 有 `focusWord` 时多一行「多听一听 cat」
-- 右侧轻量当日星 `today.starsEarned` / `today.starsGoal`（默认 4）；完整星条后做
+- 下方是 **今日星星条**：按 `today.starsGoal`（默认 4）画空星/实星，数字 `已得/目标`；主线关首次通关亮一颗并轻量弹跳（复用 GSAP celebrate/pulse + 已有成功音）。试玩/复习顶栏不换这条
+- 主线四关顶栏（`gateTopBar`）同样挂今日星星条；点对飞星优先飞向空星位。动物岛关卡清单旁也有空/实星，方便对应「一关一星」
+- Day Complete 再展示一次大号今日星星条（此时通常 4/4），不再加星
 - `ensureTodayTask()`：上海日历日若缺主任务或焦点词，写入 `dailyChain`，并用日期哈希从当前 15 词库轮换 `focusWord`（同日稳定）。未完成的旧两关日会把空的 `chainStep=fish` 抬到 `warmup`
 
 ## 未做（按规格）
 
-- 完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉、完整当日星条（后续串行阶段）
+- 完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

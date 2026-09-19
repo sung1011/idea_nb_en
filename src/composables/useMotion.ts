@@ -147,8 +147,30 @@ export function tweenPopDown(target: unknown): Promise<void> {
   })
 }
 
+export function todayStarTarget(): Element | null {
+  return (
+    document.querySelector('[data-today-star-slot="empty"]') ??
+    document.querySelector('[data-today-star-bar]') ??
+    document.querySelector('.stars')
+  )
+}
+
+export function waitAfterStar(starsAwarded: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, starsAwarded > 0 ? 950 : 700)
+  })
+}
+
+export function celebrateTodayStar(): Promise<void> {
+  const justFilled = document.querySelector('[data-today-star-slot="filled"]:last-of-type')
+  const bar = document.querySelector('[data-today-star-bar]')
+  const el = justFilled ?? bar
+  if (!el) return Promise.resolve()
+  return Promise.all([tweenCelebrate(el), tweenPulse(el)]).then(() => undefined)
+}
+
 export function flyStarFrom(source: Element | null): Promise<void> {
-  const bar = document.querySelector('.stars')
+  const bar = todayStarTarget()
   if (!source || !bar) return Promise.resolve()
   const from = source.getBoundingClientRect()
   const to = bar.getBoundingClientRect()

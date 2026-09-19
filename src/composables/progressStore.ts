@@ -579,11 +579,16 @@ export function completeGate(
   extras?: { sticker?: string; decoration?: string },
 ): { firstTime: boolean; starsAwarded: number } {
   ensureToday()
+  if (!isKnownGate(gate)) {
+    return { firstTime: false, starsAwarded: 0 }
+  }
+
   const firstTime = !persistState.gates[gate]
   persistState.gates[gate] = true
 
   let starsAwarded = 0
   if (firstTime) {
+    // One star per daily-chain gate, first clear only. Replay / second call = 0.
     starsAwarded = addStar(1)
     if (extras?.sticker) grantSticker(extras.sticker)
     if (extras?.decoration && !persistState.decorations.includes(extras.decoration)) {
@@ -591,10 +596,7 @@ export function completeGate(
     }
   }
 
-  if (isKnownGate(gate)) {
-    persistState.today.chainStep = maxChain(persistState.today.chainStep, GATE_CHAIN_NEXT[gate])
-  }
-
+  persistState.today.chainStep = maxChain(persistState.today.chainStep, GATE_CHAIN_NEXT[gate])
   completeDailyIfReady()
   persist()
   return { firstTime, starsAwarded }

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import todayStarBar from '../components/todayStarBar.vue'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
@@ -39,6 +40,7 @@ onMounted(() => {
       <h1 class="title-xl">Day Complete</h1>
       <p class="zh">派对成功</p>
       <p class="sub">{{ starsLine }}</p>
+      <today-star-bar class="today-loot" size="large" :celebrate-on-gain="false" />
 
       <div class="loot">
         <div class="loot-item">
@@ -84,6 +86,11 @@ onMounted(() => {
   margin: 6px 0 0;
   font-size: 22px;
   font-weight: 650;
+}
+
+.today-loot {
+  width: 100%;
+  margin-top: 16px;
 }
 
 .loot {

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import starBar from '../components/starBar.vue'
+import gateTopBar from '../components/gateTopBar.vue'
 import {
   canUseRecognition,
   createRecognizer,
@@ -10,7 +10,7 @@ import {
 } from '../composables/useRecognition'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
-import { tweenCelebrate, tweenShake } from '../composables/useMotion'
+import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -18,7 +18,7 @@ import { sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
 const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, isDemo, afterGate, backPath, backLabel } = usePlayMode()
+const { isPractice, isDemo, afterGate } = usePlayMode()
 
 const words = sampleWords(3)
 const wordIndex = ref(0)
@@ -48,11 +48,9 @@ async function finishGate() {
   status.value = 'Echo complete!'
   playSuccess()
   await tweenCelebrate(cardEl.value)
-  if (!isPractice.value) {
-    completeGate('echoCave')
-  }
+  const starsAwarded = isPractice.value ? 0 : completeGate('echoCave').starsAwarded
   await speak(pickPraise('finish'))
-  await new Promise((resolve) => window.setTimeout(resolve, 700))
+  await waitAfterStar(starsAwarded)
   void router.push(afterGate(routeAfterGate('echoCave')))
 }
 
@@ -131,10 +129,7 @@ onUnmounted(() => {
 
 <template>
   <section class="screen screen-cave cave">
-    <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
-      <star-bar />
-    </header>
+    <gate-top-bar />
 
     <div class="center">
       <p class="gate-tag">{{ isDemo ? '试玩 · 回声跟读' : isPractice ? '复习 · 回声跟读' : '主线 · 回声跟读' }}</p>

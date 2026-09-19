@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import starBar from '../components/starBar.vue'
-import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake } from '../composables/useMotion'
+import gateTopBar from '../components/gateTopBar.vue'
+import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
@@ -20,7 +20,7 @@ const STUDY_LINGER_MS = 8000
 
 const router = useRouter()
 const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
+const { isPractice, afterGate } = usePlayMode()
 
 const words = sampleWords(4)
 const phase = ref<'study' | 'quiz'>('study')
@@ -117,11 +117,9 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
-  if (!isPractice.value) {
-    completeGate('flashFlip')
-  }
+  const starsAwarded = isPractice.value ? 0 : completeGate('flashFlip').starsAwarded
   if (!alive) return
-  await wait(700)
+  await waitAfterStar(starsAwarded)
   void router.push(afterGate(routeAfterGate('flashFlip')))
 }
 
@@ -165,10 +163,7 @@ onUnmounted(() => {
 
 <template>
   <section class="screen flip">
-    <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
-      <star-bar />
-    </header>
+    <gate-top-bar />
 
     <div class="center">
       <p class="gate-tag">{{ isPractice ? '试玩 · 闪卡翻翻' : '主线 · 闪卡翻翻' }}</p>

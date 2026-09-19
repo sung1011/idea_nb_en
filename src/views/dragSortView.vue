@@ -2,9 +2,9 @@
 import { dragDirective } from '@vueuse/gesture'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import starBar from '../components/starBar.vue'
+import gateTopBar from '../components/gateTopBar.vue'
 import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
-import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
+import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo, waitAfterStar } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
@@ -22,7 +22,7 @@ type DragState = {
 
 const router = useRouter()
 const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
+const { isPractice, afterGate } = usePlayMode()
 const vDrag = dragDirective()
 
 const words = sampleWords(3)
@@ -110,10 +110,8 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
-  if (!isPractice.value) {
-    completeGate('dragSort')
-  }
-  await new Promise((resolve) => window.setTimeout(resolve, 400))
+  const starsAwarded = isPractice.value ? 0 : completeGate('dragSort').starsAwarded
+  await waitAfterStar(starsAwarded)
   void router.push(afterGate(routeAfterGate('dragSort')))
 }
 
@@ -183,10 +181,7 @@ onUnmounted(() => {
 
 <template>
   <section class="screen sort">
-    <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
-      <star-bar />
-    </header>
+    <gate-top-bar />
 
     <div class="center">
       <p class="gate-tag">{{ isPractice ? '试玩 · 拖一拖' : '主线 · 拖一拖' }}</p>

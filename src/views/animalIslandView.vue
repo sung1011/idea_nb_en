@@ -104,7 +104,10 @@ onMounted(() => {
         >
           <span class="gate-emoji">{{ gate.emoji }}</span>
           <span>{{ gate.label }}</span>
-          <b>{{ gateDone(gate.id) ? '好' : '待' }}</b>
+          <b>
+            <span class="gate-star" :class="{ on: gateDone(gate.id) }" aria-hidden="true">⭐</span>
+            {{ gateDone(gate.id) ? '好' : '待' }}
+          </b>
         </div>
       </div>
       <p class="parent-line">
@@ -265,6 +268,23 @@ onMounted(() => {
 
 .gate.done {
   background: #e4f8ec;
+}
+
+.gate b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gate-star {
+  font-size: 22px;
+  filter: grayscale(0.4);
+  opacity: 0.55;
+}
+
+.gate-star.on {
+  filter: none;
+  opacity: 1;
 }
 
 .gate-emoji {

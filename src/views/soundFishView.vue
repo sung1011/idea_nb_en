@@ -2,8 +2,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import gateTopBar from '../components/gateTopBar.vue'
 import soundFishStage from '../components/soundFishStage.vue'
-import starBar from '../components/starBar.vue'
+import { waitAfterStar } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
 import { useProgress } from '../composables/useProgress'
 import {
@@ -18,7 +19,7 @@ import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
 const router = useRouter()
 const family = getCurrentFamily()
 const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, isDemo, afterGate, backPath, backLabel } = usePlayMode()
+const { isPractice, isDemo, afterGate } = usePlayMode()
 
 const words = sampleWords(3)
 const caught = ref<string[]>([])
@@ -72,11 +73,11 @@ async function finishGate() {
   celebrating.value = true
   prompt.value = 'Nice fishing!'
   playSuccess()
-  if (!isPractice.value) {
-    completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id })
-  }
+  const starsAwarded = isPractice.value
+    ? 0
+    : completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id }).starsAwarded
   await speak(pickPraise('finish'))
-  await new Promise((resolve) => window.setTimeout(resolve, 700))
+  await waitAfterStar(starsAwarded)
   void router.push(afterGate(routeAfterGate('soundFish')))
 }
 
@@ -167,10 +168,7 @@ onUnmounted(() => {
 
 <template>
   <section class="screen fish">
-    <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push(backPath)">{{ backLabel }}</button>
-      <star-bar />
-    </header>
+    <gate-top-bar />
 
     <div class="center head">
       <p class="gate-tag">{{ isDemo ? '试玩 · 读词钓鱼' : isPractice ? '复习 · 读词钓鱼' : '主线 · 读词钓鱼' }}</p>

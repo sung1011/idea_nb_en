@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useProgress } from '../composables/useProgress'
 import { focusWordHint, mainTaskCopy } from '../data/todayTasks'
+import todayStarBar from './todayStarBar.vue'
 
 const { today, ensureTodayTask } = useProgress()
 ensureTodayTask()
@@ -11,12 +12,6 @@ const done = computed(() => today.mainTaskDone || today.completed)
 const focusLine = computed(() => {
   const word = today.focusWord?.trim()
   return word ? focusWordHint(word) : ''
-})
-const starsEarned = computed(() => today.starsEarned)
-const starsGoal = computed(() => today.starsGoal ?? 0)
-const starsLabel = computed(() => {
-  if (starsGoal.value > 0) return `${starsEarned.value}/${starsGoal.value}`
-  return String(starsEarned.value)
 })
 </script>
 
@@ -28,11 +23,8 @@ const starsLabel = computed(() => {
         <p class="goal-task">{{ taskText }}</p>
         <p v-if="focusLine" class="goal-focus">{{ focusLine }}</p>
       </div>
-      <p class="goal-stars" :title="'今天的星星'">
-        <span aria-hidden="true">⭐</span>
-        <strong>{{ starsLabel }}</strong>
-      </p>
     </div>
+    <today-star-bar class="goal-stars" size="compact" />
     <p v-if="done" class="goal-ok">做好啦</p>
   </div>
 </template>
@@ -53,7 +45,7 @@ const starsLabel = computed(() => {
 
 .goal-main {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 32px 1fr;
   gap: 8px;
   align-items: center;
 }
@@ -93,19 +85,8 @@ const starsLabel = computed(() => {
 }
 
 .goal-stars {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 16px;
-}
-
-.goal-stars strong {
-  font-size: 16px;
+  width: 100%;
+  margin-top: 10px;
 }
 
 .goal-ok {
