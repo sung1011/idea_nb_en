@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { nextStickerId } from '../data/stickers'
 import { MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
 import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
@@ -6,7 +7,7 @@ export const PROGRESS_STORAGE_KEY = 'starWords.v2'
 const LEGACY_PROGRESS_KEY = 'starWords.v1'
 const LEGACY_ATLAS_KEY = 'starWords.atlas.v1'
 const PERSIST_VERSION = 2
-const ISLAND_DAY_CAP = 7
+export const ISLAND_DAY_CAP = 7
 const SHANGHAI_TZ = 'Asia/Shanghai'
 
 export type DailyGateId = 'flashFlip' | 'whackWord' | 'dragSort' | 'soundFish' | 'echoCave'
@@ -24,6 +25,8 @@ export type TodayProgress = {
   focusHits: number
   chainStep: ChainStep
   completed: boolean
+  /** Catalog sticker id granted for finishing today's chain. Once per Shanghai day. */
+  rewardSticker?: string
 }
 
 export type LifetimeProgress = {
@@ -388,6 +391,10 @@ function normalizePersist(raw: unknown): PersistShape | null {
         focusHits: Math.max(0, Math.floor(asFiniteNumber(today.focusHits, 0))),
         chainStep: normalizeChainStep(today.chainStep),
         completed: Boolean(today.completed),
+        rewardSticker:
+          typeof today.rewardSticker === 'string' && today.rewardSticker.trim()
+            ? today.rewardSticker.trim()
+            : undefined,
       },
       lifetime: {
         totalStars: Math.max(0, Math.floor(asFiniteNumber(lifetime.totalStars, 0))),
@@ -438,6 +445,8 @@ function writeToday(target: TodayProgress, source: TodayProgress) {
   target.focusHits = source.focusHits
   target.chainStep = source.chainStep
   target.completed = source.completed
+  if (source.rewardSticker) target.rewardSticker = source.rewardSticker
+  else delete target.rewardSticker
 }
 
 function writeGates(target: Record<string, boolean>, source: Record<string, boolean>) {
@@ -608,6 +617,62 @@ export function completeDailyIfReady(): boolean {
   advanceIslandDayOncePerDate()
   persist()
   return true
+}
+
+export type DayCompleteClaim = {
+  ready: boolean
+  freshClaim: boolean
+  firstClear: boolean
+  islandAdvanced: boolean
+  stickerGranted: boolean
+  stickerId: string | null
+}
+
+function canClaimDayComplete(): boolean {
+  return persistState.today.completed || Boolean(persistState.gates.echoCave)
+}
+
+function grantDailyStickerOnce(): { stickerId: string | null; granted: boolean; fresh: boolean } {
+  const existing = persistState.today.rewardSticker
+  if (existing) {
+    return { stickerId: existing, granted: false, fresh: false }
+  }
+  const stickerId = nextStickerId(persistState.lifetime.stickers, persistState.dateKey)
+  const granted = grantSticker(stickerId)
+  persistState.today.rewardSticker = stickerId
+  persist()
+  return { stickerId, granted, fresh: true }
+}
+
+/** First successful daily-chain finish: mark complete, +1 island day (cap 7), grant one sticker. Idempotent. */
+export function claimDayCompleteRewards(): DayCompleteClaim {
+  ensureToday()
+  if (!canClaimDayComplete()) {
+    return {
+      ready: false,
+      freshClaim: false,
+      firstClear: false,
+      islandAdvanced: false,
+      stickerGranted: false,
+      stickerId: persistState.today.rewardSticker ?? null,
+    }
+  }
+
+  const firstClear = completeDailyIfReady()
+  const islandTick = advanceIslandDayOncePerDate()
+  const sticker = grantDailyStickerOnce()
+  const islandAdvanced =
+    islandTick ||
+    (sticker.fresh && persistState.lastIslandDate === persistState.dateKey && persistState.lifetime.animalsIslandDays > 0)
+
+  return {
+    ready: true,
+    freshClaim: sticker.fresh,
+    firstClear,
+    islandAdvanced,
+    stickerGranted: sticker.granted,
+    stickerId: sticker.stickerId,
+  }
 }
 
 function isKnownGate(gate: string): gate is GateId {

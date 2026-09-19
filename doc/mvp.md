@@ -66,6 +66,7 @@ targets: [
 | 拖一拖 / Drag Sort | 把英文芯片拖进对应词卡篮 | +1 星，`chainStep` → `fish` |
 | 读词钓鱼 / Word Fish | 读出或点中池里全部单词鱼；挂钩吊进网 | +1 星，贴纸「派对耳朵」，`chainStep` → `echo` |
 | 回声跟读 / Echo | 听后跟读；识别宽松成功；永远可点「我说好了」 | +1 星，当日目标完成，打卡天数 +1，`chainStep` → `complete` |
+| Day Complete | 庆祝页；首次通关发 1 张贴纸并展示 | 当日首次进入：`claimDayCompleteRewards` 发目录下一张未拥有贴纸，岛日 +1（同日一次，封顶 7）；再进只展示已领状态 |
 
 奖励 id 仍为 `ear`，避免旧存档失效。旧存档里的 `rug` 不再展示。无惩罚 UI：不出现红叉、不计分对比、不因失败阻断。触控热区偏大，面向约 5 岁儿童。
 
@@ -77,7 +78,7 @@ src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示�
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
-src/data/stickers.ts           贴纸目录（5 个占位 id，发奖 UI 后做）
+src/data/stickers.ts           贴纸目录（5 个占位 id；完成页按日发一张）
 src/data/todayTasks.ts         当日主任务文案（一条，不是清单）
 src/composables/progressStore.ts 进度数据模型 + localStorage 迁移 + 初始化清档
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 岛日 / 当日任务
@@ -111,12 +112,13 @@ src/views/*.vue                七种玩法 + Day Complete
 `useProgress()` / `progressStore` 提供关卡条 / 完成页 / 图鉴册 / 岛 7 格要用的薄 API。今日目标条与今日星星条已接 `today`。
 
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
-- `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
+- `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed, rewardSticker? }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7）
-- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
+- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回当天空白存档（不删词卡图片）。首页与动物岛大厅齿轮 → 设置弹窗 →「初始化」→「真的清空吗？」后调用，然后回首页
 - 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
-- 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）
+- 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。完成页再发一张：优先目录里还未拥有的 id，当天写入 `today.rewardSticker`，同日再进不重复发
+- `claimDayCompleteRewards()`：需已通关回声（或 `today.completed`）。首次：标记完成、岛日 +1、发贴纸；同日再调只返回已领贴纸，不加岛日
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）
 - `completeGate(gateId)`：仅已知每日关（闪卡/地鼠/拖一拖/钓鱼/回音）首次通关 +1 星；重玩同一关 `starsAwarded=0`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用，因此不加当日星、不推进 `chainStep`
 - 回声跟读通关即 `completeDailyIfReady`（最后一关，软通过：前面关卡漏了也不卡死孩子；完成页本身不再加星）
@@ -137,9 +139,19 @@ src/views/*.vue                七种玩法 + Day Complete
 
 首页与动物岛大厅右上角齿轮打开设置弹窗（关卡里没有，避免玩到一半误点）。「初始化」会先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键并回首页。不删 `public/word-cards`。
 
+## 完成庆祝页
+
+`/day-complete` 在每日链走完后庆祝。进入页时调用 `claimDayCompleteRewards()`：
+
+- 未通关回声：不发贴纸、不加岛日，文案提醒先玩完主线
+- 当日首次通关：发 1 张贴纸（`nextStickerId`：未拥有的 `ear` / `paw` / `leaf` / `shell` / `sun`），`animalsIslandDays` +1（上海日历日一次，封顶 7），并标记 `today.completed`
+- 同日再进：展示已领贴纸与当前岛日，不重复发放
+- 中文儿童向文案展示贴纸名；完成页再展示大号今日星星条，本身不加星
+- 不在本阶段做贴纸图鉴整页或岛 7 格地图
+
 ## 未做（按规格）
 
-- 完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉（后续串行阶段）
+- 贴纸图鉴页、动物岛 7 格视觉（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

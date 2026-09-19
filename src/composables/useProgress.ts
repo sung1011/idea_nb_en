@@ -4,6 +4,7 @@ import {
   GATE_ROUTES,
   addStar,
   advanceIslandDayOncePerDate,
+  claimDayCompleteRewards,
   completeDailyIfReady,
   completeGate,
   countChainDone,
@@ -28,6 +29,7 @@ export {
   GATE_ROUTES,
   addStar,
   advanceIslandDayOncePerDate,
+  claimDayCompleteRewards,
   completeDailyIfReady,
   completeGate,
   countChainDone,
@@ -55,6 +57,7 @@ export type {
   ChainStep,
   DailyGateId,
   DailyProgress,
+  DayCompleteClaim,
   GateId,
   LifetimeProgress,
   ProgressState,
@@ -62,7 +65,8 @@ export type {
   WarmupKind,
 } from './progressStore'
 
-export { PLACEHOLDER_STICKER_IDS, PLACEHOLDER_STICKERS } from '../data/stickers'
+export { ISLAND_DAY_CAP } from './progressStore'
+export { PLACEHOLDER_STICKER_IDS, PLACEHOLDER_STICKERS, nextStickerId, stickerById } from '../data/stickers'
 
 export function useProgress() {
   ensureTodayTask()
@@ -136,6 +140,7 @@ export function useProgress() {
     markWordSeen,
     grantSticker,
     completeDailyIfReady,
+    claimDayCompleteRewards,
     advanceIslandDayOncePerDate,
     hasDecoration,
     hasSticker,

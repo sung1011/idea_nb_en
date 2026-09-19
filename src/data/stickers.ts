@@ -4,7 +4,7 @@ export type StickerDef = {
   emoji: string
 }
 
-/** Catalog ids only. Granting / album UI is a later phase. */
+/** Catalog ids. Day-complete grants one unused id per Shanghai day; album UI is later. */
 export const PLACEHOLDER_STICKERS: StickerDef[] = [
   { id: 'ear', label: '派对耳朵', emoji: '👂' },
   { id: 'paw', label: '软爪印', emoji: '🐾' },
@@ -14,3 +14,20 @@ export const PLACEHOLDER_STICKERS: StickerDef[] = [
 ]
 
 export const PLACEHOLDER_STICKER_IDS = PLACEHOLDER_STICKERS.map((item) => item.id)
+
+export function stickerById(id: string): StickerDef | undefined {
+  return PLACEHOLDER_STICKERS.find((item) => item.id === id)
+}
+
+/** Next unused catalog id; if the child owns all five, fall back to a stable per-day pick. */
+export function nextStickerId(owned: readonly string[], day = ''): string {
+  const have = new Set(owned)
+  const fresh = PLACEHOLDER_STICKER_IDS.find((id) => !have.has(id))
+  if (fresh) return fresh
+  if (!day) return PLACEHOLDER_STICKER_IDS[0]
+  let n = 0
+  for (let i = 0; i < day.length; i += 1) {
+    n = (n * 33 + day.charCodeAt(i)) >>> 0
+  }
+  return PLACEHOLDER_STICKER_IDS[n % PLACEHOLDER_STICKER_IDS.length]
+}
