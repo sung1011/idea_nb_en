@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
@@ -46,6 +47,8 @@ function goAtlas() {
       <p class="zh-title">星词岛</p>
       <p class="sub">先去动物岛，帮小猫办 {{ family.family }} 派对</p>
     </div>
+
+    <today-goal-bar class="home-goal" />
 
     <div class="card island-card">
       <div class="island-preview">
@@ -98,8 +101,12 @@ function goAtlas() {
   font-weight: 650;
 }
 
+.home-goal {
+  margin-top: 14px;
+}
+
 .island-card {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .island-preview {

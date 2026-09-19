@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getCurrentFamily } from '../data/phonicsFamily'
@@ -46,8 +47,10 @@ onMounted(() => {
     <div class="hero center">
       <p class="eyebrow">Animals Island</p>
       <h1 class="title-xl">动物岛</h1>
-      <p class="sub">今日目标：帮小猫把 {{ family.family }} 朋友请来派对！</p>
+      <p class="sub">帮小猫把 {{ family.family }} 朋友请来派对</p>
     </div>
+
+    <today-goal-bar class="island-goal" />
 
     <div class="island-wrap">
       <div class="sun" aria-hidden="true" />
@@ -103,6 +106,10 @@ onMounted(() => {
   margin: 8px 0 0;
   font-size: 15px;
   color: var(--muted);
+}
+
+.island-goal {
+  margin: 4px 0 2px;
 }
 
 .island-wrap {

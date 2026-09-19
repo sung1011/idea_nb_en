@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
 import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
@@ -74,7 +75,7 @@ type LegacyAtlas = {
   words?: unknown
 }
 
-const MAIN_TASK_ID = 'animalsIsland'
+const MAIN_TASK_ID = MAIN_TASK_FISH_ECHO
 const DEFAULT_STARS_GOAL = 2
 
 export const GATE_ORDER: DailyGateId[] = ['soundFish', 'echoCave']
@@ -129,12 +130,36 @@ export function todayKey(): string {
   return dateKey()
 }
 
-function emptyToday(): TodayProgress {
+/** Stable per Shanghai calendar day; rotates through the current 15-word bank. */
+export function pickRotatingFocusWord(day = dateKey(), words = getCurrentFamily().targets): string {
+  if (!words.length) return 'cat'
+  let n = 0
+  for (let i = 0; i < day.length; i += 1) {
+    n = (n * 33 + day.charCodeAt(i)) >>> 0
+  }
+  return normalizeWord(words[n % words.length])
+}
+
+function fillTodayTaskIfMissing(today: TodayProgress, day: string): boolean {
+  let changed = false
+  if (!today.mainTaskId) {
+    today.mainTaskId = MAIN_TASK_ID
+    changed = true
+  }
+  if (!today.focusWord) {
+    today.focusWord = pickRotatingFocusWord(day)
+    changed = true
+  }
+  return changed
+}
+
+function emptyToday(day = dateKey()): TodayProgress {
   return {
     starsEarned: 0,
     starsGoal: DEFAULT_STARS_GOAL,
     mainTaskId: MAIN_TASK_ID,
     mainTaskDone: false,
+    focusWord: pickRotatingFocusWord(day),
     focusHits: 0,
     chainStep: 'fish',
     completed: false,
@@ -152,7 +177,7 @@ function emptyPersist(day = dateKey()): PersistShape {
   return {
     version: PERSIST_VERSION,
     dateKey: day,
-    today: emptyToday(),
+    today: emptyToday(day),
     lifetime: {
       totalStars: 0,
       stickers: [],
@@ -340,7 +365,7 @@ function applyDayRollover(data: PersistShape): PersistShape {
   if (data.dateKey !== today || data.familyId !== familyId) {
     data.dateKey = today
     data.familyId = familyId
-    writeToday(data.today, emptyToday())
+    writeToday(data.today, emptyToday(today))
     writeGates(data.gates, emptyGates())
   }
   return data
@@ -360,13 +385,23 @@ function persist() {
 export function ensureToday() {
   const today = dateKey()
   const familyId = getCurrentFamily().id
+  let changed = false
   if (persistState.dateKey !== today || persistState.familyId !== familyId) {
     persistState.dateKey = today
     persistState.familyId = familyId
-    writeToday(persistState.today, emptyToday())
+    writeToday(persistState.today, emptyToday(today))
     writeGates(persistState.gates, emptyGates())
-    persist()
+    changed = true
   }
+  if (fillTodayTaskIfMissing(persistState.today, persistState.dateKey)) {
+    changed = true
+  }
+  if (changed) persist()
+}
+
+/** Fill mainTaskId + rotating focusWord for the Shanghai day if the store left them empty. */
+export function ensureTodayTask() {
+  ensureToday()
 }
 
 ensureToday()

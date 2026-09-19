@@ -7,7 +7,7 @@ import {
   completeDailyIfReady,
   completeGate,
   dateKey,
-  ensureToday,
+  ensureTodayTask,
   grantSticker,
   hasDecoration,
   hasSticker,
@@ -24,12 +24,14 @@ export {
   completeGate,
   dateKey,
   ensureToday,
+  ensureTodayTask,
   grantSticker,
   hasDecoration,
   hasSticker,
   isWordUnlocked,
   markWordSeen,
   persistState,
+  pickRotatingFocusWord,
   progressStore,
   todayKey,
 } from './progressStore'
@@ -47,7 +49,7 @@ export type {
 export { PLACEHOLDER_STICKER_IDS, PLACEHOLDER_STICKERS } from '../data/stickers'
 
 export function useProgress() {
-  ensureToday()
+  ensureTodayTask()
 
   const dateKeyRef = computed(() => persistState.dateKey)
   const today = persistState.today
@@ -106,6 +108,7 @@ export function useProgress() {
     nextGate,
     nextRoute,
     startLabel,
+    ensureTodayTask,
     addStar,
     completeGate,
     markWordSeen,
