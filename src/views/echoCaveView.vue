@@ -17,8 +17,8 @@ import wordPic from '../components/wordPic.vue'
 import { sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
-const { completeGate } = useProgress()
-const { isPractice, isDemo, isReview, backPath, backLabel } = usePlayMode()
+const { completeGate, routeAfterGate } = useProgress()
+const { isPractice, isDemo, afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(3)
 const wordIndex = ref(0)
@@ -53,9 +53,7 @@ async function finishGate() {
   }
   await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(
-    isDemo.value ? '/play-gallery' : isReview.value ? '/letter-workshop' : '/day-complete',
-  )
+  void router.push(afterGate(routeAfterGate('echoCave')))
 }
 
 async function passWord() {
@@ -139,7 +137,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">Gate 2 · Echo Cave</p>
+      <p class="gate-tag">{{ isDemo ? '试玩 · 回声跟读' : isPractice ? '复习 · 回声跟读' : '主线 · 回声跟读' }}</p>
       <h1 class="title-lg">跟小猫喊朋友</h1>
       <p class="sub">{{ status }}</p>
     </div>

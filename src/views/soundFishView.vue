@@ -17,8 +17,8 @@ import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { completeGate } = useProgress()
-const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
+const { completeGate, routeAfterGate } = useProgress()
+const { isPractice, isDemo, afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(3)
 const caught = ref<string[]>([])
@@ -77,7 +77,7 @@ async function finishGate() {
   }
   await speak(pickPraise('finish'))
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  void router.push(afterGate('/echo-cave'))
+  void router.push(afterGate(routeAfterGate('soundFish')))
 }
 
 async function catchWord(word: string) {
@@ -173,7 +173,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center head">
-      <p class="gate-tag">Gate 1 · Word Fish</p>
+      <p class="gate-tag">{{ isDemo ? '试玩 · 读词钓鱼' : isPractice ? '复习 · 读词钓鱼' : '主线 · 读词钓鱼' }}</p>
       <h1 class="title-lg">读词钓鱼</h1>
       <p class="sub">小猫请客 · {{ prompt }}</p>
     </div>

@@ -8,7 +8,7 @@
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
 - 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 动物岛日格 / 当日任务）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁移，之后只读写 v2，避免两套互相覆盖
-- 今日目标条：首页与动物岛大厅顶部展示一条主任务 + 可选焦点词；缺省时按上海日历日写入 `mainTaskId=fishEcho`，并从 15 词库轮换 `focusWord`
+- 今日目标条：首页与动物岛大厅顶部展示一条主任务 + 可选焦点词；缺省时按上海日历日写入 `mainTaskId=dailyChain`，并从 15 词库轮换 `focusWord`
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
@@ -16,27 +16,29 @@
 
 ## 信息架构
 
-每日主路径 = **主题岛**（第一座：动物岛）。每座岛复用同一套受保护的自然拼读两关。
+每日主路径 = **主题岛**（第一座：动物岛）。动物岛「今日主线」走一条短链，进度写在 `today.chainStep`（`warmup | drag | fish | echo | complete`）。
 
-首页 → 动物岛大厅 → 读词钓鱼（Word Fish） → Echo Cave → Day Complete → 回首页
+首页 → 动物岛大厅 → 热身（闪卡翻翻 **或** 地鼠词，按上海日历日 `dateKey` 奇偶交替） → 拖一拖 → 读词钓鱼（Word Fish） → 回声跟读（Echo） → Day Complete → 回首页
+
+当日偶数日热身走 `/flash-flip`，奇数日走 `/whack-word`。找一找 / 唱一唱只在玩法一览，不进主线。
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
 **单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即解锁并写入本地：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼钓到、回音洞跟读通过；找一找点中也算成功使用。逛图鉴、解锁本身都不发当日星星。
 
-**玩法一览**列出 7 种玩法（原两关 + 闪卡翻翻 / 地鼠词 / 拖一拖 / 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星。动物岛主按钮「完整一日」仍只走原两关。点一点已移除。
+**玩法一览**列出 7 种玩法（主线四关 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加当日星星、不推进 `chainStep`。动物岛主按钮「今日主线」走完整四关链。点一点已移除。
 
-**Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：从 15 词库抽出 4 个，先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。试玩走 `?demo=1`，不加当日星星；点对解锁单词图鉴。
+**Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：从 15 词库抽出 4 个，先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。偶数日作为主线第一关，通关后 `completeGate('flashFlip')`，`chainStep` 进到 `drag`，再去拖一拖。试玩走 `?demo=1`，不加当日星星、不推进主线；点对解锁单词图鉴。
 
-**Whack Word（地鼠词）**是约 45–60 秒的点选关：从词库抽出 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波 3 只（目标 + 干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。试玩走 `?demo=1`，不加当日星星；点对解锁单词图鉴。
+**Whack Word（地鼠词）**是约 45–60 秒的点选关：从词库抽出 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波 3 只（目标 + 干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。奇数日作为主线第一关，通关后 `completeGate('whackWord')`，同样进入拖一拖。试玩走 `?demo=1`，不加当日星星、不推进主线；点对解锁单词图鉴。
 
-**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。试玩仍走 `?demo=1`。
+**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。主线通关后 `completeGate('dragSort')`，`chainStep` 进到 `fish`。试玩仍走 `?demo=1`。
 
 **Find Scene（找一找）**在 Vue 壳里嵌 Pixi 画布：派对场景点出本局抽出的 3 个词（目标用词卡图）。目标会轻轻浮动；点对发光加星标并读词，点到树/气球/礼物或空地轻轻提醒。试玩走 `?demo=1`，不加当日星星。不把整站改成 Pixi。
 
 **读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：每局从 15 词抽出 3 条带英文单词的鱼，鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。路由仍为 `/sound-fish`。
 
-当日两关进度按本地日期重置。每日路径里重复玩同一关不再加星。
+当日主线进度按上海日历日重置。每日路径里重复玩同一关不再加星。找一找 / 唱一唱仍只从玩法一览进入。
 
 ## 音族配置
 
@@ -56,12 +58,14 @@ targets: [
 
 同文件已写好 `-ap` / `-an`。切换：改 `currentFamilyId`。`warmupPhonemes` 仍留在配置里，本关不再走音素试次。
 
-## 两关奖励
+## 主线奖励
 
 | 关卡 | 行为要点 | 奖励 |
 | --- | --- | --- |
-| 读词钓鱼 / Word Fish | 读出或点中池里全部单词鱼；挂钩吊进网 | +1 星，贴纸「派对耳朵」 |
-| Echo Cave | 听后跟读；识别宽松成功；永远可点「我说好了」 | +1 星，当日目标完成，打卡天数 +1 |
+| 闪卡翻翻 **或** 地鼠词 | 当日二选一热身；点对过关 | +1 星，`chainStep` → `drag` |
+| 拖一拖 / Drag Sort | 把英文芯片拖进对应词卡篮 | +1 星，`chainStep` → `fish` |
+| 读词钓鱼 / Word Fish | 读出或点中池里全部单词鱼；挂钩吊进网 | +1 星，贴纸「派对耳朵」，`chainStep` → `echo` |
+| 回声跟读 / Echo | 听后跟读；识别宽松成功；永远可点「我说好了」 | +1 星，当日目标完成，打卡天数 +1，`chainStep` → `complete` |
 
 奖励 id 仍为 `ear`，避免旧存档失效。旧存档里的 `rug` 不再展示。无惩罚 UI：不出现红叉、不计分对比、不因失败阻断。触控热区偏大，面向约 5 岁儿童。
 
@@ -87,7 +91,7 @@ src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
 src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 弱工坊 / 图鉴）
-src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 完整一日）
+src/views/animalIslandView.vue 动物岛大厅（今日目标条 + 今日主线四关）
 src/views/letterWorkshopView.vue 字母工坊复习页
 src/views/wordAtlasView.vue    单词图鉴
 src/views/playGalleryView.vue  玩法一览
@@ -103,26 +107,27 @@ src/views/*.vue                七种玩法 + Day Complete
 `useProgress()` / `progressStore` 提供关卡条 / 完成页 / 图鉴册 / 岛 7 格要用的薄 API。今日目标条已接 `today`，其余界面后做。
 
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`；跨日或音族切换会重置 `today`，终身数据保留
-- `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。当前主路径仍是钓鱼 → 回音；`chainStep` 已预留 `warmup | drag | fish | echo | complete`（闪卡/地鼠 → 拖一拖 → 钓鱼 → 回音 → 完成）
+- `today`：`{ starsEarned, starsGoal?, mainTaskId, mainTaskDone, focusWord?, focusHits, chainStep, completed }`。主路径按 `chainStep`：`warmup`（闪卡/地鼠，由 `warmupKindForDate` 按 `dateKey` 奇偶选一）→ `drag` → `fish` → `echo` → `complete`。大厅「今日主线」进入当前步；关卡成功调用 `completeGate` 并 `routeAfterGate` 去下一步
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7）
-- helpers：`addStar(n)`、`completeGate(gateId)`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`ensureTodayTask()`、`pickRotatingFocusWord()`
+- helpers：`addStar(n)`、`completeGate(gateId)`、`routeAfterGate(gateId)`、`routeForChainStep(step)`、`warmupKindForDate()`、`markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`、`advanceIslandDayOncePerDate()`、`ensureTodayTask()`、`pickRotatingFocusWord()`
 - 同一上海日历日完成当日链最多 +1 岛日，封顶 7；关卡里听对 / 点对仍走 `markWordSeen` / `unlockWord`（只记已知音族词，不加星）
 - 贴纸只存 id。占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）
-- 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`
+- 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（含 `flashFlip` / `whackWord` / `dragSort` / `soundFish` / `echoCave`）
+- 回声跟读通关即 `completeDailyIfReady`（最后一关，软通过：前面关卡漏了也不卡死孩子）
 
 ## 今日目标条
 
 `todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）和**动物岛大厅**（岛名下、小岛场景上）。只显示一条主任务，不是关卡清单。
 
-- 主任务文案来自 `mainTaskId` 小表（`src/data/todayTasks.ts`）。当前主路径是钓鱼 → 回音，默认 id `fishEcho`，文案「今天钓起 3 条词鱼」（旧存档 `animalsIsland` 读同一句）
+- 主任务文案来自 `mainTaskId` 小表（`src/data/todayTasks.ts`）。默认 id `dailyChain`，文案「今天走完派对四关」（旧存档 `fishEcho` / `animalsIsland` 读同一句）
 - `mainTaskDone` / `completed` 时打勾并浅绿高亮，旁注「做好啦」
 - 有 `focusWord` 时多一行「多听一听 cat」
-- 右侧轻量当日星 `today.starsEarned` / `today.starsGoal`（默认 2）；完整星条后做
-- `ensureTodayTask()`：上海日历日若缺主任务或焦点词，写入 `fishEcho`，并用日期哈希从当前 15 词库轮换 `focusWord`（同日稳定）
+- 右侧轻量当日星 `today.starsEarned` / `today.starsGoal`（默认 4）；完整星条后做
+- `ensureTodayTask()`：上海日历日若缺主任务或焦点词，写入 `dailyChain`，并用日期哈希从当前 15 词库轮换 `focusWord`（同日稳定）。未完成的旧两关日会把空的 `chainStep=fish` 抬到 `warmup`
 
 ## 未做（按规格）
 
-- 完整五日链路由、完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉、完整当日星条（后续串行阶段）
+- 完成庆祝页改版、贴纸图鉴页、动物岛 7 格视觉、完整当日星条（后续串行阶段）
 - 第二座主题岛
 - 完整工坊体验
 - 真唱音高打分

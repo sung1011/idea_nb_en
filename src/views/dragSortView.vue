@@ -6,6 +6,7 @@ import starBar from '../components/starBar.vue'
 import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
 import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
+import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -20,7 +21,8 @@ type DragState = {
 }
 
 const router = useRouter()
-const { afterGate, backPath, backLabel } = usePlayMode()
+const { completeGate, routeAfterGate } = useProgress()
+const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 const vDrag = dragDirective()
 
 const words = sampleWords(3)
@@ -108,8 +110,11 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
+  if (!isPractice.value) {
+    completeGate('dragSort')
+  }
   await new Promise((resolve) => window.setTimeout(resolve, 400))
-  void router.push(afterGate('/play-gallery'))
+  void router.push(afterGate(routeAfterGate('dragSort')))
 }
 
 async function dropAt(x: number, y: number) {
@@ -184,7 +189,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">Drag Sort</p>
+      <p class="gate-tag">{{ isPractice ? '试玩 · 拖一拖' : '主线 · 拖一拖' }}</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
     </div>
 

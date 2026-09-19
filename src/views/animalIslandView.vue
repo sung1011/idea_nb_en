@@ -10,18 +10,42 @@ import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, gateTotal, allDoneToday, nextRoute, hasSticker } = useProgress()
+const {
+  state,
+  today,
+  gatesDone,
+  gateTotal,
+  allDoneToday,
+  nextRoute,
+  warmupKind,
+  hasSticker,
+} = useProgress()
 
-const gates = [
-  { id: 'soundFish', emoji: '🐠', label: '读词钓鱼' },
-  { id: 'echoCave', emoji: '🎤', label: 'Echo Cave' },
-] as const
+const gates = computed(() => {
+  const warmup =
+    warmupKind.value === 'flashFlip'
+      ? { id: 'flashFlip' as const, emoji: '🃏', label: '闪卡翻翻' }
+      : { id: 'whackWord' as const, emoji: '🐹', label: '地鼠词' }
+  return [
+    warmup,
+    { id: 'dragSort' as const, emoji: '🧺', label: '拖一拖' },
+    { id: 'soundFish' as const, emoji: '🐠', label: '读词钓鱼' },
+    { id: 'echoCave' as const, emoji: '🎤', label: '回声跟读' },
+  ]
+})
+
+function gateDone(id: (typeof gates.value)[number]['id']) {
+  if (id === 'flashFlip' || id === 'whackWord') {
+    return Boolean(state.daily.gates.flashFlip || state.daily.gates.whackWord)
+  }
+  return Boolean(state.daily.gates[id])
+}
 
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
   if (allDoneToday.value) return '看今日奖励'
-  if (gatesDone.value > 0) return '继续派对'
-  return '完整一日'
+  if (today.chainStep !== 'warmup' || gatesDone.value > 0) return '继续派对'
+  return '今日主线'
 })
 
 const hostEl = ref<HTMLElement | null>(null)
@@ -70,17 +94,17 @@ onMounted(() => {
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
 
     <div class="card progress-card">
-      <p ref="progressEl" class="progress-title">今日两关 · {{ gatesDone }}/{{ gateTotal }}</p>
+      <p ref="progressEl" class="progress-title">今日主线 · {{ gatesDone }}/{{ gateTotal }}</p>
       <div class="gates">
         <div
           v-for="gate in gates"
           :key="gate.id"
           class="gate"
-          :class="{ done: state.daily.gates[gate.id] }"
+          :class="{ done: gateDone(gate.id) }"
         >
           <span class="gate-emoji">{{ gate.emoji }}</span>
           <span>{{ gate.label }}</span>
-          <b>{{ state.daily.gates[gate.id] ? '好' : '待' }}</b>
+          <b>{{ gateDone(gate.id) ? '好' : '待' }}</b>
         </div>
       </div>
       <p class="parent-line">
@@ -114,8 +138,8 @@ onMounted(() => {
 
 .island-wrap {
   position: relative;
-  height: 210px;
-  margin: 4px 0 8px;
+  height: 168px;
+  margin: 2px 0 4px;
 }
 
 .sun {
@@ -225,15 +249,15 @@ onMounted(() => {
 
 .gates {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .gate {
   display: grid;
   grid-template-columns: 36px 1fr auto;
   align-items: center;
-  min-height: 48px;
-  padding: 8px 12px;
+  min-height: 42px;
+  padding: 6px 12px;
   border-radius: 16px;
   background: #f3f7fb;
   font-weight: 650;

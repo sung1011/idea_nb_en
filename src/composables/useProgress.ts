@@ -1,39 +1,52 @@
 import { computed, reactive } from 'vue'
 import {
-  GATE_ORDER,
+  DAILY_CHAIN,
   GATE_ROUTES,
   addStar,
   advanceIslandDayOncePerDate,
   completeDailyIfReady,
   completeGate,
+  countChainDone,
   dateKey,
   ensureTodayTask,
   grantSticker,
   hasDecoration,
   hasSticker,
+  isChainStepDone,
   markWordSeen,
   persistState,
+  routeAfterGate,
+  routeForChainStep,
+  warmupKindForDate,
 } from './progressStore'
 
 export {
+  ALL_GATES,
+  DAILY_CHAIN,
   GATE_ORDER,
   GATE_ROUTES,
   addStar,
   advanceIslandDayOncePerDate,
   completeDailyIfReady,
   completeGate,
+  countChainDone,
   dateKey,
   ensureToday,
   ensureTodayTask,
   grantSticker,
   hasDecoration,
   hasSticker,
+  isChainStepDone,
+  isWarmupDone,
   isWordUnlocked,
   markWordSeen,
   persistState,
   pickRotatingFocusWord,
   progressStore,
+  routeAfterGate,
+  routeForChainStep,
   todayKey,
+  warmupKindForDate,
 } from './progressStore'
 
 export type {
@@ -44,6 +57,7 @@ export type {
   LifetimeProgress,
   ProgressState,
   TodayProgress,
+  WarmupKind,
 } from './progressStore'
 
 export { PLACEHOLDER_STICKER_IDS, PLACEHOLDER_STICKERS } from '../data/stickers'
@@ -72,6 +86,9 @@ export function useProgress() {
         date: persistState.dateKey,
         familyId: persistState.familyId,
         gates: {
+          flashFlip: Boolean(persistState.gates.flashFlip),
+          whackWord: Boolean(persistState.gates.whackWord),
+          dragSort: Boolean(persistState.gates.dragSort),
           soundFish: Boolean(persistState.gates.soundFish),
           echoCave: Boolean(persistState.gates.echoCave),
         },
@@ -80,21 +97,21 @@ export function useProgress() {
     },
   })
 
-  const gatesDone = computed(
-    () => GATE_ORDER.filter((gate) => persistState.gates[gate]).length,
+  const gatesDone = computed(() => countChainDone(persistState.gates))
+  const gateTotal = DAILY_CHAIN.length
+  const allDoneToday = computed(
+    () => persistState.today.completed || persistState.today.chainStep === 'complete',
   )
-  const gateTotal = GATE_ORDER.length
-  const allDoneToday = computed(() => gatesDone.value === gateTotal)
-  const nextGate = computed(() => GATE_ORDER.find((gate) => !persistState.gates[gate]) ?? null)
-  const nextRoute = computed(() => {
-    if (nextGate.value) return GATE_ROUTES[nextGate.value]
-    return '/day-complete'
-  })
+  const nextGate = computed(
+    () => DAILY_CHAIN.find((step) => !isChainStepDone(step, persistState.gates)) ?? null,
+  )
+  const nextRoute = computed(() => routeForChainStep(persistState.today.chainStep, persistState.dateKey))
   const startLabel = computed(() => {
     if (allDoneToday.value) return '看今日奖励'
-    if (gatesDone.value > 0) return '继续冒险'
-    return '开始冒险'
+    if (persistState.today.chainStep !== 'warmup' || gatesDone.value > 0) return '继续冒险'
+    return '今日主线'
   })
+  const warmupKind = computed(() => warmupKindForDate(persistState.dateKey))
 
   return {
     dateKey: dateKeyRef,
@@ -108,6 +125,9 @@ export function useProgress() {
     nextGate,
     nextRoute,
     startLabel,
+    warmupKind,
+    routeAfterGate,
+    routeForChainStep,
     ensureTodayTask,
     addStar,
     completeGate,

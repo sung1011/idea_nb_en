@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
+import { MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
 import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
@@ -9,8 +9,9 @@ const PERSIST_VERSION = 2
 const ISLAND_DAY_CAP = 7
 const SHANGHAI_TZ = 'Asia/Shanghai'
 
-export type DailyGateId = 'soundFish' | 'echoCave'
-export type GateId = DailyGateId | 'flashFlip' | 'whackWord' | 'dragSort'
+export type DailyGateId = 'flashFlip' | 'whackWord' | 'dragSort' | 'soundFish' | 'echoCave'
+export type GateId = DailyGateId
+export type WarmupKind = 'flashFlip' | 'whackWord'
 
 export type ChainStep = 'warmup' | 'drag' | 'fish' | 'echo' | 'complete'
 
@@ -75,12 +76,26 @@ type LegacyAtlas = {
   words?: unknown
 }
 
-const MAIN_TASK_ID = MAIN_TASK_FISH_ECHO
-const DEFAULT_STARS_GOAL = 2
+const MAIN_TASK_ID = MAIN_TASK_DAILY_CHAIN
+const DEFAULT_STARS_GOAL = 4
 
+export const ALL_GATES: DailyGateId[] = [
+  'flashFlip',
+  'whackWord',
+  'dragSort',
+  'soundFish',
+  'echoCave',
+]
+
+/** @deprecated Prefer DAILY_CHAIN; kept for callers that still count phonics gates. */
 export const GATE_ORDER: DailyGateId[] = ['soundFish', 'echoCave']
 
+export const DAILY_CHAIN: Exclude<ChainStep, 'complete'>[] = ['warmup', 'drag', 'fish', 'echo']
+
 export const GATE_ROUTES: Record<DailyGateId, string> = {
+  flashFlip: '/flash-flip',
+  whackWord: '/whack-word',
+  dragSort: '/drag-sort',
   soundFish: '/sound-fish',
   echoCave: '/echo-cave',
 }
@@ -140,17 +155,91 @@ export function pickRotatingFocusWord(day = dateKey(), words = getCurrentFamily(
   return normalizeWord(words[n % words.length])
 }
 
-function fillTodayTaskIfMissing(today: TodayProgress, day: string): boolean {
+function fillTodayTaskIfMissing(
+  today: TodayProgress,
+  day: string,
+  gates?: Record<string, boolean>,
+): boolean {
   let changed = false
-  if (!today.mainTaskId) {
-    today.mainTaskId = MAIN_TASK_ID
-    changed = true
+  if (!today.mainTaskId || today.mainTaskId === MAIN_TASK_FISH_ECHO || today.mainTaskId === 'animalsIsland') {
+    if (today.mainTaskId !== MAIN_TASK_ID) {
+      today.mainTaskId = MAIN_TASK_ID
+      changed = true
+    }
   }
   if (!today.focusWord) {
     today.focusWord = pickRotatingFocusWord(day)
     changed = true
   }
+  if (!today.completed && (today.starsGoal ?? 0) < DEFAULT_STARS_GOAL) {
+    today.starsGoal = DEFAULT_STARS_GOAL
+    changed = true
+  }
+  if (
+    gates &&
+    !today.completed &&
+    today.chainStep === 'fish' &&
+    !gates.soundFish &&
+    !gates.echoCave &&
+    !gates.dragSort &&
+    !isWarmupDone(gates)
+  ) {
+    today.chainStep = 'warmup'
+    changed = true
+  }
   return changed
+}
+
+/** Even Shanghai day → Flash Flip; odd day → Whack Word. */
+export function warmupKindForDate(day = dateKey()): WarmupKind {
+  const n = Number.parseInt(day.slice(-2), 10)
+  return Number.isFinite(n) && n % 2 === 0 ? 'flashFlip' : 'whackWord'
+}
+
+export function routeForChainStep(step: ChainStep, day = dateKey()): string {
+  switch (step) {
+    case 'warmup':
+      return GATE_ROUTES[warmupKindForDate(day)]
+    case 'drag':
+      return GATE_ROUTES.dragSort
+    case 'fish':
+      return GATE_ROUTES.soundFish
+    case 'echo':
+      return GATE_ROUTES.echoCave
+    case 'complete':
+      return '/day-complete'
+  }
+}
+
+export function routeAfterGate(gate: GateId, day = dateKey()): string {
+  return routeForChainStep(GATE_CHAIN_NEXT[gate], day)
+}
+
+export function isWarmupDone(gates: Record<string, boolean>): boolean {
+  return Boolean(gates.flashFlip || gates.whackWord)
+}
+
+export function isChainStepDone(
+  step: Exclude<ChainStep, 'complete'>,
+  gates: Record<string, boolean>,
+): boolean {
+  if (step === 'warmup') return isWarmupDone(gates)
+  if (step === 'drag') return Boolean(gates.dragSort)
+  if (step === 'fish') return Boolean(gates.soundFish)
+  return Boolean(gates.echoCave)
+}
+
+export function countChainDone(gates: Record<string, boolean>): number {
+  return DAILY_CHAIN.filter((step) => isChainStepDone(step, gates)).length
+}
+
+function normalizeGates(raw?: Partial<Record<string, unknown>> | null): Record<DailyGateId, boolean> {
+  const next = emptyGates()
+  if (!raw) return next
+  for (const id of ALL_GATES) {
+    next[id] = Boolean(raw[id])
+  }
+  return next
 }
 
 function emptyToday(day = dateKey()): TodayProgress {
@@ -161,13 +250,16 @@ function emptyToday(day = dateKey()): TodayProgress {
     mainTaskDone: false,
     focusWord: pickRotatingFocusWord(day),
     focusHits: 0,
-    chainStep: 'fish',
+    chainStep: 'warmup',
     completed: false,
   }
 }
 
 function emptyGates(): Record<DailyGateId, boolean> {
   return {
+    flashFlip: false,
+    whackWord: false,
+    dragSort: false,
     soundFish: false,
     echoCave: false,
   }
@@ -225,7 +317,7 @@ function clampIslandDays(value: unknown): number {
   return Math.min(ISLAND_DAY_CAP, n)
 }
 
-function normalizeChainStep(value: unknown, fallback: ChainStep = 'fish'): ChainStep {
+function normalizeChainStep(value: unknown, fallback: ChainStep = 'warmup'): ChainStep {
   return typeof value === 'string' && CHAIN_STEPS.includes(value as ChainStep)
     ? (value as ChainStep)
     : fallback
@@ -252,17 +344,14 @@ function migrateLegacyProgress(legacy: LegacyProgress, atlasWordsIn: string[]): 
   const daily = legacy.daily
   const legacyDate = typeof daily?.date === 'string' ? daily.date : next.dateKey
   next.familyId = typeof daily?.familyId === 'string' ? daily.familyId : next.familyId
-  next.gates = {
-    soundFish: Boolean(daily?.gates?.soundFish),
-    echoCave: Boolean(daily?.gates?.echoCave),
-  }
+  next.gates = normalizeGates(daily?.gates)
 
   const completed = Boolean(daily?.dayComplete) || (next.gates.soundFish && next.gates.echoCave)
   if (legacyDate === next.dateKey) {
-    next.today.starsEarned = GATE_ORDER.filter((gate) => next.gates[gate]).length
+    next.today.starsEarned = countChainDone(next.gates)
     next.today.mainTaskDone = completed
     next.today.completed = completed
-    next.today.chainStep = completed ? 'complete' : next.gates.soundFish ? 'echo' : 'fish'
+    next.today.chainStep = completed ? 'complete' : next.gates.soundFish ? 'echo' : 'warmup'
   } else {
     next.dateKey = next.dateKey
     next.gates = emptyGates()
@@ -307,10 +396,7 @@ function normalizePersist(raw: unknown): PersistShape | null {
         animalsIslandDays: clampIslandDays(lifetime.animalsIslandDays),
       },
       familyId: typeof parsed.familyId === 'string' ? parsed.familyId : getCurrentFamily().id,
-      gates: {
-        soundFish: Boolean((parsed.gates as PersistShape['gates'] | undefined)?.soundFish),
-        echoCave: Boolean((parsed.gates as PersistShape['gates'] | undefined)?.echoCave),
-      },
+      gates: normalizeGates(parsed.gates),
       decorations: asStringArray(parsed.decorations),
       lastIslandDate: typeof parsed.lastIslandDate === 'string' ? parsed.lastIslandDate : null,
     }
@@ -355,8 +441,9 @@ function writeToday(target: TodayProgress, source: TodayProgress) {
 }
 
 function writeGates(target: Record<string, boolean>, source: Record<string, boolean>) {
-  target.soundFish = Boolean(source.soundFish)
-  target.echoCave = Boolean(source.echoCave)
+  for (const id of ALL_GATES) {
+    target[id] = Boolean(source[id])
+  }
 }
 
 function applyDayRollover(data: PersistShape): PersistShape {
@@ -393,7 +480,7 @@ export function ensureToday() {
     writeGates(persistState.gates, emptyGates())
     changed = true
   }
-  if (fillTodayTaskIfMissing(persistState.today, persistState.dateKey)) {
+  if (fillTodayTaskIfMissing(persistState.today, persistState.dateKey, persistState.gates)) {
     changed = true
   }
   if (changed) persist()
@@ -473,8 +560,8 @@ export function advanceIslandDayOncePerDate(): boolean {
 export function completeDailyIfReady(): boolean {
   ensureToday()
   if (persistState.today.completed) return false
-  const ready = GATE_ORDER.every((gate) => persistState.gates[gate])
-  if (!ready) return false
+  // Last daily gate. Earlier steps award stars; skipping them does not lock the child out.
+  if (!persistState.gates.echoCave) return false
   persistState.today.completed = true
   persistState.today.mainTaskDone = true
   persistState.today.chainStep = 'complete'
@@ -530,10 +617,7 @@ export function readCompatState(): ProgressState {
     daily: {
       date: persistState.dateKey,
       familyId: persistState.familyId,
-      gates: {
-        soundFish: Boolean(persistState.gates.soundFish),
-        echoCave: Boolean(persistState.gates.echoCave),
-      },
+      gates: normalizeGates(persistState.gates),
       dayComplete: persistState.today.completed,
     },
   }

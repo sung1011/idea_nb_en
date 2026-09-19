@@ -5,6 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
+import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -18,7 +19,8 @@ type CardFace = {
 const STUDY_LINGER_MS = 8000
 
 const router = useRouter()
-const { afterGate, backPath, backLabel } = usePlayMode()
+const { completeGate, routeAfterGate } = useProgress()
+const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(4)
 const phase = ref<'study' | 'quiz'>('study')
@@ -115,9 +117,12 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
+  if (!isPractice.value) {
+    completeGate('flashFlip')
+  }
   if (!alive) return
   await wait(700)
-  void router.push(afterGate('/play-gallery'))
+  void router.push(afterGate(routeAfterGate('flashFlip')))
 }
 
 async function onTap(word: string, event: MouseEvent) {
@@ -166,7 +171,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">闪卡翻翻 · Flash Flip</p>
+      <p class="gate-tag">{{ isPractice ? '试玩 · 闪卡翻翻' : '主线 · 闪卡翻翻' }}</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
       <p class="sub">先看卡片，再听一听点对</p>
     </div>

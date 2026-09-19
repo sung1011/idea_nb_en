@@ -17,7 +17,7 @@ const burstEl = ref<HTMLElement | null>(null)
 const starsLine = computed(() =>
   allDoneToday.value
     ? '小猫把朋友请来啦，星星已收进动物岛。'
-    : '先把两关玩完，派对星星会亮起来。',
+    : '先把今日主线玩完，派对星星会亮起来。',
 )
 
 onMounted(() => {

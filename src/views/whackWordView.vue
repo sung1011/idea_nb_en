@@ -5,6 +5,7 @@ import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake } from '../composables/useMotion'
 import { usePlayMode } from '../composables/usePlayMode'
+import { useProgress } from '../composables/useProgress'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -19,7 +20,8 @@ type Mole = {
 const NEED_CORRECT = 4
 
 const router = useRouter()
-const { afterGate, backPath, backLabel } = usePlayMode()
+const { completeGate, routeAfterGate } = useProgress()
+const { isPractice, afterGate, backPath, backLabel } = usePlayMode()
 
 const words = sampleWords(5)
 const extra = pickOtherWords(words, 1)
@@ -101,9 +103,12 @@ async function finish() {
   playSuccess()
   await tweenCelebrate(titleEl.value)
   await speak(pickPraise('finish'))
+  if (!isPractice.value) {
+    completeGate('whackWord')
+  }
   if (!alive) return
   await wait(700)
-  void router.push(afterGate('/play-gallery'))
+  void router.push(afterGate(routeAfterGate('whackWord')))
 }
 
 async function onTap(mole: Mole, event: MouseEvent) {
@@ -160,7 +165,7 @@ onUnmounted(() => {
     </header>
 
     <div class="center">
-      <p class="gate-tag">地鼠词 · Whack Word</p>
+      <p class="gate-tag">{{ isPractice ? '试玩 · 地鼠词' : '主线 · 地鼠词' }}</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
       <p class="sub">听单词，点对的地鼠</p>
     </div>

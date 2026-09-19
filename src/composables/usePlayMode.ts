@@ -20,6 +20,7 @@ export function usePlayMode() {
 
   function afterGate(dailyNext: string) {
     if (isDemo.value) return '/play-gallery'
+    if (isReview.value && dailyNext === '/day-complete') return '/letter-workshop'
     return playPath(dailyNext)
   }
 

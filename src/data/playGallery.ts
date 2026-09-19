@@ -8,7 +8,7 @@ export type PlayItem = {
 
 export const playItems: PlayItem[] = [
   { id: 'soundFish', emoji: '🐠', name: 'Word Fish', zh: '读词钓鱼', path: '/sound-fish' },
-  { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '跟读回音', path: '/echo-cave' },
+  { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '回声跟读', path: '/echo-cave' },
   { id: 'flashFlip', emoji: '🃏', name: 'Flash Flip', zh: '闪卡翻翻', path: '/flash-flip' },
   { id: 'whackWord', emoji: '🐹', name: 'Whack Word', zh: '地鼠词', path: '/whack-word' },
   { id: 'dragSort', emoji: '🧺', name: 'Drag Sort', zh: '拖一拖', path: '/drag-sort' },
