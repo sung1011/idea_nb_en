@@ -56,7 +56,7 @@ watch(earned, async (next, prev) => {
 <template>
   <div
     class="today-stars"
-    :class="[size, { done: filledCount >= goal }]"
+    :class="[size, { done: filledCount >= goal, crowded: goal > 6 }]"
     data-today-star-bar
     :aria-label="labelText"
   >
@@ -105,9 +105,22 @@ watch(earned, async (next, prev) => {
 
 .today-stars-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.today-stars.crowded .slot {
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+}
+
+.today-stars.crowded.compact .slot {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
 }
 
 .slot {

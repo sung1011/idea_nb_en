@@ -11,7 +11,9 @@ import letterWorkshopView from './views/letterWorkshopView.vue'
 import playGalleryView from './views/playGalleryView.vue'
 import singAlongView from './views/singAlongView.vue'
 import soundFishView from './views/soundFishView.vue'
+import soundSpellView from './views/soundSpellView.vue'
 import stickerAlbumView from './views/stickerAlbumView.vue'
+import storyBookView from './views/storyBookView.vue'
 import whackWordView from './views/whackWordView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
 
@@ -29,6 +31,8 @@ export const router = createRouter({
     { path: '/flash-flip', name: 'flashFlip', component: flashFlipView },
     { path: '/whack-word', name: 'whackWord', component: whackWordView },
     { path: '/drag-sort', name: 'dragSort', component: dragSortView },
+    { path: '/sound-spell', name: 'soundSpell', component: soundSpellView },
+    { path: '/story-book', name: 'storyBook', component: storyBookView },
     { path: '/sing-along', name: 'singAlong', component: singAlongView },
     { path: '/find-scene', name: 'findScene', component: findSceneView },
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },

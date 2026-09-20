@@ -84,6 +84,14 @@ export function gateDragSub(themeHint: string): string {
   return themeHint ? `拖到对应的图 · ${themeHint}` : ''
 }
 
+export function gateSpellSub(themeHint: string): string {
+  return themeHint ? `听单词，用字母块拼出来 · ${themeHint}` : '听单词，用字母块拼出来'
+}
+
+export function gateBookSub(themeHint: string): string {
+  return themeHint ? `点一页听一听，试着拼读 · ${themeHint}` : '点一页听一听，试着拼读'
+}
+
 export function gateFishLead(chapterId?: string, useTheme = false): string {
   if (!useTheme) return '小猫请客'
   if (chapterId === CHAPTER_2_ID) return '听声找伙伴'

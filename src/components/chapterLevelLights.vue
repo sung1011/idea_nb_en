@@ -72,13 +72,17 @@ onMounted(() => {
 <template>
   <div
     class="chapter-lights"
-    :class="{ full, embedded }"
+    :class="{ full, embedded, crowded: cap > 6 }"
     data-chapter-level-lights
     :aria-label="labelText"
     aria-live="polite"
   >
     <p v-if="showLabel" class="chapter-lights-label">{{ labelText }}</p>
-    <div class="chapter-lights-row" role="list">
+    <div
+      class="chapter-lights-row"
+      role="list"
+      :style="{ '--level-cap': String(cap) }"
+    >
       <span
         v-for="slot in slots"
         :key="slot.order"
@@ -133,9 +137,14 @@ onMounted(() => {
 
 .chapter-lights-row {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--level-cap, 8), minmax(0, 1fr));
   gap: 6px;
   align-items: center;
+}
+
+.chapter-lights.crowded .cell {
+  min-height: 32px;
+  font-size: 13px;
 }
 
 .cell {

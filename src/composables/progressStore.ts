@@ -3,6 +3,10 @@ import {
   ANIMALS_CHAPTER_ID,
   CHAPTERS,
   DEFAULT_CHAPTER_ID,
+  INSERTED_PLAY_KINDS,
+  LEGACY_SIX_PLAY_ORDER,
+  chapterLevelTotal,
+  defaultLevelIdForPlay,
   getChapter,
   getChapterOrDefault,
   getFirstLevel,
@@ -11,11 +15,13 @@ import {
   getNextLevelDef,
   getPriorChapter,
   isKnownLevelId,
+  levelIdForPlay,
   listAllLevels,
   listChapterLevels,
   playKindToGate,
   type LevelDef,
   type LevelStatus,
+  type PlayKind,
 } from '../data/chapters'
 import { families, getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 import { ALBUM_STICKERS } from '../data/stickers'
@@ -24,7 +30,7 @@ import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
 const LEGACY_PROGRESS_KEY = 'starWords.v1'
 const LEGACY_ATLAS_KEY = 'starWords.atlas.v1'
-const PERSIST_VERSION = 3
+const PERSIST_VERSION = 4
 export const ISLAND_DAY_CAP = 7
 const SHANGHAI_TZ = 'Asia/Shanghai'
 
@@ -151,7 +157,7 @@ type LegacyAtlas = {
 }
 
 const MAIN_TASK_ID = MAIN_TASK_CHAPTER_1
-const DEFAULT_STARS_GOAL = 6
+const DEFAULT_STARS_GOAL = chapterLevelTotal(DEFAULT_CHAPTER_ID)
 
 export const ALL_GATES: DailyGateId[] = [
   'flashFlip',
@@ -175,11 +181,11 @@ export const GATE_ROUTES: Record<DailyGateId, string> = {
 }
 
 export const GATE_TO_LEVEL: Record<GateId, string> = {
-  flashFlip: 'ch1-1',
-  whackWord: 'ch1-2',
-  dragSort: 'ch1-3',
-  soundFish: 'ch1-4',
-  echoCave: 'ch1-5',
+  flashFlip: defaultLevelIdForPlay('flashFlip'),
+  whackWord: defaultLevelIdForPlay('whackWord'),
+  dragSort: defaultLevelIdForPlay('dragSort'),
+  soundFish: defaultLevelIdForPlay('wordFish'),
+  echoCave: defaultLevelIdForPlay('echo'),
 }
 
 const CHAIN_STEPS: ChainStep[] = ['warmup', 'drag', 'fish', 'echo', 'complete']
@@ -522,11 +528,20 @@ function isChapterClearedInSave(save: ChapterSave, chapterId: string): boolean {
   return defs.length > 0 && defs.every((item) => save.levels[item.id] === 'cleared')
 }
 
+function chapterHasAnyProgress(levels: Record<string, LevelStatus>, chapterId: string): boolean {
+  return listChapterLevels(chapterId).some((item) => {
+    const status = levels[item.id]
+    return status === 'cleared' || status === 'unlocked'
+  })
+}
+
 function isChapterUnlockedInSave(save: ChapterSave, chapterId: string): boolean {
   if (!getChapter(chapterId)) return false
   const prior = getPriorChapter(chapterId)
   if (!prior) return true
-  return isChapterClearedInSave(save, prior.id)
+  if (isChapterClearedInSave(save, prior.id)) return true
+  // Grandfather: already-started later chapters stay open after 6→8 inserts.
+  return chapterHasAnyProgress(save.levels, chapterId)
 }
 
 function repairChapterInvariants(save: ChapterSave): ChapterSave {
@@ -541,29 +556,24 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   for (const chapter of CHAPTERS) {
     const defs = chapter.levels
     const prior = getPriorChapter(chapter.id)
-    const chapterOpen = !prior || defsOfCleared(nextLevels, prior.id)
+    const chapterOpen =
+      !prior || defsOfCleared(nextLevels, prior.id) || chapterHasAnyProgress(nextLevels, chapter.id)
 
     if (!chapterOpen) {
       for (const def of defs) nextLevels[def.id] = 'locked'
       continue
     }
 
-    let highestCleared = -1
-    for (let i = 0; i < defs.length; i += 1) {
-      if (nextLevels[defs[i].id] === 'cleared') highestCleared = i
-    }
-    for (let i = 0; i <= highestCleared; i += 1) {
-      nextLevels[defs[i].id] = 'cleared'
-    }
-    const unlockIdx = highestCleared + 1
-    if (unlockIdx >= 0 && unlockIdx < defs.length) {
-      nextLevels[defs[unlockIdx].id] = 'unlocked'
-    }
-    for (let i = unlockIdx + 1; i < defs.length; i += 1) {
-      nextLevels[defs[i].id] = 'locked'
-    }
-    if (highestCleared < 0) {
-      nextLevels[defs[0].id] = 'unlocked'
+    // Do not fill cleared gaps — inserted plays must stay playable.
+    let unlockedGiven = false
+    for (const def of defs) {
+      if (nextLevels[def.id] === 'cleared') continue
+      if (!unlockedGiven) {
+        nextLevels[def.id] = 'unlocked'
+        unlockedGiven = true
+      } else {
+        nextLevels[def.id] = 'locked'
+      }
     }
   }
 
@@ -603,22 +613,71 @@ type DailyHints = {
   lastIslandDate: string | null
 }
 
+function remapLegacySixLevelId(id: string): string {
+  const match = /^(ch\d+)-(\d+)$/.exec(id)
+  if (!match) return id
+  const chapterId = match[1]
+  const order = Number.parseInt(match[2], 10)
+  const play = LEGACY_SIX_PLAY_ORDER[order - 1]
+  if (!play || !getChapter(chapterId)) return id
+  return levelIdForPlay(play, chapterId) ?? id
+}
+
+/** Old 6-level saves have chN-4/5/6 keys and no chN-7/8. Do not remap live 8-level ids. */
+function looksLikeLegacySixLevelSave(rawLevels: Record<string, unknown>): boolean {
+  return CHAPTERS.some((chapter) => {
+    const hasNewTail = rawLevels[`${chapter.id}-7`] != null || rawLevels[`${chapter.id}-8`] != null
+    if (hasNewTail) return false
+    return (
+      rawLevels[`${chapter.id}-4`] != null ||
+      rawLevels[`${chapter.id}-5`] != null ||
+      rawLevels[`${chapter.id}-6`] != null
+    )
+  })
+}
+
+function lockFinaleUntilInsertedPlaysDone(levels: Record<string, LevelStatus>) {
+  for (const chapter of CHAPTERS) {
+    const insertedOpen = chapter.levels
+      .filter((item) => INSERTED_PLAY_KINDS.includes(item.play))
+      .some((item) => levels[item.id] !== 'cleared')
+    if (!insertedOpen) continue
+    const finaleId = levelIdForPlay('chapterFinale', chapter.id)
+    if (finaleId && levels[finaleId] === 'cleared') {
+      levels[finaleId] = 'locked'
+    }
+  }
+}
+
+function markPlayCleared(
+  save: ChapterSave,
+  play: PlayKind,
+  chapterId: string,
+  when: string,
+) {
+  const id = levelIdForPlay(play, chapterId)
+  if (!id) return
+  save.levels[id] = 'cleared'
+  if (!save.firstClearStars.includes(id)) save.firstClearStars.push(id)
+  save.firstClearAt[id] = when
+}
+
 /**
- * Map old daily-chain saves into Chapter 1.
- * Finished island-day / day-complete → ch1-1..ch1-5 cleared, ch1-6 unlocked.
- * Partial same-session gates map in order (warmup credits ch1-1).
+ * Map old daily-chain saves into Chapter 1 by play kind (not brittle ch1-4 ids).
+ * Finished island-day / day-complete → flash/whack/drag/fish/echo cleared;
+ * inserted 听音拼一拼 / 小书点读 stay locked so kids play them; finale locked until then.
+ * Partial same-session gates map in order (warmup credits flashFlip).
  * Atlas / stickers / lifetime stars stay as-is. No chapter sticker (finale is new).
  */
 function migrateDailyToChapter(daily: DailyHints): ChapterSave {
   const save = emptyChapterSave()
-  const defs = listChapterLevels(ANIMALS_CHAPTER_ID)
-  const cleared = new Set<string>()
+  const clearedPlays = new Set<PlayKind>()
 
-  if (daily.gates.flashFlip) cleared.add('ch1-1')
-  if (daily.gates.whackWord) cleared.add('ch1-2')
-  if (daily.gates.dragSort) cleared.add('ch1-3')
-  if (daily.gates.soundFish) cleared.add('ch1-4')
-  if (daily.gates.echoCave) cleared.add('ch1-5')
+  if (daily.gates.flashFlip) clearedPlays.add('flashFlip')
+  if (daily.gates.whackWord) clearedPlays.add('whackWord')
+  if (daily.gates.dragSort) clearedPlays.add('dragSort')
+  if (daily.gates.soundFish) clearedPlays.add('wordFish')
+  if (daily.gates.echoCave) clearedPlays.add('echo')
 
   const finishedOldChain =
     daily.today.completed ||
@@ -627,23 +686,19 @@ function migrateDailyToChapter(daily: DailyHints): ChapterSave {
     Boolean(daily.lastIslandDate)
 
   if (finishedOldChain) {
-    for (const id of ['ch1-1', 'ch1-2', 'ch1-3', 'ch1-4', 'ch1-5']) cleared.add(id)
+    for (const play of ['flashFlip', 'whackWord', 'dragSort', 'wordFish', 'echo'] as PlayKind[]) {
+      clearedPlays.add(play)
+    }
   } else if (isWarmupDone(daily.gates)) {
-    cleared.add('ch1-1')
-    if (daily.gates.whackWord) cleared.add('ch1-2')
+    clearedPlays.add('flashFlip')
+    if (daily.gates.whackWord) clearedPlays.add('whackWord')
   }
 
-  let maxIdx = -1
-  for (let i = 0; i < defs.length; i += 1) {
-    if (cleared.has(defs[i].id)) maxIdx = i
-  }
   const when = daily.lastIslandDate || dateKey()
-  for (let i = 0; i <= maxIdx; i += 1) {
-    const id = defs[i].id
-    save.levels[id] = 'cleared'
-    if (!save.firstClearStars.includes(id)) save.firstClearStars.push(id)
-    save.firstClearAt[id] = when
+  for (const play of clearedPlays) {
+    markPlayCleared(save, play, ANIMALS_CHAPTER_ID, when)
   }
+  lockFinaleUntilInsertedPlaysDone(save.levels)
   return repairChapterInvariants(save)
 }
 
@@ -657,19 +712,41 @@ function normalizeChapterSave(raw: unknown, daily: DailyHints): ChapterSave {
       ? parsed.currentChapterId
       : DEFAULT_CHAPTER_ID
   const first = getFirstLevel(chapterId)
+  const rawLevels = parsed.levels as Record<string, unknown>
+  const remap = looksLikeLegacySixLevelSave(rawLevels)
   const levels: Record<string, LevelStatus> = emptyAllLevels()
-  for (const [id, status] of Object.entries(parsed.levels)) {
-    if (isLevelStatus(status)) levels[id] = status
+  for (const [id, status] of Object.entries(rawLevels)) {
+    if (!isLevelStatus(status)) continue
+    const nextId = remap ? remapLegacySixLevelId(id) : id
+    levels[nextId] = status
   }
+
+  const rawStars = asStringArray(parsed.firstClearStars)
+  const firstClearStars = remap ? rawStars.map(remapLegacySixLevelId) : rawStars
+  const rawAt =
+    parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {}
+  const firstClearAt: Record<string, string> = {}
+  for (const [id, when] of Object.entries(rawAt)) {
+    if (typeof when !== 'string' || !when) continue
+    firstClearAt[remap ? remapLegacySixLevelId(id) : id] = when
+  }
+  const highestUnlocked = remap
+    ? remapLegacySixLevelId(
+        typeof parsed.highestUnlocked === 'string' ? parsed.highestUnlocked : first.id,
+      )
+    : typeof parsed.highestUnlocked === 'string'
+      ? parsed.highestUnlocked
+      : first.id
+
+  if (remap) lockFinaleUntilInsertedPlaysDone(levels)
 
   return repairChapterInvariants({
     currentChapterId: chapterId,
-    highestUnlocked: typeof parsed.highestUnlocked === 'string' ? parsed.highestUnlocked : first.id,
+    highestUnlocked,
     levels,
-    firstClearStars: asStringArray(parsed.firstClearStars),
+    firstClearStars,
     chapterStickers: asStringArray(parsed.chapterStickers),
-    firstClearAt:
-      parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {},
+    firstClearAt,
     celebrated: Boolean(parsed.celebrated),
     celebratedChapters: asStringArray(parsed.celebratedChapters),
   })
@@ -1250,7 +1327,8 @@ export function completeLevel(id: string): CompleteLevelResult {
   }
 
   persistState.chapter.levels[id] = 'cleared'
-  if (!persistState.chapter.firstClearStars.includes(id)) {
+  const alreadyAwarded = persistState.chapter.firstClearStars.includes(id)
+  if (!alreadyAwarded) {
     persistState.chapter.firstClearStars.push(id)
   }
   persistState.chapter.firstClearAt[id] = persistState.dateKey
@@ -1270,7 +1348,7 @@ export function completeLevel(id: string): CompleteLevelResult {
   persistState.chapter.currentChapterId = def.chapterId
   persistState.chapter = repairChapterInvariants(persistState.chapter)
 
-  const starsAwarded = Math.max(0, def.firstClearStars)
+  const starsAwarded = alreadyAwarded ? 0 : Math.max(0, def.firstClearStars)
   if (starsAwarded) {
     persistState.lifetime.totalStars += starsAwarded
   }

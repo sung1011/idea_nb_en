@@ -8,9 +8,23 @@ export type PlayKind =
   | 'flashFlip'
   | 'whackWord'
   | 'dragSort'
+  | 'soundSpell'
   | 'wordFish'
   | 'echo'
+  | 'storyBook'
   | 'chapterFinale'
+
+/** Pre-8-level path (v3 saves): ids chN-1…chN-6 mapped by play, not by suffix. */
+export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
+  'flashFlip',
+  'whackWord',
+  'dragSort',
+  'wordFish',
+  'echo',
+  'chapterFinale',
+]
+
+export const INSERTED_PLAY_KINDS: PlayKind[] = ['soundSpell', 'storyBook']
 
 export type LevelStatus = 'locked' | 'unlocked' | 'cleared'
 
@@ -24,8 +38,10 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
   whackWord: '/whack-word',
   dragSort: '/drag-sort',
+  soundSpell: '/sound-spell',
   wordFish: '/sound-fish',
   echo: '/echo-cave',
+  storyBook: '/story-book',
   chapterFinale: '/chapter-finale',
 }
 
@@ -80,9 +96,11 @@ const PLAY_SKELETON: Array<{
   { order: 1, play: 'flashFlip', titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
   { order: 2, play: 'whackWord', titleEn: 'Whack Word', titleZh: '地鼠词' },
   { order: 3, play: 'dragSort', titleEn: 'Drag Sort', titleZh: '拖一拖' },
-  { order: 4, play: 'wordFish', titleEn: 'Word Fish', titleZh: '读词钓鱼' },
-  { order: 5, play: 'echo', titleEn: 'Echo', titleZh: '回声跟读' },
-  { order: 6, play: 'chapterFinale', titleEn: 'Chapter Finale', titleZh: '章节回顾' },
+  { order: 4, play: 'soundSpell', titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
+  { order: 5, play: 'wordFish', titleEn: 'Word Fish', titleZh: '读词钓鱼' },
+  { order: 6, play: 'echo', titleEn: 'Echo', titleZh: '回声跟读' },
+  { order: 7, play: 'storyBook', titleEn: 'Story Book', titleZh: '小书点读' },
+  { order: 8, play: 'chapterFinale', titleEn: 'Chapter Finale', titleZh: '章节回顾' },
 ]
 
 function chapterLevels(
@@ -130,8 +148,18 @@ export const CHAPTER_1: ChapterDef = {
     },
     { notes: 'cat/hat/mat', words: ['cat', 'hat', 'mat'] },
     { notes: 'three words', words: ['cat', 'hat', 'mat'] },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
+      focusWord: 'cat',
+      words: ['cat', 'hat', 'mat'],
+    },
     { notes: 'read to catch', words: ['cat', 'hat', 'mat'] },
     { notes: 'follow-read', words: ['cat', 'hat', 'mat'] },
+    {
+      notes: 'mini book, tap to hear, try-blend cat',
+      focusWord: 'cat',
+      words: ['cat', 'hat', 'mat'],
+    },
     {
       notes: 'short mixed recap + chapter sticker on first clear',
       words: ['cat', 'hat', 'mat'],
@@ -159,10 +187,20 @@ export const CHAPTER_2: ChapterDef = {
     },
     { notes: 'dog/pig/duck', words: ['dog', 'pig', 'duck'] },
     { notes: 'dog/pig/fish', words: ['dog', 'pig', 'fish'] },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
+      focusWord: 'dog',
+      words: ['dog', 'pig'],
+    },
     { notes: 'dog/pig/fish', words: ['dog', 'pig', 'fish'] },
     {
       notes: 'dog→fish path through the five animal words',
       words: ['dog', 'pig', 'duck', 'bird', 'fish'],
+    },
+    {
+      notes: 'mini book, tap to hear, try-blend dog',
+      focusWord: 'dog',
+      words: ['dog', 'pig', 'duck'],
     },
     {
       notes: 'five-word recap + chapter sticker on first clear',
@@ -191,8 +229,18 @@ export const CHAPTER_3: ChapterDef = {
     },
     { notes: 'cup/cake/ball', words: ['cup', 'cake', 'ball'] },
     { notes: 'cake/ball/sun', words: ['cake', 'ball', 'sun'] },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
+      focusWord: 'cup',
+      words: ['cup', 'sun'],
+    },
     { notes: 'ball/sun/star', words: ['ball', 'sun', 'star'] },
     { notes: 'sun/star', words: ['sun', 'star'] },
+    {
+      notes: 'mini book, tap to hear, try-blend cup',
+      focusWord: 'cup',
+      words: ['cup', 'sun', 'star'],
+    },
     {
       notes: 'mix + two -at review words + chapter sticker on first clear',
       words: ['cup', 'cake', 'ball', 'sun', 'star', 'cat', 'hat'],
@@ -220,6 +268,15 @@ export function getChapterOrDefault(id?: string): ChapterDef {
 
 export function listChapterLevels(chapterId: string = DEFAULT_CHAPTER_ID): LevelDef[] {
   return getChapterOrDefault(chapterId).levels
+}
+
+/** Config-driven chapter length. Never hardcode 6 / 8 at call sites. */
+export function chapterLevelTotal(chapterId: string = DEFAULT_CHAPTER_ID): number {
+  return Math.max(1, listChapterLevels(chapterId).length)
+}
+
+export function levelIdForPlay(play: PlayKind, chapterId: string = DEFAULT_CHAPTER_ID): string | undefined {
+  return listChapterLevels(chapterId).find((item) => item.play === play)?.id
 }
 
 export function listAllLevels(): LevelDef[] {
