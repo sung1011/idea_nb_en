@@ -97,7 +97,30 @@ export function gateSpellHint(): string {
 }
 
 export function gateBookSub(themeHint: string): string {
-  return themeHint ? `点一页听一听，试着拼读 · ${themeHint}` : '点一页听一听，试着拼读'
+  return themeHint ? `点句子听整句，试着拼读 · ${themeHint}` : '点句子听整句，试着拼读'
+}
+
+export function gateBookCoverHint(): string {
+  return '点书名听一听，再打开小书'
+}
+
+export function gateBookBlendHint(): string {
+  return '先看这个词，试着拼一拼'
+}
+
+export function gateBookPageHint(): string {
+  return '点句子听整句，点词听单词'
+}
+
+export function gateBookReplayHint(): string {
+  return '再读一遍小书也可以，星星已经给你啦'
+}
+
+export function gateBookPrompt(kind: 'cover' | 'blend' | 'page' | 'done'): string {
+  if (kind === 'cover') return '小书点读'
+  if (kind === 'blend') return '试着拼一拼'
+  if (kind === 'done') return '读完啦'
+  return '点句子听一听'
 }
 
 export function gateFishLead(chapterId?: string, useTheme = false): string {
