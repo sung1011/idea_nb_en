@@ -8,7 +8,9 @@ import todayStarBar from '../components/todayStarBar.vue'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
+import { locationForChapterPractice } from '../data/playGallery'
 import { stickerById } from '../data/stickers'
+import { chapterPracticeCopy, practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const { state, chapter, claimDayCompleteRewards } = useProgress()
@@ -28,7 +30,7 @@ const leadLine = computed(() => {
   if (!claim.ready) return '先把第一章派对玩完，小猫再发徽章。'
   if (claim.freshClaim && claim.stickerGranted) return '小猫把朋友请来啦，还送你一张贴纸！'
   if (claim.freshClaim) return '小猫把朋友请来啦，这张贴纸你已经贴过啦。'
-  return '徽章还在你这里，随时还能再玩。'
+  return chapterPracticeCopy()
 })
 
 const stickerLine = computed(() => {
@@ -36,7 +38,7 @@ const stickerLine = computed(() => {
   if (!claim.ready) return `通关后就能拿到「${name}」`
   if (claim.freshClaim && claim.stickerGranted) return `贴纸贴上啦！「${name}」`
   if (claim.freshClaim) return `「${name}」早就在你的贴纸里啦`
-  return `章节徽章是「${name}」，随时还能再玩`
+  return `章节徽章是「${name}」，想再玩就点已过的关`
 })
 
 const chapterLine = computed(() => {
@@ -101,6 +103,14 @@ onMounted(() => {
     </div>
 
     <big-button @click="router.push('/')">回家</big-button>
+    <big-button
+      v-if="chapter.complete"
+      variant="soft"
+      data-practice-entry
+      @click="router.push(locationForChapterPractice())"
+    >
+      {{ practiceEntryCopy() }}
+    </big-button>
     <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
   </section>
 </template>

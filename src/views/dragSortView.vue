@@ -2,6 +2,7 @@
 import { dragDirective } from '@vueuse/gesture'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
 import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo, waitAfterStar } from '../composables/useMotion'
 import { useChapterLevel } from '../composables/useChapterLevel'
@@ -18,7 +19,20 @@ type DragState = {
   xy: [number, number]
 }
 
-const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('dragSort')
+const {
+  isReplay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('dragSort')
 const vDrag = dragDirective()
 
 const words = sampleWords(3)
@@ -223,6 +237,16 @@ onUnmounted(() => {
     <div ref="ghostEl" class="ghost" :class="{ show: Boolean(dragging) }">
       {{ dragging }}
     </div>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

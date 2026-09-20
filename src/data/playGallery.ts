@@ -1,9 +1,26 @@
+import { ANIMALS_CHAPTER_ID, listChapterLevels, type PlayKind } from './chapters'
+
 export type PlayItem = {
   id: string
   emoji: string
   name: string
   zh: string
   path: string
+}
+
+export type ChapterPracticeItem = PlayItem & {
+  levelId: string
+  order: number
+  play: PlayKind
+}
+
+export const PLAY_KIND_EMOJI: Record<PlayKind, string> = {
+  flashFlip: '🃏',
+  whackWord: '🐹',
+  dragSort: '🧺',
+  wordFish: '🐠',
+  echo: '🎤',
+  chapterFinale: '🎉',
 }
 
 export const playItems: PlayItem[] = [
@@ -15,6 +32,32 @@ export const playItems: PlayItem[] = [
   { id: 'singAlong', emoji: '🎵', name: 'Sing Along', zh: '唱一唱', path: '/sing-along' },
   { id: 'findScene', emoji: '🏝️', name: 'Find Scene', zh: '找一找', path: '/find-scene' },
 ]
+
+export function locationForChapterPractice(chapterId = ANIMALS_CHAPTER_ID) {
+  return { path: '/play-gallery', query: { chapter: chapterId } }
+}
+
+export function isChapterPracticeGallery(raw: unknown): boolean {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return value === ANIMALS_CHAPTER_ID || value === 'ch1'
+}
+
+export function chapterPracticeItems(chapterId = ANIMALS_CHAPTER_ID): ChapterPracticeItem[] {
+  return listChapterLevels(chapterId).map((level) => ({
+    id: level.id,
+    emoji: PLAY_KIND_EMOJI[level.play],
+    name: level.titleEn,
+    zh: level.titleZh,
+    path: level.route,
+    levelId: level.id,
+    order: level.order,
+    play: level.play,
+  }))
+}
+
+export function locationForClearedPractice(item: Pick<ChapterPracticeItem, 'path' | 'levelId'>) {
+  return { path: item.path, query: { level: item.levelId, practice: '1' } }
+}
 
 export function shuffle<T>(list: T[]): T[] {
   const next = [...list]

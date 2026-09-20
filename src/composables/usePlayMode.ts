@@ -1,5 +1,7 @@
 import { computed } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
+import { ANIMALS_CHAPTER_ID } from '../data/chapters'
+import { locationForChapterPractice } from '../data/playGallery'
 import { locationAfterClear, type CompleteLevelResult } from './progressStore'
 
 function asQuery(raw: RouteLocationRaw): Record<string, string> {
@@ -25,33 +27,47 @@ export function usePlayMode() {
   const isReview = computed(() => route.query.review === '1')
   const isDemo = computed(() => route.query.demo === '1')
   const isPractice = computed(() => isReview.value || isDemo.value)
+  const isChapterPractice = computed(() => route.query.practice === '1')
+  const chapterFilter = computed(() => {
+    const raw = route.query.chapter
+    const value = Array.isArray(raw) ? raw[0] : raw
+    return typeof value === 'string' && value ? value : ''
+  })
+
+  function practiceGalleryPath(chapterId = chapterFilter.value || ANIMALS_CHAPTER_ID) {
+    return locationForChapterPractice(chapterId)
+  }
+
+  function extraQuery(): Record<string, string> {
+    const query: Record<string, string> = {}
+    if (isDemo.value) query.demo = '1'
+    if (isReview.value) query.review = '1'
+    if (isChapterPractice.value) query.practice = '1'
+    if (chapterFilter.value) query.chapter = chapterFilter.value
+    return query
+  }
 
   function playPath(path: string) {
-    if (isDemo.value) {
-      return { path, query: { demo: '1' } }
-    }
-    if (isReview.value) {
-      return { path, query: { review: '1' } }
-    }
-    return path
+    const query = extraQuery()
+    return Object.keys(query).length ? { path, query } : path
   }
 
   function playLocation(target: RouteLocationRaw): RouteLocationRaw {
     if (typeof target === 'string') return playPath(target)
-    const query = asQuery(target)
-    if (isDemo.value) query.demo = '1'
-    if (isReview.value) query.review = '1'
+    const query = { ...asQuery(target), ...extraQuery() }
     return { path: asPath(target), query }
   }
 
   function afterGate(dailyNext: string) {
-    if (isDemo.value) return '/play-gallery'
+    if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
+    if (isChapterPractice.value) return practiceGalleryPath()
     if (isReview.value && dailyNext === '/day-complete') return '/letter-workshop'
     return playPath(dailyNext)
   }
 
   function afterLevel(result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute'>): RouteLocationRaw {
-    if (isDemo.value) return '/play-gallery'
+    if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
+    if (isChapterPractice.value) return practiceGalleryPath()
     if (isReview.value) {
       const next = locationAfterClear(result)
       if (asPath(next) === '/day-complete') return '/letter-workshop'
@@ -61,15 +77,30 @@ export function usePlayMode() {
   }
 
   const backPath = computed(() => {
-    if (isDemo.value) return '/play-gallery'
+    if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isReview.value) return '/letter-workshop'
+    if (isChapterPractice.value) return practiceGalleryPath()
     return '/animal-island'
   })
   const backLabel = computed(() => {
     if (isDemo.value) return '回一览'
     if (isReview.value) return '回工坊'
+    if (isChapterPractice.value) return '练一练'
     return '回岛'
   })
 
-  return { isReview, isDemo, isPractice, playPath, playLocation, afterGate, afterLevel, backPath, backLabel }
+  return {
+    isReview,
+    isDemo,
+    isPractice,
+    isChapterPractice,
+    chapterFilter,
+    playPath,
+    playLocation,
+    afterGate,
+    afterLevel,
+    backPath,
+    backLabel,
+    practiceGalleryPath,
+  }
 }

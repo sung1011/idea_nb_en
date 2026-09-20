@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import {
   canUseRecognition,
   createRecognizer,
@@ -14,7 +15,20 @@ import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
 import { sampleWords } from '../data/phonicsFamily'
 
-const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('echo')
+const {
+  isReplay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('echo')
 
 const words = sampleWords(3)
 const wordIndex = ref(0)
@@ -149,6 +163,16 @@ onUnmounted(() => {
     </p>
     <big-button variant="listen" :disabled="locked" @click="playCurrent">再听一次</big-button>
     <big-button :disabled="locked" @click="passWord">我说好了</big-button>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

@@ -8,22 +8,20 @@ import starBar from '../components/starBar.vue'
 import { tweenCelebrate, tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
-import { getLevel, type PlayKind } from '../data/chapters'
+import { getLevel } from '../data/chapters'
 import { getCurrentFamily } from '../data/phonicsFamily'
-
-const PLAY_EMOJI: Record<PlayKind, string> = {
-  flashFlip: '🃏',
-  whackWord: '🐹',
-  dragSort: '🧺',
-  wordFish: '🐠',
-  echo: '🎤',
-  chapterFinale: '🎉',
-}
+import { PLAY_KIND_EMOJI, locationForChapterPractice } from '../data/playGallery'
+import {
+  chapterPracticeCopy,
+  practiceEntryCopy,
+  replayAgainCopy,
+  replayClearedHintCopy,
+} from '../data/todayTasks'
 
 const STATUS_LABEL: Record<'locked' | 'unlocked' | 'cleared', string> = {
   locked: '未开',
   unlocked: '去玩',
-  cleared: '过啦',
+  cleared: replayAgainCopy(),
 }
 
 const LOCK_HINT = '先过上一关吧'
@@ -37,7 +35,7 @@ const levelRows = computed(() => {
   return chapter.value.levels.map((item, index) => ({
     ...item,
     order: getLevel(item.id)?.order ?? index + 1,
-    emoji: PLAY_EMOJI[item.play],
+    emoji: PLAY_KIND_EMOJI[item.play],
     isNext: item.id === nextId,
     playable: item.status === 'unlocked' || item.status === 'cleared',
   }))
@@ -49,6 +47,17 @@ const startLabel = computed(() => {
   const order = nextLevel.value.order
   return `去第${order}关 · ${nextLevel.value.titleZh}`
 })
+
+const parentLine = computed(() => {
+  if (chapter.value.complete) return chapterPracticeCopy()
+  if (chapter.value.clearedCount > 0) return replayClearedHintCopy()
+  return '家长小记：通关立刻开下一关。'
+})
+
+function goPractice() {
+  playTap()
+  void router.push(locationForChapterPractice())
+}
 
 const hostEl = ref<HTMLElement | null>(null)
 const nextRowEl = ref<HTMLElement | null>(null)
@@ -156,6 +165,7 @@ onBeforeUnmount(() => {
           :data-chapter-level="row.id"
           :data-level-status="row.status"
           :data-next-level="row.isNext ? '1' : '0'"
+          :data-level-replay="row.status === 'cleared' ? '1' : '0'"
           :aria-label="`第${row.order}关 ${row.titleZh}，${row.isNext ? '现在玩' : STATUS_LABEL[row.status]}`"
           @click="onLevelTap(row, $event)"
         >
@@ -177,15 +187,18 @@ onBeforeUnmount(() => {
       <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
         {{ lockHint || '　' }}
       </p>
-      <p class="parent-line">
-        {{
-          chapter.complete
-            ? '第一章派对通关啦，随时还能再玩。'
-            : '家长小记：通关立刻开下一关。'
-        }}
-      </p>
+      <p class="parent-line">{{ parentLine }}</p>
     </div>
 
+    <big-button
+      v-if="chapter.complete"
+      class="practice-btn"
+      variant="soft"
+      data-practice-entry
+      @click="goPractice"
+    >
+      {{ practiceEntryCopy() }}
+    </big-button>
     <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
     <button class="album-btn" type="button" @click="router.push('/sticker-album')">
       <span aria-hidden="true">📒</span>
@@ -427,8 +440,16 @@ onBeforeUnmount(() => {
   color: var(--muted);
 }
 
+.practice-btn {
+  margin-top: 14px;
+}
+
 .start-btn {
   margin-top: 14px;
+}
+
+.practice-btn + .start-btn {
+  margin-top: 10px;
 }
 
 .album-btn {

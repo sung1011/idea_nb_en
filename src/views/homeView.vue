@@ -8,7 +8,9 @@ import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
+import { locationForChapterPractice } from '../data/playGallery'
 import { getCurrentFamily } from '../data/phonicsFamily'
+import { practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const family = getCurrentFamily()
@@ -25,6 +27,10 @@ function goIsland() {
 
 function goGallery() {
   void router.push('/play-gallery')
+}
+
+function goPractice() {
+  void router.push(locationForChapterPractice())
 }
 
 function goWorkshop() {
@@ -71,6 +77,15 @@ function goAlbum() {
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
+    <big-button
+      v-if="chapter.complete"
+      class="practice-btn"
+      variant="soft"
+      data-practice-entry
+      @click="goPractice"
+    >
+      {{ practiceEntryCopy() }}
+    </big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
     <button class="album-btn" type="button" @click="goAlbum">
       <span aria-hidden="true">📒</span>
@@ -157,6 +172,7 @@ function goAlbum() {
   margin-top: auto;
 }
 
+.practice-btn,
 .gallery-btn {
   margin-top: 10px;
 }

@@ -28,6 +28,22 @@ export function chapterDoneCopy(): string {
   return '第一章派对通关啦'
 }
 
+export function chapterPracticeCopy(): string {
+  return '第一章通关啦，下面可以随便练'
+}
+
+export function replayClearedHintCopy(): string {
+  return '想再玩就点已过的关'
+}
+
+export function replayAgainCopy(): string {
+  return '再玩一次'
+}
+
+export function practiceEntryCopy(): string {
+  return '练一练'
+}
+
 export function focusWordHint(word: string): string {
   return `多听一听 ${word}`
 }

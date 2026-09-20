@@ -1,9 +1,11 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { getLevel, resolveLevelId, type PlayKind } from '../data/chapters'
+import { ANIMALS_CHAPTER_ID, getLevel, resolveLevelId, type PlayKind } from '../data/chapters'
+import { locationForChapterPractice } from '../data/playGallery'
 import { usePlayMode } from './usePlayMode'
 import {
   completeLevel,
+  getChapterProgress,
   grantSticker,
   isLevelCleared,
   isLevelUnlocked,
@@ -14,7 +16,7 @@ import {
 export function useChapterLevel(play: PlayKind) {
   const route = useRoute()
   const router = useRouter()
-  const { isPractice, isDemo, isReview, afterLevel } = usePlayMode()
+  const { isPractice, isDemo, isReview, isChapterPractice, afterLevel } = usePlayMode()
 
   const levelId = computed(() => {
     const raw = route.query.level
@@ -25,12 +27,16 @@ export function useChapterLevel(play: PlayKind) {
   const level = computed(() => getLevel(levelId.value))
   const isReplay = computed(() => !isPractice.value && isLevelCleared(levelId.value))
   const canPlay = computed(() => isPractice.value || isLevelUnlocked(levelId.value))
+  const chapterComplete = computed(() => getChapterProgress().complete)
+  const showClearSheet = ref(false)
+  const lastResult = ref<CompleteLevelResult | null>(null)
 
   const gateTag = computed(() => {
     const title = level.value?.titleZh ?? ''
     const order = level.value?.order
     if (isDemo.value) return `试玩 · ${title}`
     if (isReview.value) return `复习 · ${title}`
+    if (isChapterPractice.value) return `练一练 · 第${order}关 · ${title}`
     if (isReplay.value) return `再玩 · 第${order}关 · ${title}`
     return `第${order}关 · ${title}`
   })
@@ -59,7 +65,49 @@ export function useChapterLevel(play: PlayKind) {
   }
 
   function goAfterLevel(result: CompleteLevelResult) {
+    lastResult.value = result
+    if (isPractice.value) {
+      void router.push(nextLocation(result))
+      return
+    }
+    if (!result.firstClear || isChapterPractice.value) {
+      showClearSheet.value = true
+      return
+    }
     void router.push(nextLocation(result))
+  }
+
+  function replayCleared() {
+    showClearSheet.value = false
+    const query: Record<string, string> = {}
+    for (const [key, value] of Object.entries(route.query)) {
+      if (key === 'r') continue
+      if (typeof value === 'string') query[key] = value
+      else if (Array.isArray(value) && typeof value[0] === 'string') query[key] = value[0]
+    }
+    query.level = levelId.value
+    query.r = String(Date.now())
+    void router.replace({ path: route.path, query })
+  }
+
+  function continueAfterClear() {
+    showClearSheet.value = false
+    const result = lastResult.value
+    if (!result) {
+      void router.push('/animal-island')
+      return
+    }
+    void router.push(nextLocation(result))
+  }
+
+  function goPractice() {
+    showClearSheet.value = false
+    void router.push(locationForChapterPractice(level.value?.chapterId ?? ANIMALS_CHAPTER_ID))
+  }
+
+  function goLobby() {
+    showClearSheet.value = false
+    void router.push('/animal-island')
   }
 
   return {
@@ -70,10 +118,18 @@ export function useChapterLevel(play: PlayKind) {
     isPractice,
     isDemo,
     isReview,
+    isChapterPractice,
+    chapterComplete,
     gateTag,
+    showClearSheet,
+    lastResult,
     finishLevel,
     nextLocation,
     goAfterLevel,
+    replayCleared,
+    continueAfterClear,
+    goPractice,
+    goLobby,
     locationAfterClear,
   }
 }

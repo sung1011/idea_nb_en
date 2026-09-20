@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import soundFishStage from '../components/soundFishStage.vue'
 import { waitAfterStar } from '../composables/useMotion'
 import { useChapterLevel } from '../composables/useChapterLevel'
@@ -15,7 +16,20 @@ import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
 
 const family = getCurrentFamily()
-const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('wordFish')
+const {
+  isReplay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('wordFish')
 
 const words = sampleWords(3)
 const caught = ref<string[]>([])
@@ -192,6 +206,16 @@ onUnmounted(() => {
     <big-button variant="listen" :disabled="locked || celebrating" @click="replayPrompt">
       再听提示
     </big-button>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

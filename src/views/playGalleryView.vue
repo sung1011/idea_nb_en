@@ -1,42 +1,88 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
-import { playItems } from '../data/playGallery'
+import {
+  chapterPracticeItems,
+  isChapterPracticeGallery,
+  locationForClearedPractice,
+  playItems,
+} from '../data/playGallery'
+import { chapterPracticeCopy, practiceEntryCopy, replayAgainCopy } from '../data/todayTasks'
 
+const route = useRoute()
 const router = useRouter()
+type GalleryRow = {
+  id: string
+  emoji: string
+  name: string
+  zh: string
+  path: string
+  levelId?: string
+}
 
-function openPlay(path: string) {
+const isPractice = computed(() => isChapterPracticeGallery(route.query.chapter))
+const items = computed<GalleryRow[]>(() => {
+  if (isPractice.value) {
+    return chapterPracticeItems().map((item) => ({
+      id: item.id,
+      emoji: item.emoji,
+      name: item.name,
+      zh: `第${item.order}关 · ${item.zh}`,
+      path: item.path,
+      levelId: item.levelId,
+    }))
+  }
+  return playItems.map((item) => ({
+    id: item.id,
+    emoji: item.emoji,
+    name: item.name,
+    zh: item.zh,
+    path: item.path,
+  }))
+})
+const backTo = computed(() => (isPractice.value ? '/animal-island' : '/'))
+const backLabel = computed(() => (isPractice.value ? '回岛' : '首页'))
+
+function openPlay(path: string, levelId?: string) {
+  if (isPractice.value && levelId) {
+    void router.push(locationForClearedPractice({ path, levelId }))
+    return
+  }
   void router.push({ path, query: { demo: '1' } })
 }
 </script>
 
 <template>
-  <section class="screen gallery">
+  <section class="screen gallery" :data-chapter-practice="isPractice ? '1' : '0'">
     <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push('/')">首页</button>
+      <button class="ghost-btn" type="button" @click="router.push(backTo)">{{ backLabel }}</button>
       <star-bar />
     </header>
 
     <div class="hero center">
-      <p class="eyebrow">Play gallery</p>
-      <h1 class="title-lg">玩法一览</h1>
-      <p class="sub">点进去试玩，不算过关，不加星星</p>
+      <p class="eyebrow">{{ isPractice ? 'Practice' : 'Play gallery' }}</p>
+      <h1 class="title-lg">{{ isPractice ? practiceEntryCopy() : '玩法一览' }}</h1>
+      <p class="sub">
+        {{ isPractice ? chapterPracticeCopy() : '点进去试玩，不算过关，不加星星' }}
+      </p>
     </div>
 
     <div class="list">
       <button
-        v-for="item in playItems"
+        v-for="item in items"
         :key="item.id"
         class="play-card"
         type="button"
-        @click="openPlay(item.path)"
+        :data-practice-level="item.levelId"
+        @click="openPlay(item.path, item.levelId)"
       >
         <span class="play-emoji">{{ item.emoji }}</span>
         <span class="play-copy">
           <b>{{ item.zh }}</b>
           <small>{{ item.name }}</small>
         </span>
-        <span class="go">试玩</span>
+        <span class="go">{{ isPractice ? replayAgainCopy() : '试玩' }}</span>
       </button>
     </div>
   </section>

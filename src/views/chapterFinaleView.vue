@@ -2,13 +2,29 @@
 import { computed, onMounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import wordPic from '../components/wordPic.vue'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 
-const { level, isReplay, canPlay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('chapterFinale')
+const {
+  level,
+  isReplay,
+  canPlay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('chapterFinale')
 const words = computed(() => level.value?.words ?? ['cat', 'hat', 'mat'])
 const celebrating = ref(false)
 const locked = ref(false)
@@ -58,6 +74,16 @@ async function finish() {
       }}
     </p>
     <big-button :disabled="!canPlay || locked" @click="finish">我复习好了</big-button>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

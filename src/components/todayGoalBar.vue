@@ -3,7 +3,14 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProgress } from '../composables/useProgress'
 import { playTap } from '../composables/useSfx'
-import { chapterDoneCopy, chapterProgressCopy, focusWordHint, nextLevelCopy } from '../data/todayTasks'
+import { locationForChapterPractice } from '../data/playGallery'
+import {
+  chapterPracticeCopy,
+  chapterProgressCopy,
+  focusWordHint,
+  nextLevelCopy,
+  practiceEntryCopy,
+} from '../data/todayTasks'
 import todayStarBar from './todayStarBar.vue'
 
 const router = useRouter()
@@ -13,7 +20,7 @@ ensureTodayTask()
 const done = computed(() => chapter.value.complete)
 const progressText = computed(() => chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal))
 const nextLine = computed(() => {
-  if (done.value) return chapterDoneCopy()
+  if (done.value) return chapterPracticeCopy()
   if (nextLevel.value) return nextLevelCopy(nextLevel.value.titleZh)
   return '去看章节奖励'
 })
@@ -31,6 +38,11 @@ function goNext() {
   playTap()
   void router.push(nextRoute.value)
 }
+
+function goPractice() {
+  playTap()
+  void router.push(locationForChapterPractice())
+}
 </script>
 
 <template>
@@ -44,6 +56,15 @@ function goNext() {
       </div>
     </div>
     <today-star-bar class="goal-stars" size="compact" />
+    <button
+      v-if="done"
+      class="goal-practice"
+      type="button"
+      data-practice-entry
+      @click="goPractice"
+    >
+      {{ practiceEntryCopy() }}
+    </button>
     <button class="goal-cta" type="button" data-next-level-cta @click="goNext">
       {{ ctaLabel }}
     </button>
@@ -116,6 +137,23 @@ function goNext() {
 .goal-stars {
   width: 100%;
   margin-top: 10px;
+}
+
+.goal-practice {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 6px 0 rgba(45, 58, 74, 0.12);
+}
+
+.goal-practice:active {
+  transform: translateY(2px);
 }
 
 .goal-cta {

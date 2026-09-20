@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
@@ -16,7 +17,20 @@ type CardFace = {
 
 const STUDY_LINGER_MS = 8000
 
-const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('flashFlip')
+const {
+  isReplay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('flashFlip')
 
 const words = sampleWords(4)
 const phase = ref<'study' | 'quiz'>('study')
@@ -200,6 +214,16 @@ onUnmounted(() => {
       <p class="center hint">{{ progressText }} · 点错会再问一遍</p>
       <big-button variant="listen" :disabled="locked" @click="ask">再听一次</big-button>
     </template>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

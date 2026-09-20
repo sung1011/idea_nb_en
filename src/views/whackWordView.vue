@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
+import levelClearSheet from '../components/levelClearSheet.vue'
 import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
@@ -17,7 +18,20 @@ type Mole = {
 
 const NEED_CORRECT = 4
 
-const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('whackWord')
+const {
+  isReplay,
+  gateTag,
+  finishLevel,
+  goAfterLevel,
+  showClearSheet,
+  lastResult,
+  isChapterPractice,
+  chapterComplete,
+  replayCleared,
+  continueAfterClear,
+  goPractice,
+  goLobby,
+} = useChapterLevel('whackWord')
 
 const words = sampleWords(5)
 const extra = pickOtherWords(words, 1)
@@ -177,6 +191,16 @@ onUnmounted(() => {
 
     <p class="center hint">{{ progressText }} · 点对 {{ NEED_CORRECT }} 次就过关</p>
     <big-button variant="listen" :disabled="locked" @click="replay">再听一次</big-button>
+    <level-clear-sheet
+      :open="showClearSheet"
+      :chapter-complete="chapterComplete"
+      :from-practice="isChapterPractice"
+      :has-next="Boolean(lastResult?.nextLevelId)"
+      @replay="replayCleared"
+      @next="continueAfterClear"
+      @practice="goPractice"
+      @lobby="goLobby"
+    />
   </section>
 </template>
 

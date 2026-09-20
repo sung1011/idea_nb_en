@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
+import { chapterPracticeCopy } from '../data/todayTasks'
 
 const props = withDefaults(
   defineProps<{
@@ -22,7 +23,7 @@ const cap = computed(() => Math.max(1, chapter.value.levelTotal))
 const lit = computed(() => Math.min(cap.value, Math.max(0, chapter.value.clearedCount)))
 const full = computed(() => chapter.value.complete || lit.value >= cap.value)
 const labelText = computed(() => `第1章 ${lit.value}/${cap.value} 关`)
-const teaserText = '第一章派对通关啦，随时还能再玩'
+const teaserText = chapterPracticeCopy()
 const slots = computed(() =>
   Array.from({ length: cap.value }, (_, index) => ({
     index,
