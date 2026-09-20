@@ -2,11 +2,13 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
+import { getChapterNumber } from '../data/chapters'
 import {
   chapterPracticeItems,
   isChapterPracticeGallery,
   locationForClearedPractice,
   playItems,
+  practiceChapterIdFromQuery,
 } from '../data/playGallery'
 import { chapterPracticeCopy, practiceEntryCopy, replayAgainCopy } from '../data/todayTasks'
 
@@ -21,10 +23,14 @@ type GalleryRow = {
   levelId?: string
 }
 
+const practiceChapterId = computed(() => practiceChapterIdFromQuery(route.query.chapter))
 const isPractice = computed(() => isChapterPracticeGallery(route.query.chapter))
+const practiceChapterNo = computed(() =>
+  practiceChapterId.value ? getChapterNumber(practiceChapterId.value) : 1,
+)
 const items = computed<GalleryRow[]>(() => {
   if (isPractice.value) {
-    return chapterPracticeItems().map((item) => ({
+    return chapterPracticeItems(practiceChapterId.value ?? undefined).map((item) => ({
       id: item.id,
       emoji: item.emoji,
       name: item.name,
@@ -41,7 +47,13 @@ const items = computed<GalleryRow[]>(() => {
     path: item.path,
   }))
 })
-const backTo = computed(() => (isPractice.value ? '/animal-island' : '/'))
+const backTo = computed(() =>
+  isPractice.value && practiceChapterId.value
+    ? { path: '/animal-island', query: { chapter: practiceChapterId.value } }
+    : isPractice.value
+      ? '/animal-island'
+      : '/',
+)
 const backLabel = computed(() => (isPractice.value ? '回岛' : '首页'))
 
 function openPlay(path: string, levelId?: string) {
@@ -64,7 +76,7 @@ function openPlay(path: string, levelId?: string) {
       <p class="eyebrow">{{ isPractice ? 'Practice' : 'Play gallery' }}</p>
       <h1 class="title-lg">{{ isPractice ? practiceEntryCopy() : '玩法一览' }}</h1>
       <p class="sub">
-        {{ isPractice ? chapterPracticeCopy() : '点进去试玩，不算过关，不加星星' }}
+        {{ isPractice ? chapterPracticeCopy(practiceChapterNo) : '点进去试玩，不算过关，不加星星' }}
       </p>
     </div>
 

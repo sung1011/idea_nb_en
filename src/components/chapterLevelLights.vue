@@ -2,10 +2,12 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
+import { getChapterNumber } from '../data/chapters'
 import { chapterPracticeCopy } from '../data/todayTasks'
 
 const props = withDefaults(
   defineProps<{
+    chapterId?: string
     celebrateOnGain?: boolean
     showLabel?: boolean
     embedded?: boolean
@@ -17,13 +19,15 @@ const props = withDefaults(
   },
 )
 
-const { chapter } = useProgress()
+const { chapter, getChapterProgress } = useProgress()
+const view = computed(() => (props.chapterId ? getChapterProgress(props.chapterId) : chapter.value))
+const chapterNo = computed(() => getChapterNumber(view.value.chapterId))
 
-const cap = computed(() => Math.max(1, chapter.value.levelTotal))
-const lit = computed(() => Math.min(cap.value, Math.max(0, chapter.value.clearedCount)))
-const full = computed(() => chapter.value.complete || lit.value >= cap.value)
-const labelText = computed(() => `第1章 ${lit.value}/${cap.value} 关`)
-const teaserText = chapterPracticeCopy()
+const cap = computed(() => Math.max(1, view.value.levelTotal))
+const lit = computed(() => Math.min(cap.value, Math.max(0, view.value.clearedCount)))
+const full = computed(() => view.value.complete || lit.value >= cap.value)
+const labelText = computed(() => `第${chapterNo.value}章 ${lit.value}/${cap.value} 关`)
+const teaserText = computed(() => chapterPracticeCopy(chapterNo.value))
 const slots = computed(() =>
   Array.from({ length: cap.value }, (_, index) => ({
     index,
@@ -60,7 +64,7 @@ watch(lit, async (next, prev) => {
 
 onMounted(() => {
   if (!props.celebrateOnGain || lit.value <= 0) return
-  if (!chapter.value.complete) return
+  if (!view.value.complete) return
   void celebrateCell(lit.value - 1)
 })
 </script>

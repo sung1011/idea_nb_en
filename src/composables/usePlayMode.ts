@@ -1,8 +1,8 @@
 import { computed } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
-import { ANIMALS_CHAPTER_ID } from '../data/chapters'
+import { ANIMALS_CHAPTER_ID, getLevel } from '../data/chapters'
 import { locationForChapterPractice } from '../data/playGallery'
-import { locationAfterClear, type CompleteLevelResult } from './progressStore'
+import { locationAfterClear, locationForIslandChapter, type CompleteLevelResult } from './progressStore'
 
 function asQuery(raw: RouteLocationRaw): Record<string, string> {
   if (typeof raw === 'string') return {}
@@ -80,7 +80,10 @@ export function usePlayMode() {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isReview.value) return '/letter-workshop'
     if (isChapterPractice.value) return practiceGalleryPath()
-    return '/animal-island'
+    const raw = route.query.level
+    const value = Array.isArray(raw) ? raw[0] : raw
+    const def = typeof value === 'string' ? getLevel(value) : undefined
+    return locationForIslandChapter(def?.chapterId)
   })
   const backLabel = computed(() => {
     if (isDemo.value) return '回一览'

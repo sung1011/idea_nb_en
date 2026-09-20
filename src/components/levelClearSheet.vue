@@ -10,6 +10,7 @@ import bigButton from './bigButton.vue'
 const props = defineProps<{
   open: boolean
   chapterComplete?: boolean
+  chapterNo?: number
   fromPractice?: boolean
   hasNext?: boolean
 }>()
@@ -23,7 +24,9 @@ const emit = defineEmits<{
 
 const title = computed(() => (props.chapterComplete ? '过关啦' : '又玩了一遍'))
 const lead = computed(() =>
-  props.chapterComplete ? chapterPracticeCopy() : '再玩一遍也可以，星星已经给你啦',
+  props.chapterComplete
+    ? chapterPracticeCopy(props.chapterNo ?? 1)
+    : '再玩一遍也可以，星星已经给你啦',
 )
 const showPractice = computed(() => Boolean(props.chapterComplete))
 const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)

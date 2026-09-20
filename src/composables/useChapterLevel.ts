@@ -1,6 +1,12 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { ANIMALS_CHAPTER_ID, getLevel, resolveLevelId, type PlayKind } from '../data/chapters'
+import {
+  ANIMALS_CHAPTER_ID,
+  getChapterNumber,
+  getLevel,
+  resolveLevelId,
+  type PlayKind,
+} from '../data/chapters'
 import { locationForChapterPractice } from '../data/playGallery'
 import { usePlayMode } from './usePlayMode'
 import {
@@ -10,6 +16,7 @@ import {
   isLevelCleared,
   isLevelUnlocked,
   locationAfterClear,
+  locationForIslandChapter,
   type CompleteLevelResult,
 } from './progressStore'
 
@@ -28,6 +35,7 @@ export function useChapterLevel(play: PlayKind) {
   const isReplay = computed(() => !isPractice.value && isLevelCleared(levelId.value))
   const canPlay = computed(() => isPractice.value || isLevelUnlocked(levelId.value))
   const chapterComplete = computed(() => getChapterProgress(level.value?.chapterId).complete)
+  const chapterNo = computed(() => getChapterNumber(level.value?.chapterId ?? ANIMALS_CHAPTER_ID))
   const showClearSheet = ref(false)
   const lastResult = ref<CompleteLevelResult | null>(null)
 
@@ -94,7 +102,7 @@ export function useChapterLevel(play: PlayKind) {
     showClearSheet.value = false
     const result = lastResult.value
     if (!result) {
-      void router.push('/animal-island')
+      void router.push(locationForIslandChapter(level.value?.chapterId))
       return
     }
     void router.push(nextLocation(result))
@@ -107,7 +115,7 @@ export function useChapterLevel(play: PlayKind) {
 
   function goLobby() {
     showClearSheet.value = false
-    void router.push('/animal-island')
+    void router.push(locationForIslandChapter(level.value?.chapterId))
   }
 
   return {
@@ -120,6 +128,7 @@ export function useChapterLevel(play: PlayKind) {
     isReview,
     isChapterPractice,
     chapterComplete,
+    chapterNo,
     gateTag,
     showClearSheet,
     lastResult,

@@ -3,30 +3,35 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProgress } from '../composables/useProgress'
 import { playTap } from '../composables/useSfx'
+import { getChapterNumber } from '../data/chapters'
 import { locationForChapterPractice } from '../data/playGallery'
 import {
   chapterPracticeCopy,
   chapterProgressCopy,
   focusWordHint,
   nextLevelCopy,
+  nextLevelCtaCopy,
   practiceEntryCopy,
 } from '../data/todayTasks'
 import todayStarBar from './todayStarBar.vue'
 
 const router = useRouter()
-const { today, chapter, nextLevel, nextRoute, ensureTodayTask } = useProgress()
+const { today, chapter, nextLevel, nextRoute, hasPractice, practiceChapterId, ensureTodayTask } =
+  useProgress()
 ensureTodayTask()
 
-const done = computed(() => chapter.value.complete)
-const progressText = computed(() => chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal))
+const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
+const done = computed(() => !nextLevel.value)
+const progressText = computed(() =>
+  chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value),
+)
 const nextLine = computed(() => {
-  if (done.value) return chapterPracticeCopy()
   if (nextLevel.value) return nextLevelCopy(nextLevel.value.titleZh)
-  return '去看章节奖励'
+  return chapterPracticeCopy(chapterNo.value)
 })
 const ctaLabel = computed(() => {
-  if (done.value || !nextLevel.value) return '看章节奖励'
-  return `去第${nextLevel.value.order}关 · ${nextLevel.value.titleZh}`
+  if (!nextLevel.value) return '看章节奖励'
+  return nextLevelCtaCopy(nextLevel.value.order, nextLevel.value.titleZh, chapterNo.value)
 })
 const focusLine = computed(() => {
   if (done.value) return ''
@@ -41,7 +46,7 @@ function goNext() {
 
 function goPractice() {
   playTap()
-  void router.push(locationForChapterPractice())
+  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
 }
 </script>
 
@@ -57,7 +62,7 @@ function goPractice() {
     </div>
     <today-star-bar class="goal-stars" size="compact" />
     <button
-      v-if="done"
+      v-if="hasPractice"
       class="goal-practice"
       type="button"
       data-practice-entry

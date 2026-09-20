@@ -8,12 +8,15 @@ import todayStarBar from '../components/todayStarBar.vue'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
+import { CHAPTER_1_ID } from '../data/chapters'
 import { locationForChapterPractice } from '../data/playGallery'
 import { stickerById } from '../data/stickers'
 import { chapterPracticeCopy, practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
-const { state, chapter, claimDayCompleteRewards } = useProgress()
+const { state, getChapterProgress, hasPractice, practiceChapterId, claimDayCompleteRewards } =
+  useProgress()
+const chapter = computed(() => getChapterProgress(CHAPTER_1_ID))
 
 const claim = claimDayCompleteRewards()
 const sticker = computed(() => (claim.stickerId ? stickerById(claim.stickerId) : null))
@@ -74,7 +77,7 @@ onMounted(() => {
       <p class="zh">{{ titleZh }}</p>
       <p class="sub">{{ leadLine }}</p>
       <today-star-bar class="today-loot" size="large" :celebrate-on-gain="false" />
-      <chapter-level-lights class="chapter-loot" :celebrate-on-gain="false" />
+      <chapter-level-lights class="chapter-loot" :chapter-id="CHAPTER_1_ID" :celebrate-on-gain="false" />
 
       <div
         v-if="sticker"
@@ -104,10 +107,10 @@ onMounted(() => {
 
     <big-button @click="router.push('/')">回家</big-button>
     <big-button
-      v-if="chapter.complete"
+      v-if="hasPractice"
       variant="soft"
       data-practice-entry
-      @click="router.push(locationForChapterPractice())"
+      @click="router.push(locationForChapterPractice(practiceChapterId ?? CHAPTER_1_ID))"
     >
       {{ practiceEntryCopy() }}
     </big-button>

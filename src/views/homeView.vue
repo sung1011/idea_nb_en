@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
@@ -8,13 +8,21 @@ import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
+import { getChapterNumber } from '../data/chapters'
 import { locationForChapterPractice } from '../data/playGallery'
 import { getCurrentFamily } from '../data/phonicsFamily'
-import { practiceEntryCopy } from '../data/todayTasks'
+import { chapterProgressCopy, practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { chapter } = useProgress()
+const { chapter, hasPractice, practiceChapterId } = useProgress()
+const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
+const chipText = computed(() =>
+  chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value).replace(
+    ' 关',
+    '',
+  ),
+)
 const heroEl = ref<HTMLElement | null>(null)
 
 onMounted(() => {
@@ -30,7 +38,7 @@ function goGallery() {
 }
 
 function goPractice() {
-  void router.push(locationForChapterPractice())
+  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
 }
 
 function goWorkshop() {
@@ -51,13 +59,13 @@ function goAlbum() {
     <header class="top-row">
       <star-bar />
       <div class="top-tools">
-        <p class="day-chip">第1章 {{ chapter.clearedCount }}/{{ chapter.levelTotal }}</p>
+        <p class="day-chip">{{ chipText }}</p>
         <settings-button />
       </div>
     </header>
 
     <div ref="heroEl" class="hero center">
-      <p class="eyebrow">主题岛 · 第一章派对</p>
+      <p class="eyebrow">主题岛 · 动物岛三章</p>
       <h1 class="title-xl">Star Words</h1>
       <p class="zh-title">星词岛</p>
       <p class="sub">先去动物岛，帮小猫办 {{ family.family }} 派对</p>
@@ -70,7 +78,7 @@ function goAlbum() {
         <span class="host floaty" aria-hidden="true">🐱</span>
         <div>
           <p class="island-name">动物岛</p>
-          <p class="island-goal">帮小猫把 {{ family.family }} 朋友请来派对！</p>
+          <p class="island-goal">三章小派对：-at 派对、听声找伙伴、点心与天空</p>
         </div>
       </div>
       <chapter-level-lights class="home-level-lights" embedded :show-label="false" />
@@ -78,7 +86,7 @@ function goAlbum() {
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
     <big-button
-      v-if="chapter.complete"
+      v-if="hasPractice"
       class="practice-btn"
       variant="soft"
       data-practice-entry

@@ -299,15 +299,30 @@ export function locationAfterClear(
 }
 
 export function locationForNextMainline(): string | LevelLocation {
-  const next = getNextLevel(persistState.chapter.currentChapterId)
+  const next = getNextLevel()
   if (next) return locationForLevel(next)
   return '/day-complete'
 }
 
 export function routeForNextMainline(): string {
-  const next = getNextLevel(persistState.chapter.currentChapterId)
+  const next = getNextLevel()
   if (next) return next.route
   return '/day-complete'
+}
+
+export function latestClearedChapterId(): string | null {
+  let found: string | null = null
+  for (const chapter of CHAPTERS) {
+    if (isChapterClearedInSave(persistState.chapter, chapter.id)) found = chapter.id
+  }
+  return found
+}
+
+export function locationForIslandChapter(chapterId?: string): string | { path: string; query: { chapter: string } } {
+  if (chapterId && getChapter(chapterId)) {
+    return { path: '/animal-island', query: { chapter: chapterId } }
+  }
+  return '/animal-island'
 }
 
 export function routeAfterGate(gate: GateId, _day = dateKey()): string {

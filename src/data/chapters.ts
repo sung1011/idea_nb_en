@@ -242,6 +242,29 @@ export function getChapterIndex(chapterId: string): number {
   return CHAPTERS.findIndex((chapter) => chapter.id === chapterId)
 }
 
+export function getChapterNumber(chapterId: string): number {
+  const index = getChapterIndex(chapterId)
+  return index >= 0 ? index + 1 : 1
+}
+
+/** Kid-facing short title: 「-at 派对」 / 「听声找伙伴」 / 「点心与天空」. */
+export function chapterKidTitle(chapterId: string): string {
+  const chapter = getChapter(chapterId)
+  if (!chapter) return ''
+  const match = chapter.titleZh.match(/「(.+)」/)
+  return match?.[1] ?? chapter.titleZh
+}
+
+export function isAnimalsChapterId(id: string): boolean {
+  return chapterById.has(id)
+}
+
+export const CHAPTER_LOBBY_EMOJI: Record<string, string> = {
+  [CHAPTER_1_ID]: '🎉',
+  [CHAPTER_2_ID]: '👂',
+  [CHAPTER_3_ID]: '🧁',
+}
+
 export function getPriorChapter(chapterId: string): ChapterDef | null {
   const index = getChapterIndex(chapterId)
   return index > 0 ? CHAPTERS[index - 1] : null

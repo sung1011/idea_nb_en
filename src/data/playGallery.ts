@@ -1,4 +1,10 @@
-import { ANIMALS_CHAPTER_ID, listChapterLevels, type PlayKind } from './chapters'
+import {
+  ANIMALS_CHAPTER_ID,
+  getChapter,
+  isAnimalsChapterId,
+  listChapterLevels,
+  type PlayKind,
+} from './chapters'
 
 export type PlayItem = {
   id: string
@@ -37,9 +43,15 @@ export function locationForChapterPractice(chapterId = ANIMALS_CHAPTER_ID) {
   return { path: '/play-gallery', query: { chapter: chapterId } }
 }
 
-export function isChapterPracticeGallery(raw: unknown): boolean {
+export function practiceChapterIdFromQuery(raw: unknown): string | null {
   const value = Array.isArray(raw) ? raw[0] : raw
-  return value === ANIMALS_CHAPTER_ID || value === 'ch1'
+  if (typeof value !== 'string' || !value) return null
+  if (getChapter(value) || isAnimalsChapterId(value)) return value
+  return null
+}
+
+export function isChapterPracticeGallery(raw: unknown): boolean {
+  return practiceChapterIdFromQuery(raw) !== null
 }
 
 export function chapterPracticeItems(chapterId = ANIMALS_CHAPTER_ID): ChapterPracticeItem[] {

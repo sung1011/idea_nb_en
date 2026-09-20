@@ -1,63 +1,85 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
+import chapterLevelList from '../components/chapterLevelList.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import { tweenCelebrate, tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
-import { getLevel } from '../data/chapters'
-import { getCurrentFamily } from '../data/phonicsFamily'
-import { PLAY_KIND_EMOJI, locationForChapterPractice } from '../data/playGallery'
 import {
-  chapterPracticeCopy,
+  CHAPTER_LOBBY_EMOJI,
+  chapterKidTitle,
+  getChapter,
+  getChapterNumber,
+  isAnimalsChapterId,
+  listChapters,
+} from '../data/chapters'
+import { locationForChapterPractice } from '../data/playGallery'
+import { getCurrentFamily } from '../data/phonicsFamily'
+import {
+  chapterLockHint,
+  nextLevelCtaCopy,
   practiceEntryCopy,
-  replayAgainCopy,
-  replayClearedHintCopy,
 } from '../data/todayTasks'
 
-const STATUS_LABEL: Record<'locked' | 'unlocked' | 'cleared', string> = {
-  locked: '未开',
-  unlocked: '去玩',
-  cleared: replayAgainCopy(),
-}
-
-const LOCK_HINT = '先过上一关吧'
+const CHAPTER_LOCK_HINT = chapterLockHint()
 
 const router = useRouter()
+const route = useRoute()
 const family = getCurrentFamily()
-const { chapter, nextLevel, nextRoute, locationForLevel, hasSticker } = useProgress()
+const {
+  nextLevel,
+  nextRoute,
+  hasPractice,
+  practiceChapterId,
+  isChapterUnlocked,
+  getChapterProgress,
+} = useProgress()
 
-const levelRows = computed(() => {
-  const nextId = nextLevel.value?.id
-  return chapter.value.levels.map((item, index) => ({
-    ...item,
-    order: getLevel(item.id)?.order ?? index + 1,
-    emoji: PLAY_KIND_EMOJI[item.play],
-    isNext: item.id === nextId,
-    playable: item.status === 'unlocked' || item.status === 'cleared',
-  }))
+const selectedChapterId = computed(() => {
+  const raw = route.query.chapter
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string' || !isAnimalsChapterId(value)) return ''
+  if (!isChapterUnlocked(value)) return ''
+  return value
 })
 
-const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
+const selectedChapter = computed(() => (selectedChapterId.value ? getChapter(selectedChapterId.value) : undefined))
+const selectedKidTitle = computed(() =>
+  selectedChapterId.value ? chapterKidTitle(selectedChapterId.value) : '',
+)
+
+const chapterRows = computed(() => {
+  const nextId = nextLevel.value?.chapterId
+  return listChapters().map((item, index) => {
+    const progress = getChapterProgress(item.id)
+    const unlocked = isChapterUnlocked(item.id)
+    return {
+      id: item.id,
+      order: index + 1,
+      kidTitle: chapterKidTitle(item.id),
+      titleEn: item.titleEn,
+      emoji: CHAPTER_LOBBY_EMOJI[item.id] ?? '🏝️',
+      unlocked,
+      complete: progress.complete,
+      clearedCount: progress.clearedCount,
+      levelTotal: progress.levelTotal,
+      isNext: unlocked && item.id === nextId,
+    }
+  })
+})
+
 const startLabel = computed(() => {
-  if (chapter.value.complete || !nextLevel.value) return '看章节奖励'
-  const order = nextLevel.value.order
-  return `去第${order}关 · ${nextLevel.value.titleZh}`
+  if (!nextLevel.value) return '看章节奖励'
+  return nextLevelCtaCopy(
+    nextLevel.value.order,
+    nextLevel.value.titleZh,
+    getChapterNumber(nextLevel.value.chapterId),
+  )
 })
-
-const parentLine = computed(() => {
-  if (chapter.value.complete) return chapterPracticeCopy()
-  if (chapter.value.clearedCount > 0) return replayClearedHintCopy()
-  return '家长小记：通关立刻开下一关。'
-})
-
-function goPractice() {
-  playTap()
-  void router.push(locationForChapterPractice())
-}
 
 const hostEl = ref<HTMLElement | null>(null)
 const nextRowEl = ref<HTMLElement | null>(null)
@@ -71,8 +93,8 @@ function clearHintTimer() {
   }
 }
 
-function showLockHint() {
-  lockHint.value = LOCK_HINT
+function showChapterLockHint() {
+  lockHint.value = CHAPTER_LOCK_HINT
   clearHintTimer()
   hintTimer.value = window.setTimeout(() => {
     lockHint.value = ''
@@ -84,22 +106,31 @@ function bindNextRow(el: Element | null, isNext: boolean) {
   if (isNext && el instanceof HTMLElement) nextRowEl.value = el
 }
 
-function go() {
+function goChapters() {
+  playTap()
+  void router.replace({ path: '/animal-island' })
+}
+
+function openChapter(row: (typeof chapterRows.value)[number], event: MouseEvent) {
+  const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  if (!row.unlocked) {
+    playNudge()
+    void tweenShake(target, 6)
+    showChapterLockHint()
+    return
+  }
+  playTap()
+  void router.push({ path: '/animal-island', query: { chapter: row.id } })
+}
+
+function goNext() {
   playTap()
   void router.push(nextRoute.value)
 }
 
-function onLevelTap(row: (typeof levelRows.value)[number], event: MouseEvent) {
-  const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
-  if (!row.playable) {
-    playNudge()
-    void tweenShake(target, 6)
-    showLockHint()
-    return
-  }
+function goPractice() {
   playTap()
-  const def = getLevel(row.id)
-  void router.push(def ? locationForLevel(def) : row.route)
+  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
 }
 
 onMounted(() => {
@@ -115,7 +146,16 @@ onBeforeUnmount(() => {
 <template>
   <section class="screen island-lobby">
     <header class="top-row">
-      <button class="ghost-btn" type="button" @click="router.push('/')">首页</button>
+      <button
+        v-if="selectedChapterId"
+        class="ghost-btn"
+        type="button"
+        data-back-chapters
+        @click="goChapters"
+      >
+        章节
+      </button>
+      <button v-else class="ghost-btn" type="button" @click="router.push('/')">首页</button>
       <div class="top-tools">
         <star-bar />
         <settings-button />
@@ -124,8 +164,14 @@ onBeforeUnmount(() => {
 
     <div class="hero center">
       <p class="eyebrow">Animals Island</p>
-      <h1 class="title-xl">动物岛</h1>
-      <p class="sub">帮小猫把 {{ family.family }} 朋友请来派对</p>
+      <h1 class="title-xl">{{ selectedKidTitle || '动物岛' }}</h1>
+      <p class="sub">
+        {{
+          selectedChapter
+            ? `第${getChapterNumber(selectedChapter.id)}章 · 帮小猫把朋友请来`
+            : `三章小派对，先帮小猫办 ${family.family} 派对`
+        }}
+      </p>
     </div>
 
     <div class="island-wrap">
@@ -137,69 +183,76 @@ onBeforeUnmount(() => {
       </div>
       <div class="island">
         <div ref="hostEl" class="guide floaty">🐱</div>
-        <div v-if="earOn" class="deco ear popin">👂</div>
         <div class="prop hat" aria-hidden="true">🎩</div>
         <div class="palm">🌴</div>
       </div>
     </div>
 
-    <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
+    <p class="host-line center">
+      {{ selectedKidTitle ? `现在玩「${selectedKidTitle}」` : '小猫是派对主人 · 一章一章来玩' }}
+    </p>
 
-    <chapter-level-lights class="island-level-lights" />
+    <template v-if="selectedChapterId">
+      <chapter-level-lights class="island-level-lights" :chapter-id="selectedChapterId" />
+      <chapter-level-list :chapter-id="selectedChapterId" />
+    </template>
 
-    <div class="card progress-card">
-      <p class="progress-title">第1章 {{ chapter.clearedCount }}/{{ chapter.levelTotal }} 关</p>
-      <div class="gates" role="list">
-        <button
-          v-for="row in levelRows"
-          :key="row.id"
-          :ref="(el) => bindNextRow(el as Element | null, row.isNext)"
-          class="gate"
-          :class="{
-            done: row.status === 'cleared',
-            locked: row.status === 'locked',
-            next: row.isNext,
-          }"
-          type="button"
-          role="listitem"
-          :data-chapter-level="row.id"
-          :data-level-status="row.status"
-          :data-next-level="row.isNext ? '1' : '0'"
-          :data-level-replay="row.status === 'cleared' ? '1' : '0'"
-          :aria-label="`第${row.order}关 ${row.titleZh}，${row.isNext ? '现在玩' : STATUS_LABEL[row.status]}`"
-          @click="onLevelTap(row, $event)"
-        >
-          <span class="gate-emoji" aria-hidden="true">{{ row.status === 'locked' ? '🔒' : row.emoji }}</span>
-          <span class="gate-copy">
-            <b class="gate-name">第{{ row.order }}关 · {{ row.titleZh }}</b>
-            <small>{{ row.titleEn }}</small>
-          </span>
-          <span class="gate-mark">
-            <span
-              class="gate-star"
-              :class="{ on: row.status === 'cleared' }"
-              aria-hidden="true"
-            >⭐</span>
-            {{ row.isNext ? '现在玩' : STATUS_LABEL[row.status] }}
-          </span>
-        </button>
+    <template v-else>
+      <div class="card chapter-card">
+        <p class="progress-title">选一章开始玩</p>
+        <div class="chapters" role="list">
+          <button
+            v-for="row in chapterRows"
+            :key="row.id"
+            :ref="(el) => bindNextRow(el as Element | null, row.isNext)"
+            class="chapter"
+            :class="{
+              done: row.complete,
+              locked: !row.unlocked,
+              next: row.isNext,
+            }"
+            type="button"
+            role="listitem"
+            :data-chapter-entry="row.id"
+            :data-chapter-unlocked="row.unlocked ? '1' : '0'"
+            :data-next-chapter="row.isNext ? '1' : '0'"
+            :aria-label="`${row.kidTitle}，${row.unlocked ? `${row.clearedCount}/${row.levelTotal} 关` : CHAPTER_LOCK_HINT}`"
+            @click="openChapter(row, $event)"
+          >
+            <span class="chapter-emoji" aria-hidden="true">{{ row.unlocked ? row.emoji : '🔒' }}</span>
+            <span class="chapter-copy">
+              <b class="chapter-name">第{{ row.order }}章 · {{ row.kidTitle }}</b>
+              <small>
+                {{
+                  row.unlocked
+                    ? `${row.clearedCount}/${row.levelTotal} 关`
+                    : CHAPTER_LOCK_HINT
+                }}
+              </small>
+            </span>
+            <span class="chapter-mark">
+              {{ row.complete ? '通关啦' : row.isNext ? '现在玩' : row.unlocked ? '去玩' : '未开' }}
+            </span>
+          </button>
+        </div>
+        <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
+          {{ lockHint || '　' }}
+        </p>
+        <p class="parent-line">通关一章，下一章就会打开。</p>
       </div>
-      <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
-        {{ lockHint || '　' }}
-      </p>
-      <p class="parent-line">{{ parentLine }}</p>
-    </div>
 
-    <big-button
-      v-if="chapter.complete"
-      class="practice-btn"
-      variant="soft"
-      data-practice-entry
-      @click="goPractice"
-    >
-      {{ practiceEntryCopy() }}
-    </big-button>
-    <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
+      <big-button
+        v-if="hasPractice"
+        class="practice-btn"
+        variant="soft"
+        data-practice-entry
+        @click="goPractice"
+      >
+        {{ practiceEntryCopy() }}
+      </big-button>
+      <big-button class="start-btn" data-next-level-cta @click="goNext">{{ startLabel }}</big-button>
+    </template>
+
     <button class="album-btn" type="button" @click="router.push('/sticker-album')">
       <span aria-hidden="true">📒</span>
       贴纸相册
@@ -296,16 +349,6 @@ onBeforeUnmount(() => {
   filter: drop-shadow(0 6px 0 rgba(244, 180, 0, 0.25));
 }
 
-.deco {
-  position: absolute;
-  font-size: 34px;
-}
-
-.ear {
-  left: 18px;
-  top: -8px;
-}
-
 .prop.hat {
   position: absolute;
   left: 28px;
@@ -330,7 +373,7 @@ onBeforeUnmount(() => {
   margin: 2px 0 4px;
 }
 
-.progress-card {
+.chapter-card {
   margin-top: auto;
 }
 
@@ -340,17 +383,17 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.gates {
+.chapters {
   display: grid;
   gap: 6px;
 }
 
-.gate {
+.chapter {
   display: grid;
   grid-template-columns: 36px 1fr auto;
   align-items: center;
-  min-height: 48px;
-  padding: 8px 12px;
+  min-height: 56px;
+  padding: 10px 12px;
   border-radius: 16px;
   background: #f3f7fb;
   font-weight: 650;
@@ -358,67 +401,53 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 
-.gate.done {
+.chapter.done {
   background: #e4f8ec;
 }
 
-.gate.locked {
+.chapter.locked {
   background: #eef1f4;
   color: #7b8a96;
 }
 
-.gate.next {
+.chapter.next {
   background: #fff3c4;
   box-shadow: 0 4px 0 rgba(244, 180, 0, 0.22);
 }
 
-.gate:active {
+.chapter:active {
   transform: translateY(2px);
 }
 
-.gate-copy {
+.chapter-emoji {
+  font-size: 24px;
+}
+
+.chapter-copy {
   display: grid;
   gap: 1px;
   min-width: 0;
 }
 
-.gate-name {
+.chapter-name {
   font-size: 16px;
   font-weight: 750;
 }
 
-.gate-copy small {
-  font-size: 12px;
+.chapter-copy small {
+  font-size: 13px;
   font-weight: 650;
   color: var(--muted);
 }
 
-.gate.locked .gate-copy small {
-  color: #9aa8b3;
+.chapter.locked .chapter-copy small {
+  color: #c07a2a;
 }
 
-.gate-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.chapter-mark {
   font-size: 14px;
   font-weight: 750;
   white-space: nowrap;
-}
-
-.gate-star {
-  font-size: 20px;
-  filter: grayscale(0.4);
-  opacity: 0.55;
-}
-
-.gate-star.on {
-  filter: none;
-  opacity: 1;
-}
-
-.gate-emoji {
-  font-size: 24px;
 }
 
 .lock-hint {

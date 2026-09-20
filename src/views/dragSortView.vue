@@ -28,6 +28,7 @@ const {
   lastResult,
   isChapterPractice,
   chapterComplete,
+  chapterNo,
   replayCleared,
   continueAfterClear,
   goPractice,
@@ -240,6 +241,7 @@ onUnmounted(() => {
     <level-clear-sheet
       :open="showClearSheet"
       :chapter-complete="chapterComplete"
+      :chapter-no="chapterNo"
       :from-practice="isChapterPractice"
       :has-next="Boolean(lastResult?.nextLevelId)"
       @replay="replayCleared"

@@ -24,12 +24,25 @@ export function nextLevelCopy(titleZh: string): string {
   return `下一关：${titleZh}`
 }
 
-export function chapterDoneCopy(): string {
-  return '第一章派对通关啦'
+export function chapterDoneCopy(chapterNo = 1): string {
+  return `第${chapterNo}章通关啦`
 }
 
-export function chapterPracticeCopy(): string {
-  return '第一章通关啦，下面可以随便练'
+export function chapterPracticeCopy(chapterNo = 1): string {
+  return `第${chapterNo}章通关啦，下面可以随便练`
+}
+
+export function chapterLockHint(): string {
+  return '先通关上一章吧'
+}
+
+export function levelLockHint(): string {
+  return '先过上一关吧'
+}
+
+export function nextLevelCtaCopy(order: number, titleZh: string, chapterNo?: number): string {
+  if (chapterNo != null) return `去第${chapterNo}章第${order}关 · ${titleZh}`
+  return `去第${order}关 · ${titleZh}`
 }
 
 export function replayClearedHintCopy(): string {

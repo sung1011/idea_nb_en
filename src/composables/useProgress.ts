@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { DEFAULT_CHAPTER_ID } from '../data/chapters'
+import { CHAPTERS } from '../data/chapters'
 import {
   DAILY_CHAIN,
   GATE_ROUTES,
@@ -14,6 +14,8 @@ import {
   getChapterProgress,
   getNextLevel,
   isChapterUnlocked,
+  latestClearedChapterId,
+  locationForIslandChapter,
   grantSticker,
   hasDecoration,
   hasSticker,
@@ -55,6 +57,8 @@ export {
   getNextLevel,
   isChapterCleared,
   isChapterUnlocked,
+  latestClearedChapterId,
+  locationForIslandChapter,
   grantSticker,
   hasDecoration,
   hasSticker,
@@ -108,13 +112,17 @@ export {
   CHAPTER_3_ID,
   CHAPTERS,
   DEFAULT_CHAPTER_ID,
+  CHAPTER_LOBBY_EMOJI,
+  chapterKidTitle,
   chapterUnlocksAfter,
   getChapter,
+  getChapterNumber,
   getChapterOrDefault,
   getNextChapter,
   getPriorChapter,
   defaultLevelIdForPlay,
   getLevel,
+  isAnimalsChapterId,
   listAllLevels,
   listChapterLevels,
   listChapters,
@@ -169,11 +177,17 @@ export function useProgress() {
     },
   })
 
-  const chapter = computed(() => getChapterProgress(DEFAULT_CHAPTER_ID))
-  const nextLevel = computed(() => getNextLevel(DEFAULT_CHAPTER_ID))
+  const nextLevel = computed(() => getNextLevel())
+  const chapter = computed(() => {
+    const next = nextLevel.value
+    if (next) return getChapterProgress(next.chapterId)
+    return getChapterProgress(CHAPTERS[CHAPTERS.length - 1].id)
+  })
+  const practiceChapterId = computed(() => latestClearedChapterId())
+  const hasPractice = computed(() => Boolean(practiceChapterId.value))
   const gatesDone = computed(() => chapter.value.clearedCount)
   const gateTotal = computed(() => chapter.value.levelTotal)
-  const allDoneToday = computed(() => chapter.value.complete)
+  const allDoneToday = computed(() => !nextLevel.value)
   const nextGate = computed(
     () => DAILY_CHAIN.find((step) => !isChainStepDone(step, persistState.gates)) ?? null,
   )
@@ -192,6 +206,8 @@ export function useProgress() {
     lifetime,
     chapter,
     nextLevel,
+    practiceChapterId,
+    hasPractice,
     state,
     gatesDone,
     gateTotal,
@@ -216,6 +232,8 @@ export function useProgress() {
     isChapterUnlocked,
     getChapterProgress,
     getNextLevel,
+    latestClearedChapterId,
+    locationForIslandChapter,
     markWordSeen,
     unlockWord,
     grantSticker,
