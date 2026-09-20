@@ -1,4 +1,5 @@
 import { computed, reactive } from 'vue'
+import { DEFAULT_CHAPTER_ID } from '../data/chapters'
 import {
   DAILY_CHAIN,
   GATE_ROUTES,
@@ -12,6 +13,7 @@ import {
   ensureTodayTask,
   getChapterProgress,
   getNextLevel,
+  isChapterUnlocked,
   grantSticker,
   hasDecoration,
   hasSticker,
@@ -51,6 +53,8 @@ export {
   getChapterProgress,
   getCurrentChapterId,
   getNextLevel,
+  isChapterCleared,
+  isChapterUnlocked,
   grantSticker,
   hasDecoration,
   hasSticker,
@@ -97,12 +101,23 @@ export type { LevelDef, LevelStatus, PlayKind } from '../data/chapters'
 export {
   ANIMALS_CHAPTER_ID,
   CHAPTER_1,
+  CHAPTER_1_ID,
+  CHAPTER_2,
+  CHAPTER_2_ID,
+  CHAPTER_3,
+  CHAPTER_3_ID,
+  CHAPTERS,
   DEFAULT_CHAPTER_ID,
+  chapterUnlocksAfter,
   getChapter,
   getChapterOrDefault,
+  getNextChapter,
+  getPriorChapter,
   defaultLevelIdForPlay,
   getLevel,
+  listAllLevels,
   listChapterLevels,
+  listChapters,
   resolveLevelId,
 } from '../data/chapters'
 
@@ -110,6 +125,8 @@ export { ISLAND_DAY_CAP } from './progressStore'
 export {
   ALBUM_STICKERS,
   CHAPTER_1_STICKER_ID,
+  CHAPTER_2_STICKER_ID,
+  CHAPTER_3_STICKER_ID,
   CHAPTER_STICKERS,
   PLACEHOLDER_STICKER_IDS,
   PLACEHOLDER_STICKERS,
@@ -152,8 +169,8 @@ export function useProgress() {
     },
   })
 
-  const chapter = computed(() => getChapterProgress())
-  const nextLevel = computed(() => getNextLevel())
+  const chapter = computed(() => getChapterProgress(DEFAULT_CHAPTER_ID))
+  const nextLevel = computed(() => getNextLevel(DEFAULT_CHAPTER_ID))
   const gatesDone = computed(() => chapter.value.clearedCount)
   const gateTotal = computed(() => chapter.value.levelTotal)
   const allDoneToday = computed(() => chapter.value.complete)
@@ -196,6 +213,7 @@ export function useProgress() {
     completeLevel,
     isLevelUnlocked,
     isLevelCleared,
+    isChapterUnlocked,
     getChapterProgress,
     getNextLevel,
     markWordSeen,

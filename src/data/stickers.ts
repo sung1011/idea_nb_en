@@ -15,9 +15,13 @@ export const PLACEHOLDER_STICKERS: StickerDef[] = [
 
 /** Chapter first-clear badges. Not in the daily rotating pool. */
 export const CHAPTER_1_STICKER_ID = 'atParty'
+export const CHAPTER_2_STICKER_ID = 'pawPrint'
+export const CHAPTER_3_STICKER_ID = 'littleStar'
 
 export const CHAPTER_STICKERS: StickerDef[] = [
   { id: CHAPTER_1_STICKER_ID, label: '-at 派对徽章', emoji: '🎉' },
+  { id: CHAPTER_2_STICKER_ID, label: '爪印徽章', emoji: '🐾' },
+  { id: CHAPTER_3_STICKER_ID, label: '小星星徽章', emoji: '⭐' },
 ]
 
 export const ALBUM_STICKERS: StickerDef[] = [...PLACEHOLDER_STICKERS, ...CHAPTER_STICKERS]

@@ -27,7 +27,7 @@ export function useChapterLevel(play: PlayKind) {
   const level = computed(() => getLevel(levelId.value))
   const isReplay = computed(() => !isPractice.value && isLevelCleared(levelId.value))
   const canPlay = computed(() => isPractice.value || isLevelUnlocked(levelId.value))
-  const chapterComplete = computed(() => getChapterProgress().complete)
+  const chapterComplete = computed(() => getChapterProgress(level.value?.chapterId).complete)
   const showClearSheet = ref(false)
   const lastResult = ref<CompleteLevelResult | null>(null)
 

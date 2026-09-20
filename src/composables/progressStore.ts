@@ -1,12 +1,17 @@
 import { reactive } from 'vue'
 import {
   ANIMALS_CHAPTER_ID,
+  CHAPTERS,
   DEFAULT_CHAPTER_ID,
+  getChapter,
   getChapterOrDefault,
   getFirstLevel,
   getLevel,
+  getNextChapter,
   getNextLevelDef,
+  getPriorChapter,
   isKnownLevelId,
+  listAllLevels,
   listChapterLevels,
   playKindToGate,
   type LevelDef,
@@ -92,10 +97,12 @@ export type ChapterProgressView = {
   currentChapterId: string
   titleZh: string
   titleEn: string
+  theme: string
   highestUnlocked: string
   clearedCount: number
   levelTotal: number
   complete: boolean
+  unlocked: boolean
   chapterStickerGranted: boolean
   chapterStickerId: string
   levels: ChapterLevelView[]
@@ -292,13 +299,13 @@ export function locationAfterClear(
 }
 
 export function locationForNextMainline(): string | LevelLocation {
-  const next = getNextLevel()
+  const next = getNextLevel(persistState.chapter.currentChapterId)
   if (next) return locationForLevel(next)
   return '/day-complete'
 }
 
 export function routeForNextMainline(): string {
-  const next = getNextLevel()
+  const next = getNextLevel(persistState.chapter.currentChapterId)
   if (next) return next.route
   return '/day-complete'
 }
@@ -371,21 +378,24 @@ function emptyGates(): Record<DailyGateId, boolean> {
   }
 }
 
-function emptyChapterLevels(chapterId = DEFAULT_CHAPTER_ID): Record<string, LevelStatus> {
-  const levels = listChapterLevels(chapterId)
+function emptyAllLevels(): Record<string, LevelStatus> {
   const out: Record<string, LevelStatus> = {}
-  levels.forEach((item, index) => {
-    out[item.id] = index === 0 ? 'unlocked' : 'locked'
-  })
+  for (const chapter of CHAPTERS) {
+    for (const item of chapter.levels) {
+      out[item.id] = 'locked'
+    }
+  }
+  const first = getFirstLevel(DEFAULT_CHAPTER_ID)
+  out[first.id] = 'unlocked'
   return out
 }
 
 function emptyChapterSave(chapterId = DEFAULT_CHAPTER_ID): ChapterSave {
   const first = getFirstLevel(chapterId)
   return {
-    currentChapterId: chapterId,
+    currentChapterId: getChapter(chapterId) ? chapterId : DEFAULT_CHAPTER_ID,
     highestUnlocked: first.id,
-    levels: emptyChapterLevels(chapterId),
+    levels: emptyAllLevels(),
     firstClearStars: [],
     chapterStickers: [],
     firstClearAt: {},
@@ -466,41 +476,67 @@ function isLevelStatus(value: unknown): value is LevelStatus {
   return value === 'locked' || value === 'unlocked' || value === 'cleared'
 }
 
+function isChapterClearedInSave(save: ChapterSave, chapterId: string): boolean {
+  const defs = listChapterLevels(chapterId)
+  return defs.length > 0 && defs.every((item) => save.levels[item.id] === 'cleared')
+}
+
+function isChapterUnlockedInSave(save: ChapterSave, chapterId: string): boolean {
+  if (!getChapter(chapterId)) return false
+  const prior = getPriorChapter(chapterId)
+  if (!prior) return true
+  return isChapterClearedInSave(save, prior.id)
+}
+
 function repairChapterInvariants(save: ChapterSave): ChapterSave {
   const chapterId = getChapterOrDefault(save.currentChapterId).id
   save.currentChapterId = chapterId
-  const defs = listChapterLevels(chapterId)
-  const nextLevels: Record<string, LevelStatus> = emptyChapterLevels(chapterId)
-  for (const def of defs) {
+  const nextLevels = emptyAllLevels()
+  for (const def of listAllLevels()) {
     const status = save.levels[def.id]
-    nextLevels[def.id] = isLevelStatus(status) ? status : nextLevels[def.id]
+    if (isLevelStatus(status)) nextLevels[def.id] = status
   }
 
-  let highestCleared = -1
-  for (let i = 0; i < defs.length; i += 1) {
-    if (nextLevels[defs[i].id] === 'cleared') highestCleared = i
-  }
-  for (let i = 0; i <= highestCleared; i += 1) {
-    nextLevels[defs[i].id] = 'cleared'
-  }
-  const unlockIdx = highestCleared + 1
-  if (unlockIdx >= 0 && unlockIdx < defs.length) {
-    nextLevels[defs[unlockIdx].id] = 'unlocked'
-  }
-  for (let i = unlockIdx + 1; i < defs.length; i += 1) {
-    nextLevels[defs[i].id] = 'locked'
-  }
-  if (highestCleared < 0) {
-    nextLevels[defs[0].id] = 'unlocked'
+  for (const chapter of CHAPTERS) {
+    const defs = chapter.levels
+    const prior = getPriorChapter(chapter.id)
+    const chapterOpen = !prior || defsOfCleared(nextLevels, prior.id)
+
+    if (!chapterOpen) {
+      for (const def of defs) nextLevels[def.id] = 'locked'
+      continue
+    }
+
+    let highestCleared = -1
+    for (let i = 0; i < defs.length; i += 1) {
+      if (nextLevels[defs[i].id] === 'cleared') highestCleared = i
+    }
+    for (let i = 0; i <= highestCleared; i += 1) {
+      nextLevels[defs[i].id] = 'cleared'
+    }
+    const unlockIdx = highestCleared + 1
+    if (unlockIdx >= 0 && unlockIdx < defs.length) {
+      nextLevels[defs[unlockIdx].id] = 'unlocked'
+    }
+    for (let i = unlockIdx + 1; i < defs.length; i += 1) {
+      nextLevels[defs[i].id] = 'locked'
+    }
+    if (highestCleared < 0) {
+      nextLevels[defs[0].id] = 'unlocked'
+    }
   }
 
   save.levels = nextLevels
-  const unlockedIdx = Math.max(0, Math.min(defs.length - 1, highestCleared + 1))
-  save.highestUnlocked = defs[highestCleared >= defs.length - 1 ? defs.length - 1 : unlockedIdx].id
+  let highest = getFirstLevel(DEFAULT_CHAPTER_ID).id
+  for (const def of listAllLevels()) {
+    const status = nextLevels[def.id]
+    if (status === 'unlocked' || status === 'cleared') highest = def.id
+  }
+  save.highestUnlocked = highest
 
-  const knownIds = new Set(defs.map((item) => item.id))
+  const knownIds = new Set(listAllLevels().map((item) => item.id))
   save.firstClearStars = save.firstClearStars.filter((id) => knownIds.has(id))
-  save.chapterStickers = save.chapterStickers.filter(Boolean)
+  save.chapterStickers = save.chapterStickers.filter((id) => Boolean(getChapter(id)))
   const firstClearAt: Record<string, string> = {}
   for (const [id, when] of Object.entries(save.firstClearAt)) {
     if (knownIds.has(id) && typeof when === 'string' && when) firstClearAt[id] = when
@@ -508,6 +544,11 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   save.firstClearAt = firstClearAt
   save.celebrated = Boolean(save.celebrated)
   return save
+}
+
+function defsOfCleared(levels: Record<string, LevelStatus>, chapterId: string): boolean {
+  const defs = listChapterLevels(chapterId)
+  return defs.length > 0 && defs.every((item) => levels[item.id] === 'cleared')
 }
 
 type DailyHints = {
@@ -571,7 +612,7 @@ function normalizeChapterSave(raw: unknown, daily: DailyHints): ChapterSave {
       ? parsed.currentChapterId
       : DEFAULT_CHAPTER_ID
   const first = getFirstLevel(chapterId)
-  const levels: Record<string, LevelStatus> = emptyChapterLevels(chapterId)
+  const levels: Record<string, LevelStatus> = emptyAllLevels()
   for (const [id, status] of Object.entries(parsed.levels)) {
     if (isLevelStatus(status)) levels[id] = status
   }
@@ -603,7 +644,7 @@ function readLevelStatus(save: ChapterSave, id: string): LevelStatus {
 }
 
 function isChapterComplete(save: ChapterSave, chapterId = save.currentChapterId): boolean {
-  return listChapterLevels(chapterId).every((item) => save.levels[item.id] === 'cleared')
+  return isChapterClearedInSave(save, chapterId)
 }
 
 function viewFromChapter(save: ChapterSave, chapterId = save.currentChapterId): ChapterProgressView {
@@ -624,10 +665,12 @@ function viewFromChapter(save: ChapterSave, chapterId = save.currentChapterId): 
     currentChapterId: save.currentChapterId,
     titleZh: chapter.titleZh,
     titleEn: chapter.titleEn,
+    theme: chapter.theme,
     highestUnlocked: save.highestUnlocked,
     clearedCount,
     levelTotal: levels.length,
     complete: clearedCount === levels.length && levels.length > 0,
+    unlocked: isChapterUnlockedInSave(save, chapter.id),
     chapterStickerGranted: save.chapterStickers.includes(chapter.id),
     chapterStickerId: chapter.stickerId,
     levels,
@@ -635,6 +678,7 @@ function viewFromChapter(save: ChapterSave, chapterId = save.currentChapterId): 
 }
 
 function nextUnlockedLevel(save: ChapterSave, chapterId = save.currentChapterId): LevelDef | null {
+  if (!isChapterUnlockedInSave(save, chapterId)) return null
   const defs = listChapterLevels(chapterId)
   for (const def of defs) {
     if (readLevelStatus(save, def.id) === 'unlocked') return def
@@ -642,16 +686,25 @@ function nextUnlockedLevel(save: ChapterSave, chapterId = save.currentChapterId)
   return null
 }
 
+function nextMainlineLevel(save: ChapterSave): LevelDef | null {
+  for (const chapter of CHAPTERS) {
+    if (!isChapterUnlockedInSave(save, chapter.id)) return null
+    const next = nextUnlockedLevel(save, chapter.id)
+    if (next) return next
+  }
+  return null
+}
+
 function syncGatesFromChapter(target: Record<string, boolean>, save: ChapterSave) {
-  for (const def of listChapterLevels(save.currentChapterId)) {
+  for (const def of listChapterLevels(DEFAULT_CHAPTER_ID)) {
     const gate = playKindToGate(def.play)
     if (gate) target[gate] = save.levels[def.id] === 'cleared'
   }
 }
 
 function syncTodayAndGatesFromChapter(data: PersistShape) {
-  const view = viewFromChapter(data.chapter)
-  const next = nextUnlockedLevel(data.chapter)
+  const view = viewFromChapter(data.chapter, DEFAULT_CHAPTER_ID)
+  const next = nextUnlockedLevel(data.chapter, DEFAULT_CHAPTER_ID)
   data.today.starsGoal = view.levelTotal
   data.today.starsEarned = view.clearedCount
   data.today.mainTaskId = MAIN_TASK_ID
@@ -997,8 +1050,17 @@ export function getChapterProgress(chapterId?: string): ChapterProgressView {
   return viewFromChapter(persistState.chapter, chapterId ?? persistState.chapter.currentChapterId)
 }
 
+export function isChapterUnlocked(chapterId: string): boolean {
+  return isChapterUnlockedInSave(persistState.chapter, chapterId)
+}
+
+export function isChapterCleared(chapterId: string): boolean {
+  return isChapterClearedInSave(persistState.chapter, chapterId)
+}
+
 export function getNextLevel(chapterId?: string): LevelDef | null {
-  return nextUnlockedLevel(persistState.chapter, chapterId ?? persistState.chapter.currentChapterId)
+  if (chapterId) return nextUnlockedLevel(persistState.chapter, chapterId)
+  return nextMainlineLevel(persistState.chapter)
 }
 
 export function getCurrentChapterId(): string {
@@ -1022,7 +1084,7 @@ export function completeLevel(id: string): CompleteLevelResult {
 
   const already = isLevelCleared(id)
   if (already) {
-    const next = getNextLevel()
+    const next = getNextLevel(def.chapterId)
     return {
       accepted: true,
       firstClear: false,
@@ -1042,12 +1104,17 @@ export function completeLevel(id: string): CompleteLevelResult {
   }
   persistState.chapter.firstClearAt[id] = persistState.dateKey
 
-  const following = getNextLevelDef(id)
-  if (following) {
-    persistState.chapter.levels[following.id] = 'unlocked'
-    persistState.chapter.highestUnlocked = following.id
+  const followingInChapter = getNextLevelDef(id)
+  if (followingInChapter) {
+    persistState.chapter.levels[followingInChapter.id] = 'unlocked'
+    persistState.chapter.highestUnlocked = followingInChapter.id
   } else {
     persistState.chapter.highestUnlocked = id
+    const nextChapter = getNextChapter(def.chapterId)
+    if (nextChapter) {
+      persistState.chapter.levels[nextChapter.levels[0].id] = 'unlocked'
+      persistState.chapter.highestUnlocked = nextChapter.levels[0].id
+    }
   }
   persistState.chapter.currentChapterId = def.chapterId
   persistState.chapter = repairChapterInvariants(persistState.chapter)
@@ -1068,12 +1135,13 @@ export function completeLevel(id: string): CompleteLevelResult {
 
   persistState.today.chainStep = maxChain(
     persistState.today.chainStep,
-    chainStepForLevel(following, !following),
+    chainStepForLevel(followingInChapter, !followingInChapter),
   )
   syncTodayAndGatesFromChapter(persistState)
   persist()
 
-  const next = getNextLevel()
+  const endedChapter = !followingInChapter
+  const next = endedChapter ? null : getNextLevel(def.chapterId)
   return {
     accepted: true,
     firstClear: true,
@@ -1102,7 +1170,7 @@ export function advanceIslandDayOncePerDate(): boolean {
 
 export function completeDailyIfReady(): boolean {
   ensureToday()
-  if (!isChapterComplete(persistState.chapter)) return false
+  if (!isChapterComplete(persistState.chapter, DEFAULT_CHAPTER_ID)) return false
   if (persistState.today.completed) return false
   persistState.today.completed = true
   persistState.today.mainTaskDone = true
@@ -1121,7 +1189,7 @@ export type DayCompleteClaim = {
 }
 
 function canClaimDayComplete(): boolean {
-  return isChapterComplete(persistState.chapter) || persistState.today.completed
+  return isChapterComplete(persistState.chapter, DEFAULT_CHAPTER_ID) || persistState.today.completed
 }
 
 function grantDailyStickerOnce(): { stickerId: string | null; granted: boolean; fresh: boolean } {

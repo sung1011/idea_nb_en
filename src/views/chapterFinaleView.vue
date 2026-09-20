@@ -8,6 +8,7 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
+import { getChapter } from '../data/chapters'
 
 const {
   level,
@@ -26,6 +27,9 @@ const {
   goLobby,
 } = useChapterLevel('chapterFinale')
 const words = computed(() => level.value?.words ?? ['cat', 'hat', 'mat'])
+const chapter = computed(() => getChapter(level.value?.chapterId))
+const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-at 派对」')
+const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
 const celebrating = ref(false)
 const locked = ref(false)
 const cardEl = ref<HTMLElement | null>(null)
@@ -53,8 +57,8 @@ async function finish() {
 
     <div class="hero center">
       <p class="eyebrow">{{ gateTag }}</p>
-      <h1 class="title-xl">-at 派对</h1>
-      <p class="sub">短回顾：再看一看 cat / hat / mat</p>
+      <h1 class="title-xl">{{ titleZh }}</h1>
+      <p class="sub">{{ recapLine }}</p>
     </div>
 
     <div ref="cardEl" class="card words" :class="{ pop: celebrating }">
@@ -100,7 +104,7 @@ async function finish() {
 
 .words {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 10px;
   margin-top: 8px;
 }
