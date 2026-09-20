@@ -1,66 +1,104 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import islandDayCells from '../components/islandDayCells.vue'
+import chapterLevelLights from '../components/chapterLevelLights.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
-import todayGoalBar from '../components/todayGoalBar.vue'
-import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
+import { tweenCelebrate, tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
+import { playNudge, playTap } from '../composables/useSfx'
+import { getLevel, type PlayKind } from '../data/chapters'
 import { getCurrentFamily } from '../data/phonicsFamily'
+
+const PLAY_EMOJI: Record<PlayKind, string> = {
+  flashFlip: '🃏',
+  whackWord: '🐹',
+  dragSort: '🧺',
+  wordFish: '🐠',
+  echo: '🎤',
+  chapterFinale: '🎉',
+}
+
+const STATUS_LABEL: Record<'locked' | 'unlocked' | 'cleared', string> = {
+  locked: '未开',
+  unlocked: '去玩',
+  cleared: '过啦',
+}
+
+const LOCK_HINT = '先过上一关吧'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const {
-  state,
-  gatesDone,
-  gateTotal,
-  allDoneToday,
-  nextRoute,
-  nextLevel,
-  chapter,
-  warmupKind,
-  hasSticker,
-} = useProgress()
+const { chapter, nextLevel, nextRoute, hasSticker } = useProgress()
 
-const gates = computed(() => {
-  const warmup =
-    warmupKind.value === 'flashFlip'
-      ? { id: 'flashFlip' as const, emoji: '🃏', label: '闪卡翻翻' }
-      : { id: 'whackWord' as const, emoji: '🐹', label: '地鼠词' }
-  return [
-    warmup,
-    { id: 'dragSort' as const, emoji: '🧺', label: '拖一拖' },
-    { id: 'soundFish' as const, emoji: '🐠', label: '读词钓鱼' },
-    { id: 'echoCave' as const, emoji: '🎤', label: '回声跟读' },
-  ]
+const levelRows = computed(() => {
+  const nextId = nextLevel.value?.id
+  return chapter.value.levels.map((item, index) => ({
+    ...item,
+    order: getLevel(item.id)?.order ?? index + 1,
+    emoji: PLAY_EMOJI[item.play],
+    isNext: item.id === nextId,
+    playable: item.status === 'unlocked' || item.status === 'cleared',
+  }))
 })
-
-function gateDone(id: (typeof gates.value)[number]['id']) {
-  if (id === 'flashFlip' || id === 'whackWord') {
-    return Boolean(state.daily.gates.flashFlip || state.daily.gates.whackWord)
-  }
-  return Boolean(state.daily.gates[id])
-}
 
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
-  if (chapter.value.complete) return '看章节奖励'
-  if (nextLevel.value) return chapter.value.clearedCount > 0 ? '继续派对' : '开始派对'
-  return '看章节奖励'
+  if (chapter.value.complete || !nextLevel.value) return '看章节奖励'
+  const order = nextLevel.value.order
+  return `去第${order}关 · ${nextLevel.value.titleZh}`
 })
 
 const hostEl = ref<HTMLElement | null>(null)
-const progressEl = ref<HTMLElement | null>(null)
+const nextRowEl = ref<HTMLElement | null>(null)
+const lockHint = ref('')
+const hintTimer = ref<number | null>(null)
+
+function clearHintTimer() {
+  if (hintTimer.value != null) {
+    window.clearTimeout(hintTimer.value)
+    hintTimer.value = null
+  }
+}
+
+function showLockHint() {
+  lockHint.value = LOCK_HINT
+  clearHintTimer()
+  hintTimer.value = window.setTimeout(() => {
+    lockHint.value = ''
+    hintTimer.value = null
+  }, 2200)
+}
+
+function bindNextRow(el: Element | null, isNext: boolean) {
+  if (isNext && el instanceof HTMLElement) nextRowEl.value = el
+}
 
 function go() {
+  playTap()
   void router.push(nextRoute.value)
+}
+
+function onLevelTap(row: (typeof levelRows.value)[number], event: MouseEvent) {
+  const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  if (!row.playable) {
+    playNudge()
+    void tweenShake(target, 6)
+    showLockHint()
+    return
+  }
+  playTap()
+  void router.push(row.route)
 }
 
 onMounted(() => {
   void tweenCelebrate(hostEl.value)
-  if (allDoneToday.value) void tweenPulse(progressEl.value)
+  if (nextRowEl.value) void tweenPulse(nextRowEl.value)
+})
+
+onBeforeUnmount(() => {
+  clearHintTimer()
 })
 </script>
 
@@ -80,8 +118,6 @@ onMounted(() => {
       <p class="sub">帮小猫把 {{ family.family }} 朋友请来派对</p>
     </div>
 
-    <today-goal-bar class="island-goal" />
-
     <div class="island-wrap">
       <div class="sun" aria-hidden="true" />
       <div class="balloon b1" aria-hidden="true">🎈</div>
@@ -99,35 +135,57 @@ onMounted(() => {
 
     <p class="host-line center">小猫是派对主人 · hat / mat 是派对道具</p>
 
-    <island-day-cells class="island-days-bar" />
+    <chapter-level-lights class="island-level-lights" />
 
     <div class="card progress-card">
-      <p ref="progressEl" class="progress-title">第一章派对 · {{ gatesDone }}/{{ gateTotal }}</p>
-      <div class="gates">
-        <div
-          v-for="gate in gates"
-          :key="gate.id"
+      <p class="progress-title">第1章 {{ chapter.clearedCount }}/{{ chapter.levelTotal }} 关</p>
+      <div class="gates" role="list">
+        <button
+          v-for="row in levelRows"
+          :key="row.id"
+          :ref="(el) => bindNextRow(el as Element | null, row.isNext)"
           class="gate"
-          :class="{ done: gateDone(gate.id) }"
+          :class="{
+            done: row.status === 'cleared',
+            locked: row.status === 'locked',
+            next: row.isNext,
+          }"
+          type="button"
+          role="listitem"
+          :data-chapter-level="row.id"
+          :data-level-status="row.status"
+          :data-next-level="row.isNext ? '1' : '0'"
+          :aria-label="`第${row.order}关 ${row.titleZh}，${row.isNext ? '现在玩' : STATUS_LABEL[row.status]}`"
+          @click="onLevelTap(row, $event)"
         >
-          <span class="gate-emoji">{{ gate.emoji }}</span>
-          <span>{{ gate.label }}</span>
-          <b>
-            <span class="gate-star" :class="{ on: gateDone(gate.id) }" aria-hidden="true">⭐</span>
-            {{ gateDone(gate.id) ? '好' : '待' }}
-          </b>
-        </div>
+          <span class="gate-emoji" aria-hidden="true">{{ row.status === 'locked' ? '🔒' : row.emoji }}</span>
+          <span class="gate-copy">
+            <b class="gate-name">第{{ row.order }}关 · {{ row.titleZh }}</b>
+            <small>{{ row.titleEn }}</small>
+          </span>
+          <span class="gate-mark">
+            <span
+              class="gate-star"
+              :class="{ on: row.status === 'cleared' }"
+              aria-hidden="true"
+            >⭐</span>
+            {{ row.isNext ? '现在玩' : STATUS_LABEL[row.status] }}
+          </span>
+        </button>
       </div>
+      <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
+        {{ lockHint || '　' }}
+      </p>
       <p class="parent-line">
         {{
-          allDoneToday
+          chapter.complete
             ? '第一章派对通关啦，随时还能再玩。'
             : '家长小记：通关立刻开下一关，不用等明天。'
         }}
       </p>
     </div>
 
-    <big-button class="start-btn" @click="go">{{ startLabel }}</big-button>
+    <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
     <button class="album-btn" type="button" @click="router.push('/sticker-album')">
       <span aria-hidden="true">📒</span>
       贴纸相册
@@ -151,10 +209,6 @@ onMounted(() => {
   margin: 8px 0 0;
   font-size: 15px;
   color: var(--muted);
-}
-
-.island-goal {
-  margin: 4px 0 2px;
 }
 
 .island-wrap {
@@ -258,7 +312,7 @@ onMounted(() => {
   color: var(--muted);
 }
 
-.island-days-bar {
+.island-level-lights {
   margin: 2px 0 4px;
 }
 
@@ -281,25 +335,65 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 36px 1fr auto;
   align-items: center;
-  min-height: 42px;
-  padding: 6px 12px;
+  min-height: 48px;
+  padding: 8px 12px;
   border-radius: 16px;
   background: #f3f7fb;
   font-weight: 650;
+  color: inherit;
+  text-align: left;
 }
 
 .gate.done {
   background: #e4f8ec;
 }
 
-.gate b {
+.gate.locked {
+  background: #eef1f4;
+  color: #7b8a96;
+}
+
+.gate.next {
+  background: #fff3c4;
+  box-shadow: 0 4px 0 rgba(244, 180, 0, 0.22);
+}
+
+.gate:active {
+  transform: translateY(2px);
+}
+
+.gate-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.gate-name {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.gate-copy small {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.gate.locked .gate-copy small {
+  color: #9aa8b3;
+}
+
+.gate-mark {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .gate-star {
-  font-size: 22px;
+  font-size: 20px;
   filter: grayscale(0.4);
   opacity: 0.55;
 }
@@ -313,8 +407,21 @@ onMounted(() => {
   font-size: 24px;
 }
 
+.lock-hint {
+  margin: 10px 0 0;
+  min-height: 20px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: transparent;
+}
+
+.lock-hint.show {
+  color: #c07a2a;
+}
+
 .parent-line {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--muted);
 }
