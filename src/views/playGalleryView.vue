@@ -10,7 +10,7 @@ import {
   playItems,
   practiceChapterIdFromQuery,
 } from '../data/playGallery'
-import { chapterPracticeCopy, practiceEntryCopy, replayAgainCopy } from '../data/todayTasks'
+import { chapterPracticeOnlyCopy, practiceEntryCopy, replayAgainCopy } from '../data/todayTasks'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,17 +66,25 @@ function openPlay(path: string, levelId?: string) {
 </script>
 
 <template>
-  <section class="screen gallery" :data-chapter-practice="isPractice ? '1' : '0'">
+  <section
+    class="screen gallery"
+    :data-chapter-practice="isPractice ? '1' : '0'"
+    :data-practice-chapter="practiceChapterId ?? undefined"
+  >
     <header class="top-row">
       <button class="ghost-btn" type="button" @click="router.push(backTo)">{{ backLabel }}</button>
       <star-bar />
     </header>
 
     <div class="hero center">
-      <p class="eyebrow">{{ isPractice ? 'Practice' : 'Play gallery' }}</p>
-      <h1 class="title-lg">{{ isPractice ? practiceEntryCopy() : '玩法一览' }}</h1>
+      <p class="eyebrow">{{ isPractice ? '练一练' : 'Play gallery' }}</p>
+      <h1 class="title-lg">
+        {{ isPractice ? practiceEntryCopy(practiceChapterId ?? undefined) : '玩法一览' }}
+      </h1>
       <p class="sub">
-        {{ isPractice ? chapterPracticeCopy(practiceChapterNo) : '点进去试玩，不算过关，不加星星' }}
+        {{
+          isPractice ? chapterPracticeOnlyCopy(practiceChapterNo) : '点进去试玩，不算过关，不加星星'
+        }}
       </p>
     </div>
 

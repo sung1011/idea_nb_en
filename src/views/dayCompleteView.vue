@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
@@ -8,45 +8,53 @@ import todayStarBar from '../components/todayStarBar.vue'
 import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
-import { CHAPTER_1_ID } from '../data/chapters'
-import { locationForChapterPractice } from '../data/playGallery'
-import { stickerById } from '../data/stickers'
+import { CHAPTER_1_ID, chapterKidTitle, getChapterNumber } from '../data/chapters'
+import { locationForChapterPractice, practiceChapterIdFromQuery } from '../data/playGallery'
+import { stickerById, stickerLabel } from '../data/stickers'
 import { chapterPracticeCopy, practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
-const { state, getChapterProgress, hasPractice, practiceChapterId, claimDayCompleteRewards } =
-  useProgress()
-const chapter = computed(() => getChapterProgress(CHAPTER_1_ID))
+const route = useRoute()
+const { state, getChapterProgress, latestClearedChapterId, claimDayCompleteRewards } = useProgress()
 
-const claim = claimDayCompleteRewards()
+const claim = claimDayCompleteRewards(
+  practiceChapterIdFromQuery(route.query.chapter) ?? latestClearedChapterId() ?? CHAPTER_1_ID,
+)
+const chapterId = computed(() => claim.chapterId)
+const chapter = computed(() => getChapterProgress(chapterId.value))
+const chapterNo = computed(() => getChapterNumber(chapterId.value))
+const kidTitle = computed(() => chapterKidTitle(chapterId.value))
 const sticker = computed(() => (claim.stickerId ? stickerById(claim.stickerId) : null))
+const badgeName = computed(() => (claim.stickerId ? stickerLabel(claim.stickerId) : '章节徽章'))
 
 const burstEl = ref<HTMLElement | null>(null)
 const stickerEl = ref<HTMLElement | null>(null)
 
 const titleZh = computed(() => {
-  if (!claim.ready) return '派对还没结束'
-  return claim.freshClaim ? '派对成功' : '章节奖励还在'
+  if (!claim.ready) return `${kidTitle.value || '这一章'}还没结束`
+  return claim.freshClaim ? `第${chapterNo.value}章通关啦` : `「${kidTitle.value}」徽章还在`
 })
 
 const leadLine = computed(() => {
-  if (!claim.ready) return '先把第一章派对玩完，小猫再发徽章。'
-  if (claim.freshClaim && claim.stickerGranted) return '小猫把朋友请来啦，还送你一张贴纸！'
-  if (claim.freshClaim) return '小猫把朋友请来啦，这张贴纸你已经贴过啦。'
-  return chapterPracticeCopy()
+  if (!claim.ready) return `先把「${kidTitle.value}」玩完，小猫再发徽章。`
+  if (claim.freshClaim && claim.stickerGranted) {
+    return `小猫把第${chapterNo.value}章徽章「${badgeName.value}」送给你啦！`
+  }
+  if (claim.freshClaim) return `这枚「${badgeName.value}」你已经贴过啦。`
+  return chapterPracticeCopy(chapterNo.value)
 })
 
 const stickerLine = computed(() => {
-  const name = sticker.value?.label ?? '贴纸'
+  const name = badgeName.value
   if (!claim.ready) return `通关后就能拿到「${name}」`
-  if (claim.freshClaim && claim.stickerGranted) return `贴纸贴上啦！「${name}」`
+  if (claim.freshClaim && claim.stickerGranted) return `贴纸贴上啦！第${chapterNo.value}章徽章「${name}」`
   if (claim.freshClaim) return `「${name}」早就在你的贴纸里啦`
-  return `章节徽章是「${name}」，想再玩就点已过的关`
+  return `第${chapterNo.value}章徽章是「${name}」，想再玩就点已过的关`
 })
 
 const chapterLine = computed(() => {
-  if (chapter.value.complete) return '第一章派对通关啦'
-  return `第1章 ${chapter.value.clearedCount}/${chapter.value.levelTotal} 关`
+  if (chapter.value.complete) return `第${chapterNo.value}章「${kidTitle.value}」通关啦`
+  return `第${chapterNo.value}章 ${chapter.value.clearedCount}/${chapter.value.levelTotal} 关`
 })
 
 onMounted(() => {
@@ -77,7 +85,7 @@ onMounted(() => {
       <p class="zh">{{ titleZh }}</p>
       <p class="sub">{{ leadLine }}</p>
       <today-star-bar class="today-loot" size="large" :celebrate-on-gain="false" />
-      <chapter-level-lights class="chapter-loot" :chapter-id="CHAPTER_1_ID" :celebrate-on-gain="false" />
+      <chapter-level-lights class="chapter-loot" :chapter-id="chapterId" :celebrate-on-gain="false" />
 
       <div
         v-if="sticker"
@@ -107,12 +115,13 @@ onMounted(() => {
 
     <big-button @click="router.push('/')">回家</big-button>
     <big-button
-      v-if="hasPractice"
+      v-if="chapter.complete"
       variant="soft"
       data-practice-entry
-      @click="router.push(locationForChapterPractice(practiceChapterId ?? CHAPTER_1_ID))"
+      :data-practice-chapter="chapterId"
+      @click="router.push(locationForChapterPractice(chapterId))"
     >
-      {{ practiceEntryCopy() }}
+      {{ practiceEntryCopy(chapterId) }}
     </big-button>
     <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
   </section>

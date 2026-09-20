@@ -15,6 +15,8 @@ import {
   getNextLevel,
   isChapterUnlocked,
   latestClearedChapterId,
+  listClearedChapterIds,
+  locationForDayComplete,
   locationForIslandChapter,
   grantSticker,
   hasDecoration,
@@ -58,6 +60,8 @@ export {
   isChapterCleared,
   isChapterUnlocked,
   latestClearedChapterId,
+  listClearedChapterIds,
+  locationForDayComplete,
   locationForIslandChapter,
   grantSticker,
   hasDecoration,
@@ -91,7 +95,9 @@ export type {
   ChapterSave,
   CompleteLevelResult,
   DailyGateId,
+  ChapterLocation,
   LevelLocation,
+  ProgressLocation,
   DailyProgress,
   DayCompleteClaim,
   GateId,
@@ -140,6 +146,8 @@ export {
   PLACEHOLDER_STICKERS,
   nextStickerId,
   stickerById,
+  stickerEmoji,
+  stickerLabel,
 } from '../data/stickers'
 
 export function useProgress() {
@@ -184,7 +192,8 @@ export function useProgress() {
     return getChapterProgress(CHAPTERS[CHAPTERS.length - 1].id)
   })
   const practiceChapterId = computed(() => latestClearedChapterId())
-  const hasPractice = computed(() => Boolean(practiceChapterId.value))
+  const clearedChapterIds = computed(() => listClearedChapterIds())
+  const hasPractice = computed(() => clearedChapterIds.value.length > 0)
   const gatesDone = computed(() => chapter.value.clearedCount)
   const gateTotal = computed(() => chapter.value.levelTotal)
   const allDoneToday = computed(() => !nextLevel.value)
@@ -207,6 +216,7 @@ export function useProgress() {
     chapter,
     nextLevel,
     practiceChapterId,
+    clearedChapterIds,
     hasPractice,
     state,
     gatesDone,
@@ -233,6 +243,8 @@ export function useProgress() {
     getChapterProgress,
     getNextLevel,
     latestClearedChapterId,
+    listClearedChapterIds,
+    locationForDayComplete,
     locationForIslandChapter,
     markWordSeen,
     unlockWord,

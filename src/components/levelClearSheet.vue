@@ -11,6 +11,7 @@ const props = defineProps<{
   open: boolean
   chapterComplete?: boolean
   chapterNo?: number
+  chapterId?: string
   fromPractice?: boolean
   hasNext?: boolean
 }>()
@@ -54,9 +55,10 @@ const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
           v-if="showPractice"
           variant="soft"
           data-practice-entry
+          :data-practice-chapter="chapterId"
           @click="emit('practice')"
         >
-          {{ practiceEntryCopy() }}
+          {{ practiceEntryCopy(chapterId) }}
         </big-button>
         <button class="lobby-link" type="button" data-clear-lobby @click="emit('lobby')">回岛</button>
       </div>

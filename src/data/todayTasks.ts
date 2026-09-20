@@ -55,8 +55,13 @@ export function replayAgainCopy(): string {
   return '再玩一次'
 }
 
-export function practiceEntryCopy(): string {
-  return '练一练'
+export function practiceEntryCopy(chapterId?: string): string {
+  const kid = chapterId ? chapterKidTitle(chapterId) : ''
+  return kid ? `练一练「${kid}」` : '练一练'
+}
+
+export function chapterPracticeOnlyCopy(chapterNo = 1): string {
+  return `第${chapterNo}章通关啦，下面只练这一章`
 }
 
 export function focusWordHint(word: string): string {

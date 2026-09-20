@@ -180,9 +180,10 @@ onBeforeUnmount(() => {
       class="practice-btn"
       variant="soft"
       data-practice-entry
+      :data-practice-chapter="chapterId"
       @click="goPractice"
     >
-      {{ practiceEntryCopy() }}
+      {{ practiceEntryCopy(chapterId) }}
     </big-button>
     <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
   </div>

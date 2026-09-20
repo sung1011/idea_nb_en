@@ -32,6 +32,15 @@ export function stickerById(id: string): StickerDef | undefined {
   return ALBUM_STICKERS.find((item) => item.id === id)
 }
 
+/** Album / celebrate copy: catalog Chinese name, or a kid-facing fallback. */
+export function stickerLabel(id: string): string {
+  return stickerById(id)?.label ?? '章节徽章'
+}
+
+export function stickerEmoji(id: string): string {
+  return stickerById(id)?.emoji ?? '⭐'
+}
+
 /** Next unused catalog id; if the child owns all five, fall back to a stable per-day pick. */
 export function nextStickerId(owned: readonly string[], day = ''): string {
   const have = new Set(owned)

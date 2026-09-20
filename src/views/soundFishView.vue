@@ -27,6 +27,7 @@ const {
   isChapterPractice,
   chapterComplete,
   chapterNo,
+  chapterId,
   replayCleared,
   continueAfterClear,
   goPractice,
@@ -216,6 +217,7 @@ onUnmounted(() => {
       :open="showClearSheet"
       :chapter-complete="chapterComplete"
       :chapter-no="chapterNo"
+      :chapter-id="chapterId"
       :from-practice="isChapterPractice"
       :has-next="Boolean(lastResult?.nextLevelId)"
       @replay="replayCleared"

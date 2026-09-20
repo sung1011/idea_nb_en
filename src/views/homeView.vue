@@ -15,7 +15,7 @@ import { chapterProgressCopy, practiceEntryCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { chapter, hasPractice, practiceChapterId } = useProgress()
+const { chapter, clearedChapterIds } = useProgress()
 const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
 const chipText = computed(() =>
   chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value).replace(
@@ -37,8 +37,8 @@ function goGallery() {
   void router.push('/play-gallery')
 }
 
-function goPractice() {
-  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
+function goPractice(chapterId: string) {
+  void router.push(locationForChapterPractice(chapterId))
 }
 
 function goWorkshop() {
@@ -86,13 +86,15 @@ function goAlbum() {
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
     <big-button
-      v-if="hasPractice"
+      v-for="id in clearedChapterIds"
+      :key="id"
       class="practice-btn"
       variant="soft"
       data-practice-entry
-      @click="goPractice"
+      :data-practice-chapter="id"
+      @click="goPractice(id)"
     >
-      {{ practiceEntryCopy() }}
+      {{ practiceEntryCopy(id) }}
     </big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
     <button class="album-btn" type="button" @click="goAlbum">

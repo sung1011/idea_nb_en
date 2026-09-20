@@ -90,6 +90,7 @@ export function useChapterLevel(play: PlayKind) {
         starsAwarded: 0,
         stickerGranted: false,
         stickerId: null,
+        chapterId: level.value?.chapterId ?? null,
         nextLevelId: null,
         nextRoute: isDemo.value ? '/play-gallery' : '/letter-workshop',
       }
@@ -166,6 +167,7 @@ export function useChapterLevel(play: PlayKind) {
     isReview,
     isChapterPractice,
     chapterComplete,
+    chapterId: computed(() => level.value?.chapterId ?? ANIMALS_CHAPTER_ID),
     chapterNo,
     gateTag,
     showClearSheet,

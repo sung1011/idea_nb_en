@@ -26,9 +26,9 @@
 
 **单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
 
-**贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩派对吧」。设置「初始化」后相册清空。
+**贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
-**玩法一览**列出 7 种玩法（主线玩法 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。某章 6/6 后的「练一练」走 `/play-gallery?chapter=ch1|ch2|ch3`，只列出该章已过的六关，点进去带 `?practice=1` 重玩，不加星、不重复发章节徽章，也不挡下一章。动物岛大厅主按钮与首页 CTA 走无参 `getNextLevel()`（跨章）。点一点已移除。
+**玩法一览**列出 7 种玩法（主线玩法 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。某章 6/6 后的「练一练「章名」」走 `/play-gallery?chapter=ch1|ch2|ch3`，只列出该章已过的六关，点进去带 `?practice=1&chapter=chN` 重玩，不加星、不重复发章节徽章，结束后仍回该章画廊，也不挡下一章。没有 `?chapter=` 的全局一览才混看 7 种玩法。动物岛大厅主按钮与首页 CTA 走无参 `getNextLevel()`（跨章）。点一点已移除。
 
 **Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：有 `?level=`（或主线回落到该玩法关卡）时用该关 `focusWord` / `appearWords` / `words`（如 ch1-1 的 cat + hat/mat，ch2-1 的 dog + pig/duck，ch3-1 的 cup/cake）；试玩 / 复习且没有关卡 id 时仍从 15 词库抽 4 个。先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。副文案可轻提章节主题（「-at 派对」/「听声找伙伴」/「点心与天空」）。通关调用 `completeLevel`，立刻解锁并跳下一关。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
 
@@ -134,21 +134,21 @@ src/views/*.vue                七种玩法 + Day Complete
 `useProgress()` / `progressStore` 提供关卡条 / 完成页 / 图鉴册 / 章节进度要用的薄 API。目标条与星星条已接 `today`（星星数与章节首次通关对齐）。
 
 - `dateKey`：Asia/Shanghai 日历日 `YYYY-MM-DD`，只作文案 / 分析（焦点词轮换、岛日展示）。**跨日不重置章节关卡，不锁下一关**
-- `chapter`：`{ currentChapterId, highestUnlocked, levels: Record<id, locked|unlocked|cleared>, firstClearStars, chapterStickers, firstClearAt, celebrated }`
+- `chapter`：`{ currentChapterId, highestUnlocked, levels: Record<id, locked|unlocked|cleared>, firstClearStars, chapterStickers, firstClearAt, celebrated, celebratedChapters }`。`celebratedChapters` 记已经看过完成页的章；旧存档 `celebrated: true` 会迁成 `['ch1']`
 - 章节 API：`isLevelUnlocked(id)`、`isLevelCleared(id)`、`completeLevel(id)`、`getChapterProgress(chId?)`、`getNextLevel(chId?)`、`isChapterUnlocked(chId)`。通关立刻把下一关标成 `unlocked`；终章通关后解锁下一章第 1 关，但本次跳转仍去完成页
 - `getNextLevel()` 无参时沿主线跨章：ch1 全通 → `ch2-1`，ch2 全通 → `ch3-1`。传入 `chapterId` 时只在该章内找。`isChapterUnlocked('ch1')` 恒真；`ch2` 需 ch1 六关全清；`ch3` 需 ch2 六关全清。首页目标条与大厅主按钮读无参 `getNextLevel()`；章内列表读 `getNextLevel(chapterId)`
 - `completeLevel(id)`：未解锁的关拒绝（方案 A 顺序）。首次通关写 `cleared`、发配置里的 `firstClearStars`、终章首次发对应徽章（ch1-6 `atParty` / ch2-6 `pawPrint` / ch3-6 `littleStar`）。重玩 `starsAwarded=0`
 - `today`：兼容旧 UI。`starsGoal` 现为 6；`starsEarned` 与章节已通关数同步；`completed` = 第一章 6 关都过。`chainStep` 由下一关反推，仅兼容旧页
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7，展示用，不锁关）
-- helpers：`addStar(n)`、`completeLevel(id)`（关卡页主路径）、`completeGate(gateId)`（旧日链入口，映射到 ch1-1…ch1-5 再调 `completeLevel`）、`locationForLevel` / `locationAfterClear` / `locationForNextMainline()`（带 `?level=`）、`routeAfterGate(gateId)` / `routeForNextMainline()`（兼容旧字符串路径）、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`（现为章节全通）、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
+- helpers：`addStar(n)`、`completeLevel(id)`（关卡页主路径）、`completeGate(gateId)`（旧日链入口，映射到 ch1-1…ch1-5 再调 `completeLevel`）、`locationForLevel` / `locationAfterClear` / `locationForNextMainline()` / `locationForDayComplete(chId)`（带 `?level=` / `?chapter=`）、`listClearedChapterIds()`、`routeAfterGate(gateId)` / `routeForNextMainline()`（兼容旧字符串路径）、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`（现为第一章全通）、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards(chapterId?)`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回空白存档（含章节关卡）。不删词卡图片
 - **旧存档迁移**：没有 `chapter` 字段时，把日链映射进第一章。已打卡（`animalsIslandDays>0` / `lastIslandDate` / `today.completed`）→ ch1-1…ch1-5 已通、ch1-6 解锁，不发章节徽章。仅有当日 `gates` 时按关映射（旧热身 XOR 会给 ch1-1 记一笔，避免卡在第一关）。图鉴词、已有贴纸、终身星星保留
 - 图鉴解锁走 `unlockWord`（底层 `markWordSeen`）：主线点对 / 拖对 / 钓到 / 跟读通过，以及一览找一找点中、唱一唱「我唱好了」；只记已知音族词，不加星
 - 贴纸只存 id。日奖占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。章节徽章：`atParty` / `pawPrint` / `littleStar`，只在对应章终章首次通关发，不进每日轮换池。相册读 `ALBUM_STICKERS`
-- `claimDayCompleteRewards()`：需第一章全通。首次庆祝展示章节徽章；岛日 +1 仅分析 / 展示，不锁关
+- `claimDayCompleteRewards(chapterId?)`：需该章 6/6。首次庆祝展示该章徽章（ch1 `atParty` / ch2 `pawPrint` / ch3 `littleStar`），不把别的章徽章混进来；岛日 +1 仅分析 / 展示，不锁关。`locationAfterClear` 终章跳 `/day-complete?chapter=chN`
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（由章节通关回填）
 - 关卡页（闪卡 / 地鼠 / 拖一拖 / 钓鱼 / 回音 / 章节回顾）各自知道 `levelId`：大厅与通关跳转带 `?level=ch1-x`，页内用 `useChapterLevel` 解析；缺省时按玩法回落到第一章对应关。赢了调用 `completeLevel`，**不再只靠旧日链 `completeGate` 结算**
-- 通关后立刻去 **下一关未通关**（`getNextLevel()` + `?level=`）。ch1-6 首次进入 `/day-complete` 章节奖励页。重玩已过关：轻表扬，不加星、不重复发章节徽章，结束后弹出选择层
+- 通关后立刻去 **下一关未通关**（`getNextLevel()` + `?level=`）。ch1-6 / ch2-6 / ch3-6 首次进入 `/day-complete?chapter=chN` 该章奖励页。重玩已过关：轻表扬，不加星、不重复发章节徽章，结束后弹出选择层
 - `completeGate(gateId)`：闪卡/地鼠/拖一拖/钓鱼/回音分别对应 ch1-1…ch1-5，内部仍转 `completeLevel`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用 `completeLevel`，因此不加星、不推进章节。`?practice=1` 会调用 `completeLevel`，但重玩不加星、不重复徽章
 - 回声通关后进入 ch1-6，不再把主线标成「今天做完了」
 
@@ -157,7 +157,7 @@ src/views/*.vue                七种玩法 + Day Complete
 `todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）。主文案读**当前下一关所在章**的进度，不再写「今天做完了」或按天锁关。动物岛大厅先列三章，不再挂这条。
 
 - 主行「第N章 x/6 关」，下一行「下一关：闪卡翻翻」（三章都通完才改成「第3章通关啦，下面可以随便练」）。ch1 6/6 后显示第2章 0/6 与 ch2-1
-- CTA 走无参 `getNextLevel()` / `locationForNextMainline()`：未通关写「去第N章第M关 · 玩法名」，三章全通写「看章节奖励」。任一章 6/6 后多一个「练一练」入口（按最近通关章过滤，不挡下一章）
+- CTA 走无参 `getNextLevel()` / `locationForNextMainline()`：未通关写「去第N章第M关 · 玩法名」，三章全通写「看章节奖励」。每一章 6/6 后各自多一个「练一练「章名」」入口（进该章画廊，不把三章混在一起，也不挡下一章）
 - 有 `focusWord` 时多一行「多听一听 cat」；只是提示，不按 `dateKey` 锁关
 - 下方是 **过关星星条**：按 `today.starsGoal`（第一章 6）画空星/实星；关卡首次通关亮一颗并轻量弹跳
 - 首页岛卡、大厅、完成页都用 6 关亮格（旧 7 日太阳格不再出现在主线）
@@ -167,7 +167,7 @@ src/views/*.vue                七种玩法 + Day Complete
 
 ## 动物岛章节 6 关亮格
 
-`chapterLevelLights` 挂在**章内 6 关列表**（小岛场景下、关卡列表上），首页岛卡（嵌入、不重复标题，跟当前下一关所在章）和完成页（固定第一章）也会再展示一次。不是第二座岛入口。
+`chapterLevelLights` 挂在**章内 6 关列表**（小岛场景下、关卡列表上），首页岛卡（嵌入、不重复标题，跟当前下一关所在章）和完成页（读 `?chapter=` 的那一章）也会再展示一次。不是第二座岛入口。
 
 - 读 `getChapterProgress(chapterId)` 的 `clearedCount` / `levelTotal`（该章 6 关）
 - 文案「第N章 n/6 关」；已过关画星星并高亮，未过关淡色虚线圆里写关号
@@ -202,27 +202,28 @@ src/views/*.vue                七种玩法 + Day Complete
 
 主线六关赢了都走同一条：`useChapterLevel` → `completeLevel(levelId)` → 首次通关 `locationAfterClear`（下一关带 `?level=`，或 `/day-complete`）。
 
-- 首次通关：+1 星；ch1-4 额外「派对耳朵」；ch1-6 额外章节徽章 `atParty`；立刻进下一关，**不用等日历日**
+- 首次通关：+1 星；ch1-4 额外「派对耳朵」；终章额外该章徽章（ch1-6 `atParty` / ch2-6 `pawPrint` / ch3-6 `littleStar`）；立刻进下一关，**不用等日历日**
 - 重玩已过关：英语轻表扬 + 中文「再玩一遍也可以…」，不加星、不重复发章节徽章；结束后弹出选择层（再玩一次 / 回岛；6/6 还有练一练），不把孩子卡死
 - `?practice=1`：该章练一练重玩，奖励规则与重玩相同，结束后回 `/play-gallery?chapter=chN`
 - `?demo=1` 回玩法一览；`?review=1` 回字母工坊（或带着 `review=1` 进下一关复习），都不写章节进度
 
 ## 完成庆祝页
 
-`/day-complete` 在第一章 6 关走完后庆祝（ch1-6 通关后跳来）。进入页时调用 `claimDayCompleteRewards()`：
+`/day-complete?chapter=chN` 在该章 6 关走完后庆祝（ch1-6 / ch2-6 / ch3-6 通关后跳来）。进入页时调用 `claimDayCompleteRewards(chapterId)`：
 
-- 未通关 ch1-6：不发徽章，文案提醒先玩完第一章
-- 首次庆祝：展示 ch1-6 发的 `-at 派对徽章`；岛日 +1 只作后台展示 / 分析（同日一次，封顶 7），完成页改画 6 关亮格
-- 再进：展示已领徽章，不重复发放，也不说「明天再来」；文案改成「第一章通关啦，下面可以随便练」
-- 中文儿童向文案展示贴纸名；完成页再展示大号过关星星条，本身不加星
-- 完成页可点「练一练」（进 ch1 已过关画廊）或「看贴纸相册」；大厅 / 首页 / 完成页 6 关亮格只展示已通关数，不解锁第二座岛，也不锁主线
+- 未通关该章：不发徽章，文案提醒先玩完「章名」
+- 首次庆祝：展示该章终章徽章（「-at 派对徽章」/「爪印徽章」/「小星星徽章」）；岛日 +1 只作后台展示 / 分析（同日一次，封顶 7），完成页改画该章 6 关亮格
+- 再进：展示已领的该章徽章，不重复发放，也不说「明天再来」；文案改成「第N章通关啦，下面可以随便练」
+- 中文儿童向文案写明是第几章、哪枚徽章；完成页再展示大号过关星星条，本身不加星
+- 完成页可点「练一练「章名」」（进该章已过关画廊）或「看贴纸相册」；大厅 / 首页按已通关章分别给练一练，不把三章混进同一个列表
 
 ## 贴纸相册
 
-`/sticker-album` 展示目录格（`ear` / `paw` / `leaf` / `shell` / `sun` + 章节徽章 `atParty` / `pawPrint` / `littleStar`）。入口：首页暖色「贴纸相册」、动物岛大厅、完成页。
+`/sticker-album` 展示目录格（`ear` / `paw` / `leaf` / `shell` / `sun` + 章节徽章 `atParty`「-at 派对徽章」/ `pawPrint`「爪印徽章」/ `littleStar`「小星星徽章」）。入口：首页暖色「贴纸相册」、动物岛大厅、完成页。
 
-- 读 `lifetime.stickers`（与 `hasSticker` 同一份）；拥有的格子亮色，未拥有剪影 + `?`
-- 一张都没有：文案「还没有贴纸，先去动物岛玩派对吧」，并给「去动物岛」
+- 读 `lifetime.stickers`（与 `hasSticker` 同一份）；拥有的格子亮色 + 中文名，未拥有剪影 + `?`
+- 目录外的已领 id 仍用中文「章节徽章」补一格，避免空白
+- 一张都没有：文案「还没有贴纸，先去动物岛玩一章吧」，并给「去动物岛」
 - 设置「初始化」后 `lifetime.stickers` 清空，相册回到空态
 - 只看、不装饰小岛、不交换、不花费
 

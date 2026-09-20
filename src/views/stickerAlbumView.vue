@@ -40,13 +40,13 @@ function goIsland() {
     <div class="hero center">
       <p class="eyebrow">Sticker Album</p>
       <h1 class="title-lg">贴纸相册</h1>
-      <p class="sub">通关派对就能贴一张 · 看看你已经收集了哪些</p>
+      <p class="sub">通关一章就能贴一枚徽章 · 看看你已经收集了哪些</p>
     </div>
 
     <p class="progress-line center">已收集 {{ ownedCount }} / {{ total }}</p>
 
     <div v-if="isEmpty" class="empty-card">
-      <p class="empty-line">还没有贴纸，先去动物岛玩派对吧</p>
+      <p class="empty-line">还没有贴纸，先去动物岛玩一章吧</p>
       <big-button class="empty-go" @click="goIsland">去动物岛</big-button>
     </div>
 

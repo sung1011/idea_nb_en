@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
-import { ANIMALS_CHAPTER_ID, getLevel } from '../data/chapters'
-import { locationForChapterPractice } from '../data/playGallery'
+import { getLevel } from '../data/chapters'
+import { locationForChapterPractice, resolvePracticeChapterId } from '../data/playGallery'
 import { locationAfterClear, locationForIslandChapter, type CompleteLevelResult } from './progressStore'
 
 function asQuery(raw: RouteLocationRaw): Record<string, string> {
@@ -34,8 +34,9 @@ export function usePlayMode() {
     return typeof value === 'string' && value ? value : ''
   })
 
-  function practiceGalleryPath(chapterId = chapterFilter.value || ANIMALS_CHAPTER_ID) {
-    return locationForChapterPractice(chapterId)
+  function practiceGalleryPath(chapterId?: string) {
+    const resolved = chapterId || resolvePracticeChapterId(chapterFilter.value, route.query.level)
+    return locationForChapterPractice(resolved)
   }
 
   function extraQuery(): Record<string, string> {
@@ -65,7 +66,9 @@ export function usePlayMode() {
     return playPath(dailyNext)
   }
 
-  function afterLevel(result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute'>): RouteLocationRaw {
+  function afterLevel(
+    result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute' | 'chapterId'>,
+  ): RouteLocationRaw {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isChapterPractice.value) return practiceGalleryPath()
     if (isReview.value) {

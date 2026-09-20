@@ -16,8 +16,7 @@ import {
 import todayStarBar from './todayStarBar.vue'
 
 const router = useRouter()
-const { today, chapter, nextLevel, nextRoute, hasPractice, practiceChapterId, ensureTodayTask } =
-  useProgress()
+const { today, chapter, nextLevel, nextRoute, clearedChapterIds, ensureTodayTask } = useProgress()
 ensureTodayTask()
 
 const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
@@ -44,9 +43,9 @@ function goNext() {
   void router.push(nextRoute.value)
 }
 
-function goPractice() {
+function goPractice(chapterId: string) {
   playTap()
-  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
+  void router.push(locationForChapterPractice(chapterId))
 }
 </script>
 
@@ -62,13 +61,15 @@ function goPractice() {
     </div>
     <today-star-bar class="goal-stars" size="compact" />
     <button
-      v-if="hasPractice"
+      v-for="id in clearedChapterIds"
+      :key="id"
       class="goal-practice"
       type="button"
       data-practice-entry
-      @click="goPractice"
+      :data-practice-chapter="id"
+      @click="goPractice(id)"
     >
-      {{ practiceEntryCopy() }}
+      {{ practiceEntryCopy(id) }}
     </button>
     <button class="goal-cta" type="button" data-next-level-cta @click="goNext">
       {{ ctaLabel }}

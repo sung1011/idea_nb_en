@@ -1,6 +1,7 @@
 import {
   ANIMALS_CHAPTER_ID,
   getChapter,
+  getLevel,
   isAnimalsChapterId,
   listChapterLevels,
   type PlayKind,
@@ -68,7 +69,22 @@ export function chapterPracticeItems(chapterId = ANIMALS_CHAPTER_ID): ChapterPra
 }
 
 export function locationForClearedPractice(item: Pick<ChapterPracticeItem, 'path' | 'levelId'>) {
-  return { path: item.path, query: { level: item.levelId, practice: '1' } }
+  const def = getLevel(item.levelId)
+  const query: Record<string, string> = { level: item.levelId, practice: '1' }
+  if (def?.chapterId) query.chapter = def.chapterId
+  return { path: item.path, query }
+}
+
+/** Prefer `?chapter=`, then the level's own chapter, so practice never spills into other chapters. */
+export function resolvePracticeChapterId(rawChapter: unknown, rawLevel?: unknown): string {
+  const fromQuery = practiceChapterIdFromQuery(rawChapter)
+  if (fromQuery) return fromQuery
+  const value = Array.isArray(rawLevel) ? rawLevel[0] : rawLevel
+  if (typeof value === 'string' && value) {
+    const def = getLevel(value)
+    if (def?.chapterId) return def.chapterId
+  }
+  return ANIMALS_CHAPTER_ID
 }
 
 export function shuffle<T>(list: T[]): T[] {

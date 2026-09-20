@@ -10,6 +10,7 @@ import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getChapter } from '../data/chapters'
 import { levelWordList } from '../data/gateWords'
+import { stickerLabel } from '../data/stickers'
 import { preloadWordCards } from '../data/phonicsFamily'
 
 const {
@@ -24,6 +25,7 @@ const {
   isChapterPractice,
   chapterComplete,
   chapterNo,
+  chapterId,
   replayCleared,
   continueAfterClear,
   goPractice,
@@ -35,6 +37,7 @@ const words = computed(() => {
 })
 const chapter = computed(() => getChapter(level.value?.chapterId))
 const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-at 派对」')
+const badgeName = computed(() => stickerLabel(chapter.value?.stickerId ?? ''))
 const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
 const celebrating = ref(false)
 const locked = ref(false)
@@ -80,8 +83,8 @@ async function finish() {
         !canPlay
           ? '先把前面的关卡通完哦。'
           : isReplay
-            ? '再玩一遍也可以，章节徽章已经给你啦。'
-            : '第一次过关会拿到章节徽章。'
+            ? `再玩一遍也可以，「${badgeName}」已经给你啦。`
+            : `第一次过关会拿到「${badgeName}」。`
       }}
     </p>
     <big-button :disabled="!canPlay || locked" @click="finish">我复习好了</big-button>
@@ -89,6 +92,7 @@ async function finish() {
       :open="showClearSheet"
       :chapter-complete="chapterComplete"
       :chapter-no="chapterNo"
+      :chapter-id="chapterId"
       :from-practice="isChapterPractice"
       :has-next="Boolean(lastResult?.nextLevelId)"
       @replay="replayCleared"

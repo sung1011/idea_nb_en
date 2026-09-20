@@ -17,7 +17,6 @@ import {
   type LevelDef,
   type LevelStatus,
 } from '../data/chapters'
-import { CHAPTER_1_STICKER_ID, nextStickerId } from '../data/stickers'
 import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
 import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
@@ -77,8 +76,10 @@ export type ChapterSave = {
   chapterStickers: string[]
   /** Shanghai dateKey of first clear, analytics only. */
   firstClearAt: Record<string, string>
-  /** Day-complete page already celebrated chapter finish. */
+  /** Day-complete page already celebrated chapter finish. Ch1 compat; prefer celebratedChapters. */
   celebrated: boolean
+  /** Chapter ids whose finale page already played the first-clear party. */
+  celebratedChapters: string[]
 }
 
 export type ChapterLevelView = {
@@ -114,6 +115,7 @@ export type CompleteLevelResult = {
   starsAwarded: number
   stickerGranted: boolean
   stickerId: string | null
+  chapterId: string | null
   nextLevelId: string | null
   nextRoute: string | null
 }
@@ -284,24 +286,34 @@ export type LevelLocation = {
   query: { level: string }
 }
 
+export type ChapterLocation = {
+  path: string
+  query: { chapter: string }
+}
+
+export type ProgressLocation = string | LevelLocation | ChapterLocation
+
 export function locationForLevel(level: Pick<LevelDef, 'id' | 'route'>): LevelLocation {
   return { path: level.route, query: { level: level.id } }
 }
 
 export function locationAfterClear(
-  result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute'>,
-): string | LevelLocation {
+  result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute' | 'chapterId'>,
+): ProgressLocation {
   if (result.nextLevelId) {
     const next = getLevel(result.nextLevelId)
     if (next) return locationForLevel(next)
   }
-  return result.nextRoute ?? '/day-complete'
+  if (result.chapterId && getChapter(result.chapterId)) {
+    return locationForDayComplete(result.chapterId)
+  }
+  return result.nextRoute ?? locationForDayComplete()
 }
 
-export function locationForNextMainline(): string | LevelLocation {
+export function locationForNextMainline(): ProgressLocation {
   const next = getNextLevel()
   if (next) return locationForLevel(next)
-  return '/day-complete'
+  return locationForDayComplete()
 }
 
 export function routeForNextMainline(): string {
@@ -316,6 +328,18 @@ export function latestClearedChapterId(): string | null {
     if (isChapterClearedInSave(persistState.chapter, chapter.id)) found = chapter.id
   }
   return found
+}
+
+export function listClearedChapterIds(): string[] {
+  return CHAPTERS.filter((chapter) => isChapterClearedInSave(persistState.chapter, chapter.id)).map(
+    (chapter) => chapter.id,
+  )
+}
+
+export function locationForDayComplete(chapterId?: string): ChapterLocation {
+  const resolved =
+    (chapterId && getChapter(chapterId)?.id) || latestClearedChapterId() || DEFAULT_CHAPTER_ID
+  return { path: '/day-complete', query: { chapter: resolved } }
 }
 
 export function locationForIslandChapter(chapterId?: string): string | { path: string; query: { chapter: string } } {
@@ -334,7 +358,7 @@ export function routeAfterGate(gate: GateId, _day = dateKey()): string {
   return routeForNextMainline()
 }
 
-export function locationAfterGate(gate: GateId): string | LevelLocation {
+export function locationAfterGate(gate: GateId): ProgressLocation {
   const levelId = GATE_TO_LEVEL[gate]
   const sequential = levelId ? getNextLevelDef(levelId) : null
   if (sequential && isLevelUnlocked(sequential.id) && !isLevelCleared(sequential.id)) {
@@ -415,6 +439,7 @@ function emptyChapterSave(chapterId = DEFAULT_CHAPTER_ID): ChapterSave {
     chapterStickers: [],
     firstClearAt: {},
     celebrated: false,
+    celebratedChapters: [],
   }
 }
 
@@ -557,7 +582,11 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
     if (knownIds.has(id) && typeof when === 'string' && when) firstClearAt[id] = when
   }
   save.firstClearAt = firstClearAt
-  save.celebrated = Boolean(save.celebrated)
+  save.celebratedChapters = (save.celebratedChapters ?? []).filter((id) => Boolean(getChapter(id)))
+  if (!save.celebratedChapters.length && save.celebrated) {
+    save.celebratedChapters.push(DEFAULT_CHAPTER_ID)
+  }
+  save.celebrated = save.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
   return save
 }
 
@@ -641,6 +670,7 @@ function normalizeChapterSave(raw: unknown, daily: DailyHints): ChapterSave {
     firstClearAt:
       parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {},
     celebrated: Boolean(parsed.celebrated),
+    celebratedChapters: asStringArray(parsed.celebratedChapters),
   })
 }
 
@@ -890,6 +920,8 @@ function writeChapter(target: ChapterSave, source: ChapterSave) {
   }
   Object.assign(target.firstClearAt, source.firstClearAt)
   target.celebrated = source.celebrated
+  if (!Array.isArray(target.celebratedChapters)) target.celebratedChapters = []
+  target.celebratedChapters.splice(0, target.celebratedChapters.length, ...source.celebratedChapters)
 }
 
 function applyDayRollover(data: PersistShape): PersistShape {
@@ -1090,6 +1122,7 @@ export function completeLevel(id: string): CompleteLevelResult {
     starsAwarded: 0,
     stickerGranted: false,
     stickerId: null,
+    chapterId: getLevel(id)?.chapterId ?? null,
     nextLevelId: getNextLevel()?.id ?? null,
     nextRoute: routeForNextMainline(),
   }
@@ -1108,6 +1141,7 @@ export function completeLevel(id: string): CompleteLevelResult {
       stickerId: def.chapterStickerId && persistState.chapter.chapterStickers.includes(def.chapterId)
         ? def.chapterStickerId
         : null,
+      chapterId: def.chapterId,
       nextLevelId: next?.id ?? null,
       nextRoute: next?.route ?? '/day-complete',
     }
@@ -1145,7 +1179,13 @@ export function completeLevel(id: string): CompleteLevelResult {
     persistState.chapter.chapterStickers.push(def.chapterId)
     stickerGranted = grantSticker(def.chapterStickerId)
     stickerId = def.chapterStickerId
-    persistState.chapter.celebrated = false
+    if (!Array.isArray(persistState.chapter.celebratedChapters)) {
+      persistState.chapter.celebratedChapters = []
+    }
+    persistState.chapter.celebratedChapters = persistState.chapter.celebratedChapters.filter(
+      (chapterId) => chapterId !== def.chapterId,
+    )
+    persistState.chapter.celebrated = persistState.chapter.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
   }
 
   persistState.today.chainStep = maxChain(
@@ -1163,6 +1203,7 @@ export function completeLevel(id: string): CompleteLevelResult {
     starsAwarded,
     stickerGranted,
     stickerId,
+    chapterId: def.chapterId,
     nextLevelId: next?.id ?? null,
     nextRoute: next?.route ?? '/day-complete',
   }
@@ -1201,70 +1242,61 @@ export type DayCompleteClaim = {
   islandAdvanced: boolean
   stickerGranted: boolean
   stickerId: string | null
+  chapterId: string
 }
 
-function canClaimDayComplete(): boolean {
-  return isChapterComplete(persistState.chapter, DEFAULT_CHAPTER_ID) || persistState.today.completed
+function resolveClaimChapterId(chapterId?: string): string {
+  if (chapterId && getChapter(chapterId)) return chapterId
+  return latestClearedChapterId() || persistState.chapter.currentChapterId || DEFAULT_CHAPTER_ID
 }
 
-function grantDailyStickerOnce(): { stickerId: string | null; granted: boolean; fresh: boolean } {
-  const existing = persistState.today.rewardSticker
-  if (existing) {
-    return { stickerId: existing, granted: false, fresh: false }
-  }
-  const chapterSticker = persistState.chapter.chapterStickers.includes(ANIMALS_CHAPTER_ID)
-    ? CHAPTER_1_STICKER_ID
-    : null
-  if (chapterSticker) {
-    persistState.today.rewardSticker = chapterSticker
-    persist()
-    return { stickerId: chapterSticker, granted: false, fresh: false }
-  }
-  const stickerId = nextStickerId(persistState.lifetime.stickers, persistState.dateKey)
-  const granted = grantSticker(stickerId)
-  persistState.today.rewardSticker = stickerId
-  persist()
-  return { stickerId, granted, fresh: true }
-}
-
-/** Chapter finale (or legacy echo) finish: celebrate once. Island-day tick is analytics only. */
-export function claimDayCompleteRewards(): DayCompleteClaim {
+/** Chapter finale finish: celebrate that chapter's badge once. Island-day tick is analytics only. */
+export function claimDayCompleteRewards(chapterId?: string): DayCompleteClaim {
   ensureToday()
-  if (!canClaimDayComplete()) {
+  const resolved = resolveClaimChapterId(chapterId)
+  const chapter = getChapterOrDefault(resolved)
+  const stickerId = chapter.stickerId
+  if (!isChapterComplete(persistState.chapter, chapter.id)) {
     return {
       ready: false,
       freshClaim: false,
       firstClear: false,
       islandAdvanced: false,
       stickerGranted: false,
-      stickerId: persistState.today.rewardSticker ?? null,
+      stickerId,
+      chapterId: chapter.id,
     }
   }
 
-  const firstClear = completeDailyIfReady()
-  const wasCelebrated = persistState.chapter.celebrated
-  const chapterStickerOwned = persistState.chapter.chapterStickers.includes(ANIMALS_CHAPTER_ID)
-  const sticker = grantDailyStickerOnce()
-  if (chapterStickerOwned && !wasCelebrated) {
-    persistState.chapter.celebrated = true
-    persist()
-  } else if (!wasCelebrated && firstClear) {
-    persistState.chapter.celebrated = true
-    persist()
+  if (!Array.isArray(persistState.chapter.celebratedChapters)) {
+    persistState.chapter.celebratedChapters = persistState.chapter.celebrated ? [DEFAULT_CHAPTER_ID] : []
   }
-  const islandTick = advanceIslandDayOncePerDate()
-  const islandAdvanced =
-    islandTick ||
-    (sticker.fresh && persistState.lastIslandDate === persistState.dateKey && persistState.lifetime.animalsIslandDays > 0)
+  const firstClear = chapter.id === DEFAULT_CHAPTER_ID ? completeDailyIfReady() : false
+  const wasCelebrated = persistState.chapter.celebratedChapters.includes(chapter.id)
+  let stickerGranted = false
+  if (!persistState.chapter.chapterStickers.includes(chapter.id)) {
+    persistState.chapter.chapterStickers.push(chapter.id)
+  }
+  if (stickerId && !persistState.lifetime.stickers.includes(stickerId)) {
+    stickerGranted = grantSticker(stickerId)
+  }
+  persistState.today.rewardSticker = stickerId
+  if (!wasCelebrated) {
+    persistState.chapter.celebratedChapters.push(chapter.id)
+  }
+  persistState.chapter.celebrated = persistState.chapter.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
+  persist()
 
+  const islandTick = advanceIslandDayOncePerDate()
   const freshClaim = !wasCelebrated
   return {
     ready: true,
     freshClaim,
     firstClear: firstClear || freshClaim,
-    islandAdvanced,
-    stickerGranted: sticker.granted || (chapterStickerOwned && freshClaim),
-    stickerId: sticker.stickerId ?? (chapterStickerOwned ? CHAPTER_1_STICKER_ID : null),
+    islandAdvanced: islandTick,
+    stickerGranted: stickerGranted || freshClaim,
+    stickerId,
+    chapterId: chapter.id,
   }
 }
 

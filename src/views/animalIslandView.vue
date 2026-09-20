@@ -33,8 +33,7 @@ const family = getCurrentFamily()
 const {
   nextLevel,
   nextRoute,
-  hasPractice,
-  practiceChapterId,
+  clearedChapterIds,
   isChapterUnlocked,
   getChapterProgress,
 } = useProgress()
@@ -128,9 +127,9 @@ function goNext() {
   void router.push(nextRoute.value)
 }
 
-function goPractice() {
+function goPractice(chapterId: string) {
   playTap()
-  void router.push(locationForChapterPractice(practiceChapterId.value ?? undefined))
+  void router.push(locationForChapterPractice(chapterId))
 }
 
 onMounted(() => {
@@ -242,13 +241,15 @@ onBeforeUnmount(() => {
       </div>
 
       <big-button
-        v-if="hasPractice"
+        v-for="id in clearedChapterIds"
+        :key="id"
         class="practice-btn"
         variant="soft"
         data-practice-entry
-        @click="goPractice"
+        :data-practice-chapter="id"
+        @click="goPractice(id)"
       >
-        {{ practiceEntryCopy() }}
+        {{ practiceEntryCopy(id) }}
       </big-button>
       <big-button class="start-btn" data-next-level-cta @click="goNext">{{ startLabel }}</big-button>
     </template>
