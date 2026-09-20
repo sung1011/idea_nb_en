@@ -76,6 +76,21 @@ export function gateFlashSub(themeHint: string): string {
   return themeHint ? `先看卡片，再听一听点对 · ${themeHint}` : '先看卡片，再听一听点对'
 }
 
+export function gateFlashStudyHint(current: number, total: number, isLast: boolean): string {
+  const mark = `${Math.max(1, current)}/${Math.max(1, total)}`
+  if (total <= 1) return `${mark} · 看完就可以开始找一找啦`
+  if (isLast) return `${mark} · 都看过啦，可以开始找一找`
+  return `${mark} · 一张一张看，听一听再翻`
+}
+
+export function gateFlashStudyNext(isLast: boolean): string {
+  return isLast ? '开始找一找' : '下一张'
+}
+
+export function gateFlashStudyPrev(): string {
+  return '上一张'
+}
+
 export function gateWhackSub(themeHint: string): string {
   return themeHint ? `听单词，点对的地鼠 · ${themeHint}` : '听单词，点对的地鼠'
 }

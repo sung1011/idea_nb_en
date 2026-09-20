@@ -9,13 +9,16 @@ import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
 import { shuffle } from '../data/playGallery'
-import { gateFlashSub } from '../data/todayTasks'
+import {
+  gateFlashStudyHint,
+  gateFlashStudyNext,
+  gateFlashStudyPrev,
+  gateFlashSub,
+} from '../data/todayTasks'
 
 type CardFace = {
   word: string
 }
-
-const STUDY_LINGER_MS = 8000
 
 const {
   isReplay,
@@ -50,16 +53,25 @@ const titleEl = ref<HTMLElement | null>(null)
 const choices = ref<CardFace[]>([])
 
 let alive = true
+let studyToken = 0
 
+const studyCount = computed(() => Math.max(1, words.length))
 const studyWord = computed(() => words[studyIndex.value] ?? words[0])
 const studyFace = computed<CardFace>(() => ({
   word: studyWord.value,
 }))
 const trialWord = computed(() => words[trialIndex.value] ?? words[0])
+const isFirstStudy = computed(() => studyIndex.value <= 0)
+const isLastStudy = computed(() => studyIndex.value >= studyCount.value - 1)
 const progressText = computed(() => {
-  if (phase.value === 'study') return `${studyIndex.value + 1} / ${words.length}`
-  return `${trialIndex.value + 1} / ${words.length}`
+  if (phase.value === 'study') return `${studyIndex.value + 1}/${studyCount.value}`
+  return `${trialIndex.value + 1}/${studyCount.value}`
 })
+const studyHint = computed(() =>
+  gateFlashStudyHint(studyIndex.value + 1, studyCount.value, isLastStudy.value),
+)
+const nextStudyLabel = computed(() => gateFlashStudyNext(isLastStudy.value))
+const prevStudyLabel = computed(() => gateFlashStudyPrev())
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -67,43 +79,72 @@ function wait(ms: number) {
   })
 }
 
+function bumpStudyToken() {
+  studyToken += 1
+  return studyToken
+}
+
 function makeChoices() {
   choices.value = shuffle(words.map((word) => ({ word })))
 }
 
 async function showStudyCard() {
+  const token = bumpStudyToken()
   if (!alive || phase.value !== 'study') return
   locked.value = true
   celebrating.value = false
   revealed.value = false
   prompt.value = 'Look!'
   await tweenFlipReveal(cardEl.value, () => {
-    if (phase.value === 'study') revealed.value = true
+    if (phase.value === 'study' && token === studyToken) revealed.value = true
   })
-  if (!alive || phase.value !== 'study') return
+  if (!alive || phase.value !== 'study' || token !== studyToken) return
   playPop()
   prompt.value = studyWord.value
+  locked.value = false
   await speak(studyWord.value)
-  if (!alive || phase.value !== 'study') return
-  await wait(STUDY_LINGER_MS)
 }
 
-async function runStudy() {
+async function replayStudy() {
+  if (phase.value !== 'study' || locked.value || !revealed.value) return
+  playPop()
+  await speak(studyWord.value)
+}
+
+async function beginStudy() {
   locked.value = true
   phase.value = 'study'
+  quizStarted.value = false
+  studyIndex.value = 0
   prompt.value = 'Look!'
   await speak('Look!')
-  for (let i = 0; i < words.length; i += 1) {
-    if (!alive || phase.value !== 'study') return
-    studyIndex.value = i
-    await showStudyCard()
-  }
   if (!alive || phase.value !== 'study') return
-  await startQuiz()
+  await showStudyCard()
+}
+
+async function goNextStudy() {
+  if (phase.value !== 'study' || locked.value) return
+  if (isLastStudy.value) {
+    await startQuiz()
+    return
+  }
+  stopSpeech()
+  studyIndex.value += 1
+  await showStudyCard()
+}
+
+async function goPrevStudy() {
+  if (phase.value !== 'study' || locked.value || isFirstStudy.value) return
+  stopSpeech()
+  studyIndex.value -= 1
+  await showStudyCard()
 }
 
 async function startQuiz() {
-  if (!alive || quizStarted.value) return
+  if (!alive || quizStarted.value || phase.value !== 'study') return
+  if (!isLastStudy.value) return
+  bumpStudyToken()
+  stopSpeech()
   quizStarted.value = true
   phase.value = 'quiz'
   trialIndex.value = 0
@@ -165,11 +206,12 @@ async function onTap(word: string, event: MouseEvent) {
 }
 
 onMounted(() => {
-  void runStudy()
+  void beginStudy()
 })
 
 onUnmounted(() => {
   alive = false
+  bumpStudyToken()
   stopSpeech()
 })
 </script>
@@ -186,7 +228,15 @@ onUnmounted(() => {
     </div>
 
     <div v-if="phase === 'study'" class="study">
-      <div ref="cardEl" class="flash-card" :class="{ open: revealed }">
+      <button
+        ref="cardEl"
+        class="flash-card"
+        :class="{ open: revealed }"
+        type="button"
+        :disabled="locked || !revealed"
+        :aria-label="revealed ? studyFace.word : 'Look!'"
+        @click="replayStudy"
+      >
         <div v-if="!revealed" class="face back" aria-hidden="true">
           <span>⭐</span>
         </div>
@@ -194,9 +244,17 @@ onUnmounted(() => {
           <word-pic :word="studyFace.word" :size="168" />
           <b>{{ studyFace.word }}</b>
         </div>
+      </button>
+      <p class="center hint">{{ studyHint }}</p>
+      <div class="study-nav" :class="{ solo: isFirstStudy }">
+        <big-button v-if="!isFirstStudy" variant="soft" :disabled="locked" @click="goPrevStudy">
+          {{ prevStudyLabel }}
+        </big-button>
+        <big-button :variant="isLastStudy ? 'primary' : 'soft'" :disabled="locked" @click="goNextStudy">
+          {{ nextStudyLabel }}
+        </big-button>
       </div>
-      <p class="center hint">{{ progressText }} · 看完会自己翻下一张</p>
-      <big-button variant="soft" :disabled="quizStarted" @click="startQuiz">我看完了</big-button>
+      <big-button variant="listen" :disabled="locked || !revealed" @click="replayStudy">再听一遍</big-button>
     </div>
 
     <template v-else>
@@ -255,9 +313,13 @@ onUnmounted(() => {
 }
 
 .flash-card {
+  width: 100%;
   min-height: 260px;
+  border: 0;
+  padding: 16px;
   border-radius: 32px;
   background: #fff;
+  color: inherit;
   box-shadow: 0 10px 0 rgba(45, 58, 74, 0.12);
   display: grid;
   place-items: center;
@@ -287,6 +349,16 @@ onUnmounted(() => {
 .face b {
   font-size: 40px;
   letter-spacing: 0.02em;
+}
+
+.study-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.study-nav.solo {
+  grid-template-columns: 1fr;
 }
 
 .board {
