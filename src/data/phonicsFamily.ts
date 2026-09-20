@@ -174,12 +174,21 @@ export function getCurrentFamily(): PhonicsFamily {
   return families[currentFamilyId] ?? families['-at']
 }
 
-export function wordEmoji(word: string, family = getCurrentFamily()): string {
-  return family.wordArt[word]?.emoji ?? '✨'
+export function familyForWord(word: string): PhonicsFamily {
+  const key = word.trim().toLowerCase()
+  if (!key) return getCurrentFamily()
+  for (const family of Object.values(families)) {
+    if (family.wordArt[key] || family.targets.includes(key)) return family
+  }
+  return getCurrentFamily()
 }
 
-export function wordImage(word: string, family = getCurrentFamily()): string | undefined {
-  return family.wordArt[word]?.image
+export function wordEmoji(word: string, family = familyForWord(word)): string {
+  return family.wordArt[word.trim().toLowerCase()]?.emoji ?? '✨'
+}
+
+export function wordImage(word: string, family = familyForWord(word)): string | undefined {
+  return family.wordArt[word.trim().toLowerCase()]?.image
 }
 
 /** Warm the browser cache for a small sampled set (gates / atlas extras). */
