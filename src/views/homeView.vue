@@ -67,7 +67,7 @@ function goAlbum() {
         </div>
       </div>
       <p class="progress-line" :class="{ done: allDoneToday }">
-        今日进度 {{ gatesDone }}/{{ gateTotal }}
+        第一章 {{ gatesDone }}/{{ gateTotal }}
         <template v-if="allDoneToday"> · 派对完成</template>
       </p>
     </div>

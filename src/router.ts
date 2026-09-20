@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import animalIslandView from './views/animalIslandView.vue'
+import chapterFinaleView from './views/chapterFinaleView.vue'
 import dayCompleteView from './views/dayCompleteView.vue'
 import dragSortView from './views/dragSortView.vue'
 import echoCaveView from './views/echoCaveView.vue'
@@ -31,5 +32,6 @@ export const router = createRouter({
     { path: '/sing-along', name: 'singAlong', component: singAlongView },
     { path: '/find-scene', name: 'findScene', component: findSceneView },
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },
+    { path: '/chapter-finale', name: 'chapterFinale', component: chapterFinaleView },
   ],
 })

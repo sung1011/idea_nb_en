@@ -20,14 +20,14 @@ const stickerEl = ref<HTMLElement | null>(null)
 
 const titleZh = computed(() => {
   if (!claim.ready) return '派对还没结束'
-  return claim.freshClaim ? '派对成功' : '今天已经庆祝过啦'
+  return claim.freshClaim ? '派对成功' : '章节奖励还在'
 })
 
 const leadLine = computed(() => {
-  if (!claim.ready) return '先把今日主线玩完，小猫再发贴纸。'
+  if (!claim.ready) return '先把第一章派对玩完，小猫再发徽章。'
   if (claim.freshClaim && claim.stickerGranted) return '小猫把朋友请来啦，还送你一张贴纸！'
   if (claim.freshClaim) return '小猫把朋友请来啦，这张贴纸你已经贴过啦。'
-  return '贴纸还在你这里，小岛格子也记好了。'
+  return '徽章还在你这里，随时还能再玩。'
 })
 
 const stickerLine = computed(() => {
@@ -35,7 +35,7 @@ const stickerLine = computed(() => {
   if (!claim.ready) return `通关后就能拿到「${name}」`
   if (claim.freshClaim && claim.stickerGranted) return `贴纸贴上啦！「${name}」`
   if (claim.freshClaim) return `「${name}」早就在你的贴纸里啦`
-  return `今天的贴纸是「${name}」，明天再来玩`
+  return `章节徽章是「${name}」，随时还能再玩`
 })
 
 const islandLine = computed(() => {

@@ -13,10 +13,19 @@ export const PLACEHOLDER_STICKERS: StickerDef[] = [
   { id: 'sun', label: '暖太阳', emoji: '☀️' },
 ]
 
+/** Chapter first-clear badges. Not in the daily rotating pool. */
+export const CHAPTER_1_STICKER_ID = 'atParty'
+
+export const CHAPTER_STICKERS: StickerDef[] = [
+  { id: CHAPTER_1_STICKER_ID, label: '-at 派对徽章', emoji: '🎉' },
+]
+
+export const ALBUM_STICKERS: StickerDef[] = [...PLACEHOLDER_STICKERS, ...CHAPTER_STICKERS]
+
 export const PLACEHOLDER_STICKER_IDS = PLACEHOLDER_STICKERS.map((item) => item.id)
 
 export function stickerById(id: string): StickerDef | undefined {
-  return PLACEHOLDER_STICKERS.find((item) => item.id === id)
+  return ALBUM_STICKERS.find((item) => item.id === id)
 }
 
 /** Next unused catalog id; if the child owns all five, fall back to a stable per-day pick. */

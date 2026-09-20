@@ -14,11 +14,12 @@ const router = useRouter()
 const family = getCurrentFamily()
 const {
   state,
-  today,
   gatesDone,
   gateTotal,
   allDoneToday,
   nextRoute,
+  nextLevel,
+  chapter,
   warmupKind,
   hasSticker,
 } = useProgress()
@@ -45,9 +46,9 @@ function gateDone(id: (typeof gates.value)[number]['id']) {
 
 const earOn = computed(() => hasSticker(family.rewards.soundFishSticker.id))
 const startLabel = computed(() => {
-  if (allDoneToday.value) return '看今日奖励'
-  if (today.chainStep !== 'warmup' || gatesDone.value > 0) return '继续派对'
-  return '今日主线'
+  if (chapter.value.complete) return '看章节奖励'
+  if (nextLevel.value) return chapter.value.clearedCount > 0 ? '继续派对' : '开始派对'
+  return '看章节奖励'
 })
 
 const hostEl = ref<HTMLElement | null>(null)
@@ -101,7 +102,7 @@ onMounted(() => {
     <island-day-cells class="island-days-bar" />
 
     <div class="card progress-card">
-      <p ref="progressEl" class="progress-title">今日主线 · {{ gatesDone }}/{{ gateTotal }}</p>
+      <p ref="progressEl" class="progress-title">第一章派对 · {{ gatesDone }}/{{ gateTotal }}</p>
       <div class="gates">
         <div
           v-for="gate in gates"
@@ -120,8 +121,8 @@ onMounted(() => {
       <p class="parent-line">
         {{
           allDoneToday
-            ? '今日派对已完成，星星已收好。'
-            : '家长小记：没有对错惩罚，读错会再试一次。'
+            ? '第一章派对通关啦，随时还能再玩。'
+            : '家长小记：通关立刻开下一关，不用等明天。'
         }}
       </p>
     </div>
