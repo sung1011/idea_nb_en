@@ -24,6 +24,21 @@ export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
   'chapterFinale',
 ]
 
+/**
+ * Persist v4 8-level path (sound-spell was 4, fish/echo/book were 5–7).
+ * Current skeleton moved sound-spell to 7; remap v4 ids by play, not suffix.
+ */
+export const V4_EIGHT_PLAY_ORDER: PlayKind[] = [
+  'flashFlip',
+  'whackWord',
+  'dragSort',
+  'soundSpell',
+  'wordFish',
+  'echo',
+  'storyBook',
+  'chapterFinale',
+]
+
 export const INSERTED_PLAY_KINDS: PlayKind[] = ['soundSpell', 'storyBook']
 
 export type LevelStatus = 'locked' | 'unlocked' | 'cleared'
@@ -96,10 +111,10 @@ const PLAY_SKELETON: Array<{
   { order: 1, play: 'flashFlip', titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
   { order: 2, play: 'whackWord', titleEn: 'Whack Word', titleZh: '地鼠词' },
   { order: 3, play: 'dragSort', titleEn: 'Drag Sort', titleZh: '拖一拖' },
-  { order: 4, play: 'soundSpell', titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
-  { order: 5, play: 'wordFish', titleEn: 'Word Fish', titleZh: '读词钓鱼' },
-  { order: 6, play: 'echo', titleEn: 'Echo', titleZh: '回声跟读' },
-  { order: 7, play: 'storyBook', titleEn: 'Story Book', titleZh: '小书点读' },
+  { order: 4, play: 'wordFish', titleEn: 'Word Fish', titleZh: '读词钓鱼' },
+  { order: 5, play: 'echo', titleEn: 'Echo', titleZh: '回声跟读' },
+  { order: 6, play: 'storyBook', titleEn: 'Story Book', titleZh: '小书点读' },
+  { order: 7, play: 'soundSpell', titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
   { order: 8, play: 'chapterFinale', titleEn: 'Chapter Finale', titleZh: '章节回顾' },
 ]
 
@@ -148,15 +163,15 @@ export const CHAPTER_1: ChapterDef = {
     },
     { notes: 'cap/map/nap', words: ['cap', 'map', 'nap'] },
     { notes: 'three words', words: ['cap', 'map', 'nap'] },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'cap',
-      words: ['cap', 'map', 'nap'],
-    },
     { notes: 'read to catch', words: ['cap', 'map', 'nap'] },
     { notes: 'follow-read + short sentence', words: ['cap', 'map', 'nap'] },
     {
       notes: 'mini book, one short sentence per page, try-blend cap',
+      focusWord: 'cap',
+      words: ['cap', 'map', 'nap'],
+    },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
       focusWord: 'cap',
       words: ['cap', 'map', 'nap'],
     },
@@ -187,11 +202,6 @@ export const CHAPTER_2: ChapterDef = {
     },
     { notes: 'frog/log/fog', words: ['frog', 'log', 'fog'] },
     { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'frog',
-      words: ['frog', 'log', 'fog'],
-    },
     { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
     {
       notes: 'frog→hog path through the five -og words + short sentence',
@@ -199,6 +209,11 @@ export const CHAPTER_2: ChapterDef = {
     },
     {
       notes: 'mini book, one short sentence per page, try-blend frog',
+      focusWord: 'frog',
+      words: ['frog', 'log', 'fog'],
+    },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
       focusWord: 'frog',
       words: ['frog', 'log', 'fog'],
     },
@@ -229,17 +244,17 @@ export const CHAPTER_3: ChapterDef = {
     },
     { notes: 'duck/rock/sock', words: ['duck', 'rock', 'sock'] },
     { notes: 'rock/sock/lock', words: ['rock', 'sock', 'lock'] },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'duck',
-      words: ['duck', 'sock'],
-    },
     { notes: 'duck/rock/lock', words: ['duck', 'rock', 'lock'] },
     { notes: 'duck/rock/sock + short sentence', words: ['duck', 'rock', 'sock'] },
     {
       notes: 'mini book, one short sentence per page, try-blend duck',
       focusWord: 'duck',
       words: ['duck', 'rock', 'sock'],
+    },
+    {
+      notes: 'hear CVC, assemble with letter tiles',
+      focusWord: 'duck',
+      words: ['duck', 'sock'],
     },
     {
       notes: 'ck mix + one -ap review + chapter sticker on first clear',
@@ -370,11 +385,19 @@ export function defaultLevelIdForPlay(play: PlayKind): string {
   return defaultLevelByPlay.get(play) ?? getFirstLevel().id
 }
 
-/** Query `?level=` wins when it matches this play; otherwise the Chapter 1 default. */
+/**
+ * Query `?level=` wins when it matches this play.
+ * Stale suffixes (v4 sound-spell at chN-4, etc.) remap by chapter + play.
+ * Otherwise the Chapter 1 default.
+ */
 export function resolveLevelId(play: PlayKind, raw?: string | null): string {
   if (raw) {
     const def = getLevel(raw)
     if (def && def.play === play) return def.id
+    if (def) {
+      const remapped = levelIdForPlay(play, def.chapterId)
+      if (remapped) return remapped
+    }
   }
   return defaultLevelIdForPlay(play)
 }

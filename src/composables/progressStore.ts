@@ -5,6 +5,7 @@ import {
   DEFAULT_CHAPTER_ID,
   INSERTED_PLAY_KINDS,
   LEGACY_SIX_PLAY_ORDER,
+  V4_EIGHT_PLAY_ORDER,
   chapterLevelTotal,
   defaultLevelIdForPlay,
   getChapter,
@@ -30,7 +31,7 @@ import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
 const LEGACY_PROGRESS_KEY = 'starWords.v1'
 const LEGACY_ATLAS_KEY = 'starWords.atlas.v1'
-const PERSIST_VERSION = 4
+const PERSIST_VERSION = 5
 export const ISLAND_DAY_CAP = 7
 const SHANGHAI_TZ = 'Asia/Shanghai'
 
@@ -624,17 +625,25 @@ type DailyHints = {
   lastIslandDate: string | null
 }
 
-function remapLegacySixLevelId(id: string): string {
+function remapLevelIdByPlayOrder(id: string, playOrder: readonly PlayKind[]): string {
   const match = /^(ch\d+)-(\d+)$/.exec(id)
   if (!match) return id
   const chapterId = match[1]
   const order = Number.parseInt(match[2], 10)
-  const play = LEGACY_SIX_PLAY_ORDER[order - 1]
+  const play = playOrder[order - 1]
   if (!play || !getChapter(chapterId)) return id
   return levelIdForPlay(play, chapterId) ?? id
 }
 
-/** Old 6-level saves have chN-4/5/6 keys and no chN-7/8. Do not remap live 8-level ids. */
+function remapLegacySixLevelId(id: string): string {
+  return remapLevelIdByPlayOrder(id, LEGACY_SIX_PLAY_ORDER)
+}
+
+function remapV4EightLevelId(id: string): string {
+  return remapLevelIdByPlayOrder(id, V4_EIGHT_PLAY_ORDER)
+}
+
+/** Old 6-level saves have chN-4/5/6 keys and no chN-7/8. Do not treat live 8-level ids as six. */
 function looksLikeLegacySixLevelSave(rawLevels: Record<string, unknown>): boolean {
   return CHAPTERS.some((chapter) => {
     const hasNewTail = rawLevels[`${chapter.id}-7`] != null || rawLevels[`${chapter.id}-8`] != null
@@ -645,6 +654,12 @@ function looksLikeLegacySixLevelSave(rawLevels: Record<string, unknown>): boolea
       rawLevels[`${chapter.id}-6`] != null
     )
   })
+}
+
+function looksLikeV4EightLevelSave(rawLevels: Record<string, unknown>): boolean {
+  return CHAPTERS.some(
+    (chapter) => rawLevels[`${chapter.id}-7`] != null || rawLevels[`${chapter.id}-8`] != null,
+  )
 }
 
 function lockFinaleUntilInsertedPlaysDone(levels: Record<string, LevelStatus>) {
@@ -713,7 +728,7 @@ function migrateDailyToChapter(daily: DailyHints): ChapterSave {
   return repairChapterInvariants(save)
 }
 
-function normalizeChapterSave(raw: unknown, daily: DailyHints): ChapterSave {
+function normalizeChapterSave(raw: unknown, daily: DailyHints, persistVersion = PERSIST_VERSION): ChapterSave {
   if (!raw || typeof raw !== 'object') return migrateDailyToChapter(daily)
   const parsed = raw as Partial<ChapterSave>
   if (!parsed.levels || typeof parsed.levels !== 'object') return migrateDailyToChapter(daily)
@@ -724,32 +739,34 @@ function normalizeChapterSave(raw: unknown, daily: DailyHints): ChapterSave {
       : DEFAULT_CHAPTER_ID
   const first = getFirstLevel(chapterId)
   const rawLevels = parsed.levels as Record<string, unknown>
-  const remap = looksLikeLegacySixLevelSave(rawLevels)
+  const remapSix = looksLikeLegacySixLevelSave(rawLevels)
+  const remapV4Eight =
+    !remapSix && persistVersion < 5 && looksLikeV4EightLevelSave(rawLevels)
+  const remapId = remapSix
+    ? remapLegacySixLevelId
+    : remapV4Eight
+      ? remapV4EightLevelId
+      : (id: string) => id
   const levels: Record<string, LevelStatus> = emptyAllLevels()
   for (const [id, status] of Object.entries(rawLevels)) {
     if (!isLevelStatus(status)) continue
-    const nextId = remap ? remapLegacySixLevelId(id) : id
-    levels[nextId] = status
+    levels[remapId(id)] = status
   }
 
   const rawStars = asStringArray(parsed.firstClearStars)
-  const firstClearStars = remap ? rawStars.map(remapLegacySixLevelId) : rawStars
+  const firstClearStars = rawStars.map(remapId)
   const rawAt =
     parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {}
   const firstClearAt: Record<string, string> = {}
   for (const [id, when] of Object.entries(rawAt)) {
     if (typeof when !== 'string' || !when) continue
-    firstClearAt[remap ? remapLegacySixLevelId(id) : id] = when
+    firstClearAt[remapId(id)] = when
   }
-  const highestUnlocked = remap
-    ? remapLegacySixLevelId(
-        typeof parsed.highestUnlocked === 'string' ? parsed.highestUnlocked : first.id,
-      )
-    : typeof parsed.highestUnlocked === 'string'
-      ? parsed.highestUnlocked
-      : first.id
+  const highestUnlocked = remapId(
+    typeof parsed.highestUnlocked === 'string' ? parsed.highestUnlocked : first.id,
+  )
 
-  if (remap) lockFinaleUntilInsertedPlaysDone(levels)
+  if (remapSix || remapV4Eight) lockFinaleUntilInsertedPlaysDone(levels)
 
   return repairChapterInvariants({
     currentChapterId: chapterId,
@@ -901,7 +918,13 @@ function migrateLegacyProgress(legacy: LegacyProgress, atlasWordsIn: string[]): 
 function normalizePersist(raw: unknown): PersistShape | null {
   if (!raw || typeof raw !== 'object') return null
   const parsed = raw as Partial<PersistShape> & LegacyProgress
-  if ((parsed.version === 2 || parsed.version === 3 || parsed.version === PERSIST_VERSION) && parsed.today && parsed.lifetime) {
+  if (
+    typeof parsed.version === 'number' &&
+    parsed.version >= 2 &&
+    parsed.version <= PERSIST_VERSION &&
+    parsed.today &&
+    parsed.lifetime
+  ) {
     const base = emptyPersist(typeof parsed.dateKey === 'string' ? parsed.dateKey : dateKey())
     const today = parsed.today
     const lifetime = parsed.lifetime
@@ -940,12 +963,16 @@ function normalizePersist(raw: unknown): PersistShape | null {
       lastIslandDate: typeof parsed.lastIslandDate === 'string' ? parsed.lastIslandDate : null,
       chapter: emptyChapterSave(),
     }
-    next.chapter = normalizeChapterSave(parsed.chapter, {
-      gates: next.gates,
-      today: next.today,
-      lifetime: next.lifetime,
-      lastIslandDate: next.lastIslandDate,
-    })
+    next.chapter = normalizeChapterSave(
+      parsed.chapter,
+      {
+        gates: next.gates,
+        today: next.today,
+        lifetime: next.lifetime,
+        lastIslandDate: next.lastIslandDate,
+      },
+      parsed.version,
+    )
     return next
   }
   if (!parsed.daily || typeof parsed.stars !== 'number') return null
@@ -1346,14 +1373,19 @@ export function completeLevel(id: string): CompleteLevelResult {
 
   const followingInChapter = getNextLevelDef(id)
   if (followingInChapter) {
-    persistState.chapter.levels[followingInChapter.id] = 'unlocked'
+    if (persistState.chapter.levels[followingInChapter.id] !== 'cleared') {
+      persistState.chapter.levels[followingInChapter.id] = 'unlocked'
+    }
     persistState.chapter.highestUnlocked = followingInChapter.id
   } else {
     persistState.chapter.highestUnlocked = id
     const nextChapter = getNextChapter(def.chapterId)
     if (nextChapter) {
-      persistState.chapter.levels[nextChapter.levels[0].id] = 'unlocked'
-      persistState.chapter.highestUnlocked = nextChapter.levels[0].id
+      const firstNext = nextChapter.levels[0].id
+      if (persistState.chapter.levels[firstNext] !== 'cleared') {
+        persistState.chapter.levels[firstNext] = 'unlocked'
+      }
+      persistState.chapter.highestUnlocked = firstNext
     }
   }
   persistState.chapter.currentChapterId = def.chapterId

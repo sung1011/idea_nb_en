@@ -1,4 +1,4 @@
-import { getLevel, type LevelDef, type PlayKind } from './chapters'
+import { getLevel, levelIdForPlay, type LevelDef, type PlayKind } from './chapters'
 import { pickOtherFromPool, pickOtherWords, preloadWordCards, sampleFromPool, sampleWords } from './phonicsFamily'
 
 export function queryLevelValue(raw: unknown): string | null {
@@ -6,12 +6,15 @@ export function queryLevelValue(raw: unknown): string | null {
   return typeof value === 'string' && value ? value : null
 }
 
-/** `?level=` wins only when it is a known level of this play. */
+/** `?level=` wins when it is this play, or a stale suffix remapped by chapter + play. */
 export function matchingLevel(play: PlayKind, raw: unknown): LevelDef | undefined {
   const id = queryLevelValue(raw)
   if (!id) return undefined
   const def = getLevel(id)
-  return def && def.play === play ? def : undefined
+  if (!def) return undefined
+  if (def.play === play) return def
+  const remapped = levelIdForPlay(play, def.chapterId)
+  return remapped ? getLevel(remapped) : undefined
 }
 
 /**
