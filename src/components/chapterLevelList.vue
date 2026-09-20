@@ -5,13 +5,11 @@ import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
 import { getChapterNumber, getLevel } from '../data/chapters'
-import { PLAY_KIND_EMOJI, locationForChapterPractice } from '../data/playGallery'
+import { PLAY_KIND_EMOJI } from '../data/playGallery'
 import {
   chapterDoneCopy,
   levelLockHint,
   nextLevelCtaCopy,
-  practiceEntryCopy,
-  practiceHintCopy,
   replayAgainCopy,
   replayClearedHintCopy,
 } from '../data/todayTasks'
@@ -95,11 +93,6 @@ function bindNextRow(el: Element | null, isNext: boolean) {
   if (isNext && el instanceof HTMLElement) nextRowEl.value = el
 }
 
-function goPractice() {
-  playTap()
-  void router.push(locationForChapterPractice(props.chapterId))
-}
-
 function go() {
   playTap()
   if (chapterNext.value) {
@@ -177,18 +170,6 @@ onBeforeUnmount(() => {
     </div>
 
     <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
-    <div v-if="chapter.complete" class="practice-wrap">
-      <p class="practice-hint">{{ practiceHintCopy() }}</p>
-      <big-button
-        class="practice-btn"
-        variant="soft"
-        data-practice-entry
-        :data-practice-chapter="chapterId"
-        @click="goPractice"
-      >
-        {{ practiceEntryCopy() }}
-      </big-button>
-    </div>
   </div>
 </template>
 
@@ -310,23 +291,5 @@ onBeforeUnmount(() => {
 
 .start-btn {
   margin-top: 14px;
-}
-
-.practice-wrap {
-  margin-top: 10px;
-  display: grid;
-  gap: 6px;
-}
-
-.practice-hint {
-  margin: 0;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.practice-btn {
-  margin-top: 0;
 }
 </style>

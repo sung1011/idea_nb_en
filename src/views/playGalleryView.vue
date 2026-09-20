@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import starBar from '../components/starBar.vue'
-import { getChapterNumber } from '../data/chapters'
+import { chapterKidTitle } from '../data/chapters'
 import {
   chapterPracticeItems,
   isChapterPracticeGallery,
@@ -10,7 +10,7 @@ import {
   playItems,
   practiceChapterIdFromQuery,
 } from '../data/playGallery'
-import { chapterPracticeOnlyCopy, practiceEntryCopy, replayAgainCopy } from '../data/todayTasks'
+import { replayAgainCopy, replayClearedHintCopy } from '../data/todayTasks'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,9 +25,6 @@ type GalleryRow = {
 
 const practiceChapterId = computed(() => practiceChapterIdFromQuery(route.query.chapter))
 const isPractice = computed(() => isChapterPracticeGallery(route.query.chapter))
-const practiceChapterNo = computed(() =>
-  practiceChapterId.value ? getChapterNumber(practiceChapterId.value) : 1,
-)
 const items = computed<GalleryRow[]>(() => {
   if (isPractice.value) {
     return chapterPracticeItems(practiceChapterId.value ?? undefined).map((item) => ({
@@ -77,13 +74,19 @@ function openPlay(path: string, levelId?: string) {
     </header>
 
     <div class="hero center">
-      <p class="eyebrow">{{ isPractice ? '练一练' : 'Play gallery' }}</p>
+      <p class="eyebrow">Play gallery</p>
       <h1 class="title-lg">
-        {{ isPractice ? practiceEntryCopy(practiceChapterId ?? undefined) : '玩法一览' }}
+        {{
+          isPractice
+            ? chapterKidTitle(practiceChapterId ?? '') || '再玩一次'
+            : '玩法一览'
+        }}
       </h1>
       <p class="sub">
         {{
-          isPractice ? chapterPracticeOnlyCopy(practiceChapterNo) : '点进去试玩，不算过关，不加星星'
+          isPractice
+            ? replayClearedHintCopy()
+            : '点进去试玩，不算过关，不加星星'
         }}
       </p>
     </div>

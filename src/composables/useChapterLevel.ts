@@ -76,7 +76,7 @@ export function useChapterLevel(play: PlayKind) {
     const order = level.value?.order
     if (isDemo.value) return `试玩 · ${title}`
     if (isReview.value) return `复习 · ${title}`
-    if (isChapterPractice.value) return `练一练 · 第${order}关 · ${title}`
+    if (isChapterPractice.value) return `再玩 · 第${order}关 · ${title}`
     if (isReplay.value) return `再玩 · 第${order}关 · ${title}`
     return `第${order}关 · ${title}`
   })

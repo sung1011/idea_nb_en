@@ -91,7 +91,7 @@ export function usePlayMode() {
   const backLabel = computed(() => {
     if (isDemo.value) return '回一览'
     if (isReview.value) return '回工坊'
-    if (isChapterPractice.value) return '练一练'
+    if (isChapterPractice.value) return '回岛'
     return '回岛'
   })
 
