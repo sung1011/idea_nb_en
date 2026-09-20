@@ -2,11 +2,11 @@
 import { onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { playPop } from '../composables/useSfx'
-import { resetAllProgress } from '../composables/useProgress'
+import { maxOutProgressFromConfig, resetAllProgress } from '../composables/useProgress'
 import bigButton from './bigButton.vue'
 
 const open = defineModel<boolean>({ default: false })
-const step = ref<'main' | 'confirm'>('main')
+const step = ref<'main' | 'confirmWipe' | 'confirmMax'>('main')
 const router = useRouter()
 
 function onKey(event: KeyboardEvent) {
@@ -31,9 +31,23 @@ function close() {
   step.value = 'main'
 }
 
-function askConfirm() {
+function refreshRoute() {
+  const current = router.currentRoute.value
+  void router.replace({
+    path: current.path,
+    query: { ...current.query },
+    hash: current.hash,
+  })
+}
+
+function askWipeConfirm() {
   playPop()
-  step.value = 'confirm'
+  step.value = 'confirmWipe'
+}
+
+function askMaxConfirm() {
+  playPop()
+  step.value = 'confirmMax'
 }
 
 function wipeAll() {
@@ -41,6 +55,13 @@ function wipeAll() {
   resetAllProgress()
   close()
   void router.replace('/')
+}
+
+function maxAll() {
+  playPop()
+  maxOutProgressFromConfig()
+  close()
+  refreshRoute()
 }
 </script>
 
@@ -62,15 +83,24 @@ function wipeAll() {
           <h2 id="settings-title" class="title">设置</h2>
           <p class="warn">
             「初始化」会清空本地进度：星星、贴纸、图鉴解锁、章节关卡。词卡图片还在，不会删。
+            「完全化」会按配置一键打满：所有章节关卡、星星、徽章贴纸、图鉴词、岛日展示。
           </p>
-          <big-button variant="danger" @click="askConfirm">初始化</big-button>
+          <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
+          <big-button variant="primary" @click="askMaxConfirm">完全化</big-button>
           <big-button variant="soft" @click="close">先不了</big-button>
         </template>
-        <template v-else>
+        <template v-else-if="step === 'confirmWipe'">
           <p class="eyebrow">Reset</p>
           <h2 id="settings-title" class="title">真的清空吗？</h2>
           <p class="warn">清空后不能找回，会回到第一次打开的样子。</p>
           <big-button variant="danger" @click="wipeAll">真的清空</big-button>
+          <big-button variant="soft" @click="close">再想想</big-button>
+        </template>
+        <template v-else>
+          <p class="eyebrow">Max</p>
+          <h2 id="settings-title" class="title">一键打满所有进度？</h2>
+          <p class="warn">会按当前配置解锁全部关卡、贴纸和图鉴，方便调试。</p>
+          <big-button variant="primary" @click="maxAll">打满</big-button>
           <big-button variant="soft" @click="close">再想想</big-button>
         </template>
       </div>

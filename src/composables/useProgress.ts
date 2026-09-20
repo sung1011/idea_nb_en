@@ -25,6 +25,7 @@ import {
   isLevelCleared,
   isLevelUnlocked,
   markWordSeen,
+  maxOutProgressFromConfig,
   persistState,
   resetAllProgress,
   routeAfterGate,
@@ -76,6 +77,7 @@ export {
   locationForLevel,
   locationForNextMainline,
   markWordSeen,
+  maxOutProgressFromConfig,
   persistState,
   pickRotatingFocusWord,
   progressStore,
@@ -249,6 +251,7 @@ export function useProgress() {
     hasDecoration,
     hasSticker,
     resetAllProgress,
+    maxOutProgressFromConfig,
     gateRoutes: GATE_ROUTES,
   }
 }

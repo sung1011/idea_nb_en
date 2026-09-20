@@ -17,8 +17,9 @@ import {
   type LevelDef,
   type LevelStatus,
 } from '../data/chapters'
+import { families, getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
+import { ALBUM_STICKERS } from '../data/stickers'
 import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
-import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
 const LEGACY_PROGRESS_KEY = 'starWords.v1'
@@ -976,10 +977,7 @@ function writeLifetime(target: LifetimeProgress, source: LifetimeProgress) {
   target.animalsIslandDays = source.animalsIslandDays
 }
 
-/** Wipe player progress only. Word-card images stay. */
-export function resetAllProgress(): void {
-  removeProgressKeys()
-  const fresh = emptyPersist()
+function hydratePersist(fresh: PersistShape) {
   persistState.version = fresh.version
   persistState.dateKey = fresh.dateKey
   writeToday(persistState.today, fresh.today)
@@ -989,10 +987,114 @@ export function resetAllProgress(): void {
     delete persistState.gates[key]
   }
   writeGates(persistState.gates, fresh.gates)
-  persistState.decorations = []
-  persistState.lastIslandDate = null
+  persistState.decorations.splice(0, persistState.decorations.length, ...fresh.decorations)
+  persistState.lastIslandDate = fresh.lastIslandDate
   writeChapter(persistState.chapter, fresh.chapter)
   persist()
+}
+
+function pushUnique(list: string[], value?: string) {
+  const key = value?.trim()
+  if (!key || list.includes(key)) return
+  list.push(key)
+}
+
+/** Every configured atlas / chapter word. New chapters or families are picked up automatically. */
+function collectConfiguredWords(): string[] {
+  const out: string[] = []
+  for (const item of listAllFamilyWords()) pushUnique(out, item.word)
+  for (const family of Object.values(families)) {
+    for (const word of family.targets) pushUnique(out, normalizeWord(word))
+    for (const word of Object.keys(family.wordArt)) pushUnique(out, normalizeWord(word))
+  }
+  for (const chapter of CHAPTERS) {
+    for (const word of chapter.words) pushUnique(out, normalizeWord(word))
+    for (const level of chapter.levels) {
+      if (level.focusWord) pushUnique(out, normalizeWord(level.focusWord))
+      for (const word of level.appearWords ?? []) pushUnique(out, normalizeWord(word))
+      for (const word of level.words ?? []) pushUnique(out, normalizeWord(word))
+    }
+  }
+  return out
+}
+
+/** Album catalog ids plus any sticker listed on a chapter or finale level. */
+function collectConfiguredStickerIds(): string[] {
+  const out: string[] = []
+  for (const item of ALBUM_STICKERS) pushUnique(out, item.id)
+  for (const chapter of CHAPTERS) {
+    pushUnique(out, chapter.stickerId)
+    for (const level of chapter.levels) pushUnique(out, level.chapterStickerId)
+  }
+  return out
+}
+
+function maxedChapterSave(day: string): ChapterSave {
+  const levels: Record<string, LevelStatus> = {}
+  const firstClearStars: string[] = []
+  const firstClearAt: Record<string, string> = {}
+  const chapterStickers: string[] = []
+  const celebratedChapters: string[] = []
+  let currentChapterId = DEFAULT_CHAPTER_ID
+  let highestUnlocked = getFirstLevel(DEFAULT_CHAPTER_ID).id
+
+  for (const chapter of CHAPTERS) {
+    currentChapterId = chapter.id
+    pushUnique(chapterStickers, chapter.id)
+    pushUnique(celebratedChapters, chapter.id)
+    for (const level of chapter.levels) {
+      levels[level.id] = 'cleared'
+      pushUnique(firstClearStars, level.id)
+      firstClearAt[level.id] = day
+      highestUnlocked = level.id
+    }
+  }
+
+  return repairChapterInvariants({
+    currentChapterId,
+    highestUnlocked,
+    levels,
+    firstClearStars,
+    chapterStickers,
+    firstClearAt,
+    celebrated: celebratedChapters.includes(DEFAULT_CHAPTER_ID),
+    celebratedChapters,
+  })
+}
+
+function maxedPersistFromConfig(day = dateKey()): PersistShape {
+  const next = emptyPersist(day)
+  next.chapter = maxedChapterSave(day)
+  next.lifetime.totalStars = listAllLevels().reduce(
+    (sum, level) => sum + Math.max(0, level.firstClearStars),
+    0,
+  )
+  next.lifetime.stickers = collectConfiguredStickerIds()
+  next.lifetime.unlockedWords = collectConfiguredWords()
+  next.lifetime.animalsIslandDays = ISLAND_DAY_CAP
+  next.lastIslandDate = day
+  next.today.chainStep = 'complete'
+  next.today.completed = true
+  next.today.mainTaskDone = true
+  const firstChapterSticker = CHAPTERS[0]?.stickerId
+  if (firstChapterSticker) next.today.rewardSticker = firstChapterSticker
+  syncTodayAndGatesFromChapter(next)
+  return next
+}
+
+/** Wipe player progress only. Word-card images stay. */
+export function resetAllProgress(): void {
+  removeProgressKeys()
+  hydratePersist(emptyPersist())
+}
+
+/**
+ * GM fill: mark every configured chapter/level cleared, grant catalog stickers
+ * and configured words, and max display-only island days. Reads live configs —
+ * adding a chapter later is enough; this helper does not hardcode chapter ids.
+ */
+export function maxOutProgressFromConfig(): void {
+  hydratePersist(maxedPersistFromConfig())
 }
 
 export function ensureToday() {
