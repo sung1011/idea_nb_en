@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
+import chapterLevelLights from '../components/chapterLevelLights.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
@@ -11,7 +12,7 @@ import { getCurrentFamily } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { state, gatesDone, gateTotal, allDoneToday } = useProgress()
+const { chapter } = useProgress()
 const heroEl = ref<HTMLElement | null>(null)
 
 onMounted(() => {
@@ -44,13 +45,13 @@ function goAlbum() {
     <header class="top-row">
       <star-bar />
       <div class="top-tools">
-        <p class="day-chip">打卡 {{ state.dayStars }} 天</p>
+        <p class="day-chip">第1章 {{ chapter.clearedCount }}/{{ chapter.levelTotal }}</p>
         <settings-button />
       </div>
     </header>
 
     <div ref="heroEl" class="hero center">
-      <p class="eyebrow">每日主题岛</p>
+      <p class="eyebrow">主题岛 · 第一章派对</p>
       <h1 class="title-xl">Star Words</h1>
       <p class="zh-title">星词岛</p>
       <p class="sub">先去动物岛，帮小猫办 {{ family.family }} 派对</p>
@@ -66,10 +67,7 @@ function goAlbum() {
           <p class="island-goal">帮小猫把 {{ family.family }} 朋友请来派对！</p>
         </div>
       </div>
-      <p class="progress-line" :class="{ done: allDoneToday }">
-        第一章 {{ gatesDone }}/{{ gateTotal }}
-        <template v-if="allDoneToday"> · 派对完成</template>
-      </p>
+      <chapter-level-lights class="home-level-lights" embedded :show-label="false" />
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
@@ -151,13 +149,8 @@ function goAlbum() {
   font-size: 15px;
 }
 
-.progress-line {
-  margin: 14px 0 0;
-  font-weight: 700;
-}
-
-.progress-line.done {
-  color: var(--ok);
+.home-level-lights {
+  margin-top: 12px;
 }
 
 .start-btn {

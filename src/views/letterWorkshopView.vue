@@ -23,7 +23,7 @@ function startReview() {
     <div class="hero center">
       <p class="eyebrow">复习入口</p>
       <h1 class="title-lg">字母工坊</h1>
-      <p class="sub">复习音族，不代替今日派对作业</p>
+      <p class="sub">复习音族，不代替派对关卡</p>
     </div>
 
     <div class="card family-card">

@@ -6,9 +6,13 @@ import { useProgress } from '../composables/useProgress'
 const props = withDefaults(
   defineProps<{
     celebrateOnGain?: boolean
+    showLabel?: boolean
+    embedded?: boolean
   }>(),
   {
     celebrateOnGain: true,
+    showLabel: true,
+    embedded: false,
   },
 )
 
@@ -63,12 +67,12 @@ onMounted(() => {
 <template>
   <div
     class="chapter-lights"
-    :class="{ full }"
+    :class="{ full, embedded }"
     data-chapter-level-lights
     :aria-label="labelText"
     aria-live="polite"
   >
-    <p class="chapter-lights-label">{{ labelText }}</p>
+    <p v-if="showLabel" class="chapter-lights-label">{{ labelText }}</p>
     <div class="chapter-lights-row" role="list">
       <span
         v-for="slot in slots"
@@ -100,6 +104,18 @@ onMounted(() => {
 .chapter-lights.full {
   background: linear-gradient(180deg, #fff6d0 0%, #fffdf3 72%);
   box-shadow: 0 8px 0 rgba(244, 180, 0, 0.18);
+}
+
+.chapter-lights.embedded {
+  padding: 8px 0 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chapter-lights.embedded.full {
+  background: transparent;
+  box-shadow: none;
 }
 
 .chapter-lights-label {

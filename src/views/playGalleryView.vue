@@ -20,7 +20,7 @@ function openPlay(path: string) {
     <div class="hero center">
       <p class="eyebrow">Play gallery</p>
       <h1 class="title-lg">玩法一览</h1>
-      <p class="sub">点进去试玩，不算今日作业，不加星星</p>
+      <p class="sub">点进去试玩，不算过关，不加星星</p>
     </div>
 
     <div class="list">

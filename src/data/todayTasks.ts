@@ -1,4 +1,4 @@
-/** Daily main-task ids + kid-facing copy. One task, not a list. */
+/** Chapter goal copy. One line, not a list. Old task ids still map here. */
 export const MAIN_TASK_FISH_ECHO = 'fishEcho'
 export const MAIN_TASK_DAILY_CHAIN = 'dailyChain'
 export const MAIN_TASK_CHAPTER_1 = 'animalsCh1'
@@ -12,6 +12,20 @@ export const MAIN_TASK_COPY: Record<string, string> = {
 
 export function mainTaskCopy(taskId: string): string {
   return MAIN_TASK_COPY[taskId] ?? MAIN_TASK_COPY[MAIN_TASK_DAILY_CHAIN]
+}
+
+export function chapterProgressCopy(cleared: number, total: number, chapterNo = 1): string {
+  const safeTotal = Math.max(1, Math.floor(total))
+  const safeCleared = Math.max(0, Math.min(safeTotal, Math.floor(cleared)))
+  return `第${chapterNo}章 ${safeCleared}/${safeTotal} 关`
+}
+
+export function nextLevelCopy(titleZh: string): string {
+  return `下一关：${titleZh}`
+}
+
+export function chapterDoneCopy(): string {
+  return '第一章派对通关啦'
 }
 
 export function focusWordHint(word: string): string {

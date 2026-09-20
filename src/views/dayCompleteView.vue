@@ -3,14 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
+import chapterLevelLights from '../components/chapterLevelLights.vue'
 import todayStarBar from '../components/todayStarBar.vue'
-import { ISLAND_DAY_CAP, useProgress } from '../composables/useProgress'
+import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { stickerById } from '../data/stickers'
 
 const router = useRouter()
-const { state, claimDayCompleteRewards } = useProgress()
+const { state, chapter, claimDayCompleteRewards } = useProgress()
 
 const claim = claimDayCompleteRewards()
 const sticker = computed(() => (claim.stickerId ? stickerById(claim.stickerId) : null))
@@ -38,11 +39,9 @@ const stickerLine = computed(() => {
   return `章节徽章是「${name}」，随时还能再玩`
 })
 
-const islandLine = computed(() => {
-  const days = state.dayStars
-  if (days >= ISLAND_DAY_CAP) return '小岛 7 天都亮啦'
-  if (claim.islandAdvanced) return `小岛又亮了一格 · 第 ${days} 天`
-  return `小岛走到第 ${days} 天`
+const chapterLine = computed(() => {
+  if (chapter.value.complete) return '第一章派对通关啦'
+  return `第1章 ${chapter.value.clearedCount}/${chapter.value.levelTotal} 关`
 })
 
 onMounted(() => {
@@ -73,6 +72,7 @@ onMounted(() => {
       <p class="zh">{{ titleZh }}</p>
       <p class="sub">{{ leadLine }}</p>
       <today-star-bar class="today-loot" size="large" :celebrate-on-gain="false" />
+      <chapter-level-lights class="chapter-loot" :celebrate-on-gain="false" />
 
       <div
         v-if="sticker"
@@ -81,7 +81,7 @@ onMounted(() => {
         :class="{ fresh: claim.freshClaim && claim.ready, muted: !claim.ready }"
       >
         <span class="sticker-emoji" aria-hidden="true">{{ sticker.emoji }}</span>
-        <p class="sticker-kicker">{{ claim.freshClaim && claim.stickerGranted ? '新贴纸' : '今日贴纸' }}</p>
+        <p class="sticker-kicker">{{ claim.freshClaim && claim.stickerGranted ? '新贴纸' : '章节徽章' }}</p>
         <p class="sticker-name">{{ sticker.label }}</p>
         <p class="sticker-line">{{ stickerLine }}</p>
       </div>
@@ -92,10 +92,10 @@ onMounted(() => {
           <b>{{ state.stars }}</b>
           <small>总星星</small>
         </div>
-        <div class="loot-item" :class="{ bump: claim.islandAdvanced }">
+        <div class="loot-item" :class="{ bump: chapter.complete }">
           <span>🏝️</span>
-          <b>{{ state.dayStars }}/{{ ISLAND_DAY_CAP }}</b>
-          <small>{{ islandLine }}</small>
+          <b>{{ chapter.clearedCount }}/{{ chapter.levelTotal }}</b>
+          <small>{{ chapterLine }}</small>
         </div>
       </div>
     </div>
@@ -165,6 +165,11 @@ onMounted(() => {
 .today-loot {
   width: 100%;
   margin-top: 16px;
+}
+
+.chapter-loot {
+  width: 100%;
+  margin-top: 12px;
 }
 
 .sticker-card {

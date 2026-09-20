@@ -8,7 +8,7 @@
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
 - 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 章节关卡 / 动物岛日格 / 当日文案）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁入，v2 日链存档再升到章节模型（persist `version: 3`），之后只读写 v2，避免两套互相覆盖
-- 今日目标条：首页顶部展示一条主任务 + 可选焦点词 + **星星条**（第一章 6 颗空/实星，跟关卡首次通关走，不再按日历锁关）；缺省写入 `mainTaskId=animalsCh1`，并从 15 词库轮换 `focusWord`。动物岛大厅改用「第1章 x/6 关」列表，不再挂这条
+- 章节目标条：首页顶部展示「第1章 x/6 关」+ 下一关名（如「下一关：拖一拖」）+ 可选焦点词 + **过关星星条**（第一章 6 颗空/实星）+ CTA（走 `getNextLevel()`）。缺省仍写入 `mainTaskId=animalsCh1`，并从 15 词库轮换 `focusWord`（只作文案，不锁关）。动物岛大厅改用「第1章 x/6 关」列表，不再挂这条
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
@@ -26,7 +26,7 @@
 
 **单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
 
-**贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去玩今日主线吧」。设置「初始化」后相册清空。
+**贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩派对吧」。设置「初始化」后相册清空。
 
 **玩法一览**列出 7 种玩法（主线玩法 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。动物岛主按钮按 `getNextLevel()` 进入下一关。点一点已移除。
 
@@ -84,17 +84,17 @@ src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
 src/data/chapters.ts           第一章动物岛 6 关配置（play / 词注 / 路由 / 章节徽章）
 src/data/stickers.ts           贴纸目录（5 个日奖占位 + 章节徽章 `atParty`；相册按格展示）
-src/data/todayTasks.ts         主任务文案（一条，不是清单）
+src/data/todayTasks.ts         章节目标文案（进度 / 下一关 / 焦点词）
 src/composables/progressStore.ts 进度数据模型 + 章节关卡 + localStorage 迁移 + 初始化清档
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 章节关卡 / 岛日 / 当日文案
 src/composables/useStickerAlbum.ts 贴纸相册只读视图（写入走 progressStore）
 src/components/settingsButton.vue 首页 / 大厅齿轮入口
 src/components/settingsDialog.vue 设置弹窗（初始化需二次确认）
-src/components/todayGoalBar.vue 今日目标条（首页，内嵌星星条；大厅已改章节关卡列表）
-src/components/todayStarBar.vue 今日星星条（空/实星，主线关卡顶栏 + 完成页）
-src/components/chapterLevelLights.vue 动物岛大厅 6 关亮格（读章节已通关数，只展示）
-src/components/islandDayCells.vue 旧 7 日亮格（大厅已不用；岛日仍只作展示 / 分析）
-src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 今日星星条；试玩/复习改显示总星星）
+src/components/todayGoalBar.vue 章节目标条（首页：第1章 x/6 关 + 下一关 + CTA 走 getNextLevel；大厅不挂）
+src/components/todayStarBar.vue 过关星星条（空/实星，主线关卡顶栏 + 完成页）
+src/components/chapterLevelLights.vue 6 关亮格（大厅 + 首页岛卡 + 完成页；读章节已通关数）
+src/components/islandDayCells.vue 旧 7 日亮格（主线已不用；岛日仍只作展示 / 分析）
+src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 过关星星条；试玩/复习改显示总星星）
 src/composables/useWordAtlas.ts 单词图鉴只读视图（写入走 progressStore）
 src/composables/usePlayMode.ts 试玩 / 复习模式（通关后不推进章节）
 src/composables/useChapterLevel.ts 关卡页读 `?level=`、调用 `completeLevel`、跳下一关
@@ -104,7 +104,7 @@ src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目
-src/views/homeView.vue         首页（今日目标条 + 去动物岛 + 玩法一览 + 贴纸相册 + 弱工坊 / 图鉴 + 设置）
+src/views/homeView.vue         首页（章节目标条 + 6 关亮格 + 去动物岛 + 玩法一览 + 贴纸相册 + 弱工坊 / 图鉴 + 设置）
 src/views/animalIslandView.vue 动物岛大厅（6 关亮格 + ch1-1…ch1-6 关卡列表 + 主按钮走 getNextLevel）
 src/views/chapterFinaleView.vue 第一章回顾 stub（ch1-6）
 src/views/letterWorkshopView.vue 字母工坊复习页
@@ -140,27 +140,28 @@ src/views/*.vue                七种玩法 + Day Complete
 - `completeGate(gateId)`：闪卡/地鼠/拖一拖/钓鱼/回音分别对应 ch1-1…ch1-5，内部仍转 `completeLevel`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用 `completeLevel`，因此不加星、不推进章节
 - 回声通关后进入 ch1-6，不再把主线标成「今天做完了」
 
-## 今日目标条
+## 章节目标条
 
-`todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）。只显示一条主任务，不是关卡清单。动物岛大厅已改成章节关卡列表，不再挂这条，避免「今日主线按天」的旧说法。
+`todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）。主文案读章节进度，不再写「今天做完了」或按天锁关。动物岛大厅已改成章节关卡列表，不再挂这条。
 
-- 主任务文案来自 `mainTaskId` 小表（`src/data/todayTasks.ts`）。默认 id `animalsCh1`，文案「走完动物岛第一章派对」（旧存档 `dailyChain` / `fishEcho` / `animalsIsland` 读同一句）
-- `mainTaskDone` / `completed` 时打勾并浅绿高亮，旁注「做好啦」（现为第一章 6 关全通，不是「等明天」）
-- 有 `focusWord` 时多一行「多听一听 cat」
-- 下方是 **星星条**：按 `today.starsGoal`（第一章 6）画空星/实星，数字 `已得/目标`；关卡首次通关亮一颗并轻量弹跳。试玩/复习顶栏不换这条
-- 主线关顶栏（`gateTopBar`）同样挂星星条
+- 主行「第1章 x/6 关」，下一行「下一关：拖一拖」（全通时改成「第一章派对通关啦」）
+- CTA 走 `getNextLevel()` / `locationForNextMainline()`：未通关写「去第N关 · 玩法名」，全通写「看章节奖励」
+- 有 `focusWord` 时多一行「多听一听 cat」；只是提示，不按 `dateKey` 锁关
+- 下方是 **过关星星条**：按 `today.starsGoal`（第一章 6）画空星/实星；关卡首次通关亮一颗并轻量弹跳
+- 首页岛卡、大厅、完成页都用 6 关亮格（旧 7 日太阳格不再出现在主线）
+- 主线关顶栏（`gateTopBar`）同样挂过关星星条
 - 完成页再展示一次大号星星条（此时通常 6/6），不再加星
 - `ensureTodayTask()`：若缺主任务或焦点词，写入 `animalsCh1`，并用日期哈希轮换 `focusWord`。不再把主线倒回「今日热身」
 
 ## 动物岛章节 6 关亮格
 
-`chapterLevelLights` 挂在**动物岛大厅**（小岛场景下、6 关列表上）。只展示第一章已通关数，不是第二座岛入口。
+`chapterLevelLights` 挂在**动物岛大厅**（小岛场景下、6 关列表上），首页岛卡（嵌入、不重复标题）和完成页也会再展示一次。只展示第一章已通关数，不是第二座岛入口。
 
 - 读 `getChapterProgress()` 的 `clearedCount` / `levelTotal`（第一章 6 关）
 - 文案「第1章 n/6 关」；已过关画星星并高亮，未过关淡色虚线圆里写关号
 - 通关后回大厅会亮多一格；设置「初始化」后回到 0/6
 - 6/6 时整条变暖色，旁注「第一章派对通关啦，随时还能再玩」
-- 旧 `islandDayCells`（7 日太阳格）大厅不再使用；`animalsIslandDays` 仍只作展示 / 分析，不锁关
+- 旧 `islandDayCells`（7 日太阳格）主线不再使用；`animalsIslandDays` 仍只作展示 / 分析，不锁关
 
 ## 动物岛大厅关卡列表
 
@@ -190,17 +191,17 @@ src/views/*.vue                七种玩法 + Day Complete
 `/day-complete` 在第一章 6 关走完后庆祝（ch1-6 通关后跳来）。进入页时调用 `claimDayCompleteRewards()`：
 
 - 未通关 ch1-6：不发徽章，文案提醒先玩完第一章
-- 首次庆祝：展示 ch1-6 发的 `-at 派对徽章`；岛日 +1 只作展示（同日一次，封顶 7）
+- 首次庆祝：展示 ch1-6 发的 `-at 派对徽章`；岛日 +1 只作后台展示 / 分析（同日一次，封顶 7），完成页改画 6 关亮格
 - 再进：展示已领徽章，不重复发放，也不说「明天再来」
-- 中文儿童向文案展示贴纸名；完成页再展示大号星星条，本身不加星
-- 完成页可点「看贴纸相册」；大厅 6 关亮格只展示已通关数，不解锁第二座岛，也不锁主线
+- 中文儿童向文案展示贴纸名；完成页再展示大号过关星星条，本身不加星
+- 完成页可点「看贴纸相册」；大厅 / 首页 / 完成页 6 关亮格只展示已通关数，不解锁第二座岛，也不锁主线
 
 ## 贴纸相册
 
 `/sticker-album` 展示目录 6 格（`ear` / `paw` / `leaf` / `shell` / `sun` + 章节徽章 `atParty`）。入口：首页暖色「贴纸相册」、动物岛大厅、完成页。
 
 - 读 `lifetime.stickers`（与 `hasSticker` 同一份）；拥有的格子亮色，未拥有剪影 + `?`
-- 一张都没有：文案「还没有贴纸，先去玩今日主线吧」，并给「去动物岛」
+- 一张都没有：文案「还没有贴纸，先去动物岛玩派对吧」，并给「去动物岛」
 - 设置「初始化」后 `lifetime.stickers` 清空，相册回到空态
 - 只看、不装饰小岛、不交换、不花费
 

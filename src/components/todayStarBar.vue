@@ -28,7 +28,7 @@ const slots = computed(() =>
     filled: index < filledCount.value,
   })),
 )
-const labelText = computed(() => `今日星星 ${filledCount.value}/${goal.value}`)
+const labelText = computed(() => `过关星星 ${filledCount.value}/${goal.value}`)
 
 const popping = ref<number | null>(null)
 const starMap = new Map<number, HTMLElement>()
@@ -60,7 +60,7 @@ watch(earned, async (next, prev) => {
     data-today-star-bar
     :aria-label="labelText"
   >
-    <p v-if="showLabel" class="today-stars-label">今日星星</p>
+    <p v-if="showLabel" class="today-stars-label">过关星星</p>
     <div class="today-stars-row">
       <span
         v-for="slot in slots"

@@ -61,7 +61,7 @@ function wipeAll() {
           <p class="eyebrow">Settings</p>
           <h2 id="settings-title" class="title">设置</h2>
           <p class="warn">
-            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、章节关卡、岛日打卡、今日任务和关卡链。词卡图片还在，不会删。
+            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、章节关卡。词卡图片还在，不会删。
           </p>
           <big-button variant="danger" @click="askConfirm">初始化</big-button>
           <big-button variant="soft" @click="close">先不了</big-button>

@@ -46,7 +46,7 @@ function goIsland() {
     <p class="progress-line center">已收集 {{ ownedCount }} / {{ total }}</p>
 
     <div v-if="isEmpty" class="empty-card">
-      <p class="empty-line">还没有贴纸，先去玩今日主线吧</p>
+      <p class="empty-line">还没有贴纸，先去动物岛玩派对吧</p>
       <big-button class="empty-go" @click="goIsland">去动物岛</big-button>
     </div>
 
