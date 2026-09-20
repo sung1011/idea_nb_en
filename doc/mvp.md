@@ -122,7 +122,7 @@ src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 拖一拖磁吸落篮
 src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目（按章画廊路由仍在，主路径不链）
-src/components/levelClearSheet.vue 重玩通关后的选择层（再玩一次 / 去下一关 / 回岛）
+src/components/levelClearSheet.vue 重玩通关后的选择层（回岛主按钮 / 再玩一次次按钮 / 可选去下一关）
 src/views/homeView.vue         首页（跨章目标条 + 当前章亮格 + 去动物岛 + 玩法一览 + 贴纸相册 + 弱工坊 / 图鉴 + 设置）
 src/views/animalIslandView.vue 动物岛大厅（三章入口；点开后该章关卡列表 + 已过关「再玩一次」）
 src/views/soundSpellView.vue   听音拼一拼（听词、点/拖字母、软失败、喇叭重听）
@@ -214,7 +214,7 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 主线各关赢了都走同一条：`useChapterLevel` → `completeLevel(levelId)` → 首次通关 `locationAfterClear`（下一关带 `?level=`，或 `/day-complete`）。
 
 - 首次通关：+1 星；第一章钓鱼关额外「派对耳朵」；终章额外该章徽章（ch1-8 `atParty` / ch2-8 `pawPrint` / ch3-8 `littleStar`）；立刻进下一关，**不用等日历日**
-- 重玩已过关：英语轻表扬 + 中文「再玩一遍也可以…」，不加星、不重复发章节徽章；结束后弹出选择层（再玩一次 / 去下一关 / 回岛），不把孩子卡死
+- 重玩已过关：英语轻表扬 + 中文「再玩一遍也可以…」，不加星、不重复发章节徽章；结束后弹出选择层（回岛主按钮 / 再玩一次次按钮 / 可选去下一关），不把孩子卡死；首次通关仍自动进下一关
 - `?practice=1`：旧按章画廊重玩参数仍可识别，奖励规则与「再玩一次」相同；主路径不再链到这条
 - `?demo=1` 回玩法一览；`?review=1` 回字母工坊（或带着 `review=1` 进下一关复习），都不写章节进度
 

@@ -40,11 +40,13 @@ const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
         <p class="eyebrow">Nice!</p>
         <h2 id="clear-sheet-title" class="title">{{ title }}</h2>
         <p class="lead">{{ lead }}</p>
-        <big-button data-clear-replay @click="emit('replay')">{{ replayAgainCopy() }}</big-button>
-        <big-button v-if="showNext" variant="soft" data-clear-next @click="emit('next')">
+        <big-button data-clear-lobby @click="emit('lobby')">回岛</big-button>
+        <big-button compact variant="outline" data-clear-replay @click="emit('replay')">
+          {{ replayAgainCopy() }}
+        </big-button>
+        <big-button v-if="showNext" compact variant="soft" data-clear-next @click="emit('next')">
           去下一关
         </big-button>
-        <button class="lobby-link" type="button" data-clear-lobby @click="emit('lobby')">回岛</button>
       </div>
     </div>
   </Teleport>
@@ -89,15 +91,5 @@ const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
   font-size: 16px;
   font-weight: 650;
   line-height: 1.4;
-}
-
-.lobby-link {
-  min-height: 48px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 16px;
-  font-weight: 650;
-  text-decoration: underline;
-  text-underline-offset: 4px;
 }
 </style>
