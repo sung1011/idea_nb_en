@@ -9,6 +9,8 @@ import { tweenCelebrate, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { getChapter } from '../data/chapters'
+import { levelWordList } from '../data/gateWords'
+import { preloadWordCards } from '../data/phonicsFamily'
 
 const {
   level,
@@ -27,7 +29,10 @@ const {
   goPractice,
   goLobby,
 } = useChapterLevel('chapterFinale')
-const words = computed(() => level.value?.words ?? ['cat', 'hat', 'mat'])
+const words = computed(() => {
+  const list = levelWordList(level.value)
+  return list.length ? list : ['cat', 'hat', 'mat']
+})
 const chapter = computed(() => getChapter(level.value?.chapterId))
 const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-at 派对」')
 const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
@@ -36,6 +41,7 @@ const locked = ref(false)
 const cardEl = ref<HTMLElement | null>(null)
 
 onMounted(() => {
+  preloadWordCards(words.value)
   for (const word of words.value) unlockWord(word)
 })
 

@@ -13,7 +13,8 @@ import {
 } from '../composables/useRecognition'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
+import { getCurrentFamily } from '../data/phonicsFamily'
+import { gateFishLead } from '../data/todayTasks'
 
 const family = getCurrentFamily()
 const {
@@ -30,9 +31,13 @@ const {
   continueAfterClear,
   goPractice,
   goLobby,
+  level,
+  useLevelWords,
+  takeRunWords,
 } = useChapterLevel('wordFish')
 
-const words = sampleWords(3)
+const words = takeRunWords(3)
+const fishLead = computed(() => gateFishLead(level.value?.chapterId, useLevelWords.value))
 const caught = ref<string[]>([])
 const locked = ref(false)
 const listening = ref(false)
@@ -183,7 +188,7 @@ onUnmounted(() => {
       <p class="gate-tag">{{ gateTag }}</p>
       <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 class="title-lg">读词钓鱼</h1>
-      <p class="sub">小猫请客 · {{ prompt }}</p>
+      <p class="sub">{{ fishLead }} · {{ prompt }}</p>
     </div>
 
     <sound-fish-stage

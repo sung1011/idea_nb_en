@@ -9,8 +9,8 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
-import { sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
+import { gateDragSub } from '../data/todayTasks'
 
 type DragState = {
   first: boolean
@@ -33,10 +33,13 @@ const {
   continueAfterClear,
   goPractice,
   goLobby,
+  themeHint,
+  takeRunWords,
 } = useChapterLevel('dragSort')
 const vDrag = dragDirective()
 
-const words = sampleWords(3)
+const words = takeRunWords(3)
+const dragSub = computed(() => gateDragSub(themeHint.value))
 const baskets = ref(shuffle([...words]))
 const trayOrder = ref(shuffle([...words]))
 const placed = ref<Record<string, boolean>>(
@@ -198,9 +201,10 @@ onUnmounted(() => {
       <p class="gate-tag">{{ gateTag }}</p>
       <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
+      <p v-if="dragSub" class="sub">{{ dragSub }}</p>
     </div>
 
-    <div class="buckets">
+    <div class="buckets" :style="{ gridTemplateColumns: `repeat(${baskets.length}, minmax(0, 1fr))` }">
       <div
         v-for="word in baskets"
         :key="word"
@@ -272,7 +276,6 @@ onUnmounted(() => {
 
 .buckets {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   min-height: 188px;
 }

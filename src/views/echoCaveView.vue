@@ -13,7 +13,7 @@ import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMot
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
-import { sampleWords } from '../data/phonicsFamily'
+import { gateEchoTitle } from '../data/todayTasks'
 
 const {
   isReplay,
@@ -29,9 +29,13 @@ const {
   continueAfterClear,
   goPractice,
   goLobby,
+  level,
+  useLevelWords,
+  takeRunWords,
 } = useChapterLevel('echo')
 
-const words = sampleWords(3)
+const words = takeRunWords(3)
+const echoTitle = computed(() => gateEchoTitle(level.value?.chapterId, useLevelWords.value))
 const wordIndex = ref(0)
 const listening = ref(false)
 const celebrating = ref(false)
@@ -145,7 +149,7 @@ onUnmounted(() => {
     <div class="center">
       <p class="gate-tag">{{ gateTag }}</p>
       <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
-      <h1 class="title-lg">跟小猫喊朋友</h1>
+      <h1 class="title-lg">{{ echoTitle }}</h1>
       <p class="sub">{{ status }}</p>
     </div>
 

@@ -8,8 +8,8 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
-import { pickOtherWords, sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
+import { gateWhackSub } from '../data/todayTasks'
 
 type Mole = {
   hole: number
@@ -32,10 +32,14 @@ const {
   continueAfterClear,
   goPractice,
   goLobby,
+  themeHint,
+  takeRunWords,
+  takeOtherWords,
 } = useChapterLevel('whackWord')
 
-const words = sampleWords(5)
-const extra = pickOtherWords(words, 1)
+const words = takeRunWords(5)
+const extra = takeOtherWords(words, 1)
+const whackSub = computed(() => gateWhackSub(themeHint.value))
 const holes = [0, 1, 2, 3]
 const moles = ref<Mole[]>([])
 const wave = ref(0)
@@ -168,7 +172,7 @@ onUnmounted(() => {
       <p class="gate-tag">{{ gateTag }}</p>
       <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
-      <p class="sub">听单词，点对的地鼠</p>
+      <p class="sub">{{ whackSub }}</p>
     </div>
 
     <div class="lawn">

@@ -159,11 +159,42 @@ function shuffledCopy<T>(list: T[]): T[] {
   return next
 }
 
-/** One-run subset so a session stays short. */
-export function sampleWords(count: number, family = getCurrentFamily()): string[] {
-  const picked = shuffledCopy(family.targets).slice(0, Math.min(count, family.targets.length))
+function uniqueWords(list: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of list) {
+    const word = raw.trim().toLowerCase()
+    if (!word || seen.has(word)) continue
+    seen.add(word)
+    out.push(word)
+  }
+  return out
+}
+
+/** Shuffle a custom pool (chapter / level lists) and take a short subset. */
+export function sampleFromPool(pool: string[], count: number, family = getCurrentFamily()): string[] {
+  const unique = uniqueWords(pool)
+  const picked = shuffledCopy(unique).slice(0, Math.min(Math.max(0, count), unique.length))
   preloadWordCards(picked, family)
   return picked
+}
+
+export function pickOtherFromPool(
+  pool: string[],
+  exclude: string[],
+  count = 1,
+  family = getCurrentFamily(),
+): string[] {
+  const blocked = new Set(exclude.map((word) => word.toLowerCase()))
+  const candidates = uniqueWords(pool).filter((word) => !blocked.has(word))
+  const picked = shuffledCopy(candidates).slice(0, Math.max(0, count))
+  preloadWordCards(picked, family)
+  return picked
+}
+
+/** One-run subset so a session stays short. */
+export function sampleWords(count: number, family = getCurrentFamily()): string[] {
+  return sampleFromPool(family.targets, count, family)
 }
 
 export function pickOtherWords(
@@ -171,11 +202,7 @@ export function pickOtherWords(
   count = 1,
   family = getCurrentFamily(),
 ): string[] {
-  const blocked = new Set(exclude.map((word) => word.toLowerCase()))
-  const pool = shuffledCopy(family.targets.filter((word) => !blocked.has(word.toLowerCase())))
-  const picked = pool.slice(0, count)
-  preloadWordCards(picked, family)
-  return picked
+  return pickOtherFromPool(family.targets, exclude, count, family)
 }
 
 export type AtlasWord = {

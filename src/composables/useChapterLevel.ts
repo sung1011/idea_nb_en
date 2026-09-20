@@ -2,11 +2,13 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import {
   ANIMALS_CHAPTER_ID,
+  chapterKidTitle,
   getChapterNumber,
   getLevel,
   resolveLevelId,
   type PlayKind,
 } from '../data/chapters'
+import { matchingLevel, pickGateOtherWords, sampleGateWords, shouldUseLevelWords as resolveUseLevelWords } from '../data/gateWords'
 import { locationForChapterPractice } from '../data/playGallery'
 import { usePlayMode } from './usePlayMode'
 import {
@@ -25,13 +27,44 @@ export function useChapterLevel(play: PlayKind) {
   const router = useRouter()
   const { isPractice, isDemo, isReview, isChapterPractice, afterLevel } = usePlayMode()
 
+  const rawLevelQuery = computed(() => route.query.level)
+  const hasExplicitLevel = computed(() => Boolean(matchingLevel(play, rawLevelQuery.value)))
   const levelId = computed(() => {
-    const raw = route.query.level
+    const raw = rawLevelQuery.value
     const value = Array.isArray(raw) ? raw[0] : raw
     return resolveLevelId(play, typeof value === 'string' ? value : null)
   })
 
   const level = computed(() => getLevel(levelId.value))
+  const useLevelWords = computed(() =>
+    resolveUseLevelWords({
+      play,
+      rawLevel: rawLevelQuery.value,
+      isDemo: isDemo.value,
+      isReview: isReview.value,
+      resolvedLevel: level.value,
+    }),
+  )
+  const themeHint = computed(() =>
+    useLevelWords.value ? chapterKidTitle(level.value?.chapterId ?? '') : '',
+  )
+
+  function takeRunWords(count: number): string[] {
+    return sampleGateWords({
+      level: level.value,
+      useLevel: useLevelWords.value,
+      count,
+    })
+  }
+
+  function takeOtherWords(exclude: string[], count = 1): string[] {
+    return pickGateOtherWords({
+      level: level.value,
+      useLevel: useLevelWords.value,
+      exclude,
+      count,
+    })
+  }
   const isReplay = computed(() => !isPractice.value && isLevelCleared(levelId.value))
   const canPlay = computed(() => isPractice.value || isLevelUnlocked(levelId.value))
   const chapterComplete = computed(() => getChapterProgress(level.value?.chapterId).complete)
@@ -121,6 +154,11 @@ export function useChapterLevel(play: PlayKind) {
   return {
     levelId,
     level,
+    hasExplicitLevel,
+    useLevelWords,
+    themeHint,
+    takeRunWords,
+    takeOtherWords,
     isReplay,
     canPlay,
     isPractice,

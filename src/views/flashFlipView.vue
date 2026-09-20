@@ -8,8 +8,8 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
-import { sampleWords } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
+import { gateFlashSub } from '../data/todayTasks'
 
 type CardFace = {
   word: string
@@ -31,9 +31,12 @@ const {
   continueAfterClear,
   goPractice,
   goLobby,
+  themeHint,
+  takeRunWords,
 } = useChapterLevel('flashFlip')
 
-const words = sampleWords(4)
+const words = takeRunWords(4)
+const flashSub = computed(() => gateFlashSub(themeHint.value))
 const phase = ref<'study' | 'quiz'>('study')
 const quizStarted = ref(false)
 const studyIndex = ref(0)
@@ -180,7 +183,7 @@ onUnmounted(() => {
       <p class="gate-tag">{{ gateTag }}</p>
       <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
-      <p class="sub">先看卡片，再听一听点对</p>
+      <p class="sub">{{ flashSub }}</p>
     </div>
 
     <div v-if="phase === 'study'" class="study">
