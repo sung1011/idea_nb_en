@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { dragDirective } from '@vueuse/gesture'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import gateTopBar from '../components/gateTopBar.vue'
 import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
 import { tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo, waitAfterStar } from '../composables/useMotion'
-import { usePlayMode } from '../composables/usePlayMode'
-import { useProgress } from '../composables/useProgress'
+import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -20,9 +18,7 @@ type DragState = {
   xy: [number, number]
 }
 
-const router = useRouter()
-const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, afterGate } = usePlayMode()
+const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('dragSort')
 const vDrag = dragDirective()
 
 const words = sampleWords(3)
@@ -109,10 +105,10 @@ async function finish() {
   prompt.value = 'Party sorted!'
   playSuccess()
   await tweenCelebrate(titleEl.value)
-  await speak(pickPraise('finish'))
-  const starsAwarded = isPractice.value ? 0 : completeGate('dragSort').starsAwarded
-  await waitAfterStar(starsAwarded)
-  void router.push(afterGate(routeAfterGate('dragSort')))
+  const result = finishLevel()
+  await speak(pickPraise(result.firstClear ? 'finish' : 'soft'))
+  await waitAfterStar(result.starsAwarded)
+  goAfterLevel(result)
 }
 
 async function dropAt(x: number, y: number) {
@@ -184,7 +180,8 @@ onUnmounted(() => {
     <gate-top-bar />
 
     <div class="center">
-      <p class="gate-tag">{{ isPractice ? '试玩 · 拖一拖' : '主线 · 拖一拖' }}</p>
+      <p class="gate-tag">{{ gateTag }}</p>
+      <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
     </div>
 
@@ -237,6 +234,13 @@ onUnmounted(() => {
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
+  color: #b45309;
+}
+
+.replay-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 650;
   color: #b45309;
 }
 

@@ -174,3 +174,20 @@ export function playKindToGate(play: PlayKind): string | null {
   if (play === 'echo') return 'echoCave'
   return null
 }
+
+const defaultLevelByPlay = new Map<PlayKind, string>(
+  CHAPTER_1.levels.map((item) => [item.play, item.id]),
+)
+
+export function defaultLevelIdForPlay(play: PlayKind): string {
+  return defaultLevelByPlay.get(play) ?? getFirstLevel().id
+}
+
+/** Query `?level=` wins when it matches this play; otherwise the Chapter 1 default. */
+export function resolveLevelId(play: PlayKind, raw?: string | null): string {
+  if (raw) {
+    const def = getLevel(raw)
+    if (def && def.play === play) return def.id
+  }
+  return defaultLevelIdForPlay(play)
+}

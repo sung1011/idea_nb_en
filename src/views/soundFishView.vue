@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
 import soundFishStage from '../components/soundFishStage.vue'
 import { waitAfterStar } from '../composables/useMotion'
-import { usePlayMode } from '../composables/usePlayMode'
-import { useProgress } from '../composables/useProgress'
+import { useChapterLevel } from '../composables/useChapterLevel'
 import {
   canUseRecognition,
   createRecognizer,
@@ -16,10 +14,8 @@ import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '
 import { unlockWord } from '../composables/useWordAtlas'
 import { getCurrentFamily, sampleWords } from '../data/phonicsFamily'
 
-const router = useRouter()
 const family = getCurrentFamily()
-const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, isDemo, afterGate } = usePlayMode()
+const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('wordFish')
 
 const words = sampleWords(3)
 const caught = ref<string[]>([])
@@ -73,12 +69,10 @@ async function finishGate() {
   celebrating.value = true
   prompt.value = 'Nice fishing!'
   playSuccess()
-  const starsAwarded = isPractice.value
-    ? 0
-    : completeGate('soundFish', { sticker: family.rewards.soundFishSticker.id }).starsAwarded
-  await speak(pickPraise('finish'))
-  await waitAfterStar(starsAwarded)
-  void router.push(afterGate(routeAfterGate('soundFish')))
+  const result = finishLevel({ sticker: family.rewards.soundFishSticker.id })
+  await speak(pickPraise(result.firstClear ? 'finish' : 'soft'))
+  await waitAfterStar(result.starsAwarded)
+  goAfterLevel(result)
 }
 
 async function catchWord(word: string) {
@@ -171,7 +165,8 @@ onUnmounted(() => {
     <gate-top-bar />
 
     <div class="center head">
-      <p class="gate-tag">{{ isDemo ? '试玩 · 读词钓鱼' : isPractice ? '复习 · 读词钓鱼' : '主线 · 读词钓鱼' }}</p>
+      <p class="gate-tag">{{ gateTag }}</p>
+      <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 class="title-lg">读词钓鱼</h1>
       <p class="sub">小猫请客 · {{ prompt }}</p>
     </div>
@@ -208,6 +203,13 @@ onUnmounted(() => {
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
+  color: #0e7490;
+}
+
+.replay-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 650;
   color: #0e7490;
 }
 

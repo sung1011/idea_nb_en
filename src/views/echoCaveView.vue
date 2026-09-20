@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
 import {
@@ -8,17 +7,14 @@ import {
   createRecognizer,
   looselyHeard,
 } from '../composables/useRecognition'
-import { usePlayMode } from '../composables/usePlayMode'
-import { useProgress } from '../composables/useProgress'
+import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
 import { sampleWords } from '../data/phonicsFamily'
 
-const router = useRouter()
-const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, isDemo, afterGate } = usePlayMode()
+const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('echo')
 
 const words = sampleWords(3)
 const wordIndex = ref(0)
@@ -48,10 +44,10 @@ async function finishGate() {
   status.value = 'Echo complete!'
   playSuccess()
   await tweenCelebrate(cardEl.value)
-  const starsAwarded = isPractice.value ? 0 : completeGate('echoCave').starsAwarded
-  await speak(pickPraise('finish'))
-  await waitAfterStar(starsAwarded)
-  void router.push(afterGate(routeAfterGate('echoCave')))
+  const result = finishLevel()
+  await speak(pickPraise(result.firstClear ? 'finish' : 'soft'))
+  await waitAfterStar(result.starsAwarded)
+  goAfterLevel(result)
 }
 
 async function passWord() {
@@ -132,7 +128,8 @@ onUnmounted(() => {
     <gate-top-bar />
 
     <div class="center">
-      <p class="gate-tag">{{ isDemo ? '试玩 · 回声跟读' : isPractice ? '复习 · 回声跟读' : '主线 · 回声跟读' }}</p>
+      <p class="gate-tag">{{ gateTag }}</p>
+      <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 class="title-lg">跟小猫喊朋友</h1>
       <p class="sub">{{ status }}</p>
     </div>
@@ -163,6 +160,13 @@ onUnmounted(() => {
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
+  color: #f5d0fe;
+}
+
+.replay-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 650;
   color: #f5d0fe;
 }
 

@@ -30,7 +30,7 @@ const LOCK_HINT = '先过上一关吧'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { chapter, nextLevel, nextRoute, hasSticker } = useProgress()
+const { chapter, nextLevel, nextRoute, locationForLevel, hasSticker } = useProgress()
 
 const levelRows = computed(() => {
   const nextId = nextLevel.value?.id
@@ -89,7 +89,8 @@ function onLevelTap(row: (typeof levelRows.value)[number], event: MouseEvent) {
     return
   }
   playTap()
-  void router.push(row.route)
+  const def = getLevel(row.id)
+  void router.push(def ? locationForLevel(def) : row.route)
 }
 
 onMounted(() => {

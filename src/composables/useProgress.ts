@@ -24,6 +24,10 @@ import {
   routeAfterGate,
   routeForChainStep,
   routeForNextMainline,
+  locationAfterClear,
+  locationAfterGate,
+  locationForLevel,
+  locationForNextMainline,
   unlockWord,
   warmupKindForDate,
 } from './progressStore'
@@ -55,6 +59,10 @@ export {
   isLevelUnlocked,
   isWarmupDone,
   isWordUnlocked,
+  locationAfterClear,
+  locationAfterGate,
+  locationForLevel,
+  locationForNextMainline,
   markWordSeen,
   persistState,
   pickRotatingFocusWord,
@@ -75,6 +83,7 @@ export type {
   ChapterSave,
   CompleteLevelResult,
   DailyGateId,
+  LevelLocation,
   DailyProgress,
   DayCompleteClaim,
   GateId,
@@ -91,8 +100,10 @@ export {
   DEFAULT_CHAPTER_ID,
   getChapter,
   getChapterOrDefault,
+  defaultLevelIdForPlay,
   getLevel,
   listChapterLevels,
+  resolveLevelId,
 } from '../data/chapters'
 
 export { ISLAND_DAY_CAP } from './progressStore'
@@ -149,7 +160,7 @@ export function useProgress() {
   const nextGate = computed(
     () => DAILY_CHAIN.find((step) => !isChainStepDone(step, persistState.gates)) ?? null,
   )
-  const nextRoute = computed(() => nextLevel.value?.route ?? routeForNextMainline())
+  const nextRoute = computed(() => locationForNextMainline())
   const startLabel = computed(() => {
     if (chapter.value.complete) return '看章节奖励'
     if (chapter.value.clearedCount > 0) return '继续冒险'
@@ -175,6 +186,10 @@ export function useProgress() {
     routeAfterGate,
     routeForChainStep,
     routeForNextMainline,
+    locationAfterClear,
+    locationAfterGate,
+    locationForLevel,
+    locationForNextMainline,
     ensureTodayTask,
     addStar,
     completeGate,

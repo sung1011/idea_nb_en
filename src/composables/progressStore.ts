@@ -272,6 +272,31 @@ export function routeForChainStep(step: ChainStep, day = dateKey()): string {
   }
 }
 
+export type LevelLocation = {
+  path: string
+  query: { level: string }
+}
+
+export function locationForLevel(level: Pick<LevelDef, 'id' | 'route'>): LevelLocation {
+  return { path: level.route, query: { level: level.id } }
+}
+
+export function locationAfterClear(
+  result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute'>,
+): string | LevelLocation {
+  if (result.nextLevelId) {
+    const next = getLevel(result.nextLevelId)
+    if (next) return locationForLevel(next)
+  }
+  return result.nextRoute ?? '/day-complete'
+}
+
+export function locationForNextMainline(): string | LevelLocation {
+  const next = getNextLevel()
+  if (next) return locationForLevel(next)
+  return '/day-complete'
+}
+
 export function routeForNextMainline(): string {
   const next = getNextLevel()
   if (next) return next.route
@@ -280,9 +305,20 @@ export function routeForNextMainline(): string {
 
 export function routeAfterGate(gate: GateId, _day = dateKey()): string {
   const levelId = GATE_TO_LEVEL[gate]
-  const next = levelId ? getNextLevelDef(levelId) : null
-  if (next && isLevelUnlocked(next.id) && !isLevelCleared(next.id)) return next.route
+  const sequential = levelId ? getNextLevelDef(levelId) : null
+  if (sequential && isLevelUnlocked(sequential.id) && !isLevelCleared(sequential.id)) {
+    return sequential.route
+  }
   return routeForNextMainline()
+}
+
+export function locationAfterGate(gate: GateId): string | LevelLocation {
+  const levelId = GATE_TO_LEVEL[gate]
+  const sequential = levelId ? getNextLevelDef(levelId) : null
+  if (sequential && isLevelUnlocked(sequential.id) && !isLevelCleared(sequential.id)) {
+    return locationForLevel(sequential)
+  }
+  return locationForNextMainline()
 }
 
 export function isWarmupDone(gates: Record<string, boolean>): boolean {

@@ -30,15 +30,15 @@
 
 **玩法一览**列出 7 种玩法（主线玩法 + 唱一唱 / 找一找）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。动物岛主按钮按 `getNextLevel()` 进入下一关。点一点已移除。
 
-**Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：从 15 词库抽出 4 个，先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。第一章 `ch1-1`（配置：cat focus，hat/mat 出场）。主线通关走 `completeGate('flashFlip')` → `completeLevel('ch1-1')`，立刻解锁 `ch1-2`。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
+**Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：从 15 词库抽出 4 个，先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。第一章 `ch1-1`（配置：cat focus，hat/mat 出场）。关卡页读 `?level=ch1-1`（或按玩法回落），通关调用 `completeLevel('ch1-1')`，立刻解锁并跳到 `ch1-2`。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
 
-**Whack Word（地鼠词）**是约 45–60 秒的点选关：从词库抽出 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波 3 只（目标 + 干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。第一章 `ch1-2`（cat/hat/mat）。通关 `completeLevel('ch1-2')` 后立刻解锁拖一拖。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
+**Whack Word（地鼠词）**是约 45–60 秒的点选关：从词库抽出 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波 3 只（目标 + 干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。第一章 `ch1-2`（cat/hat/mat）。通关 `completeLevel('ch1-2')` 后立刻解锁并跳到拖一拖。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
 
-**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。第一章 `ch1-3`。通关后立刻解锁钓鱼。试玩仍走 `?demo=1`。拖对解锁单词图鉴。
+**Drag Sort（拖一拖）**是认词关，不是分类关：每局从 15 词抽出 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。第一章 `ch1-3`。通关 `completeLevel('ch1-3')` 后立刻解锁并跳到钓鱼。试玩仍走 `?demo=1`。拖对解锁单词图鉴。
 
 **Find Scene（找一找）**在 Vue 壳里嵌 Pixi 画布：派对场景点出本局抽出的 3 个词（目标用词卡图）。目标会轻轻浮动；点对发光加星标并读词，点到树/气球/礼物或空地轻轻提醒。试玩走 `?demo=1`，不加当日星星。点中目标解锁单词图鉴。不把整站改成 Pixi。
 
-**读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：每局从 15 词抽出 3 条带英文单词的鱼，鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。读对或点鱼钓到解锁图鉴；只点喇叭听 TTS 不解锁。每日路径首次通关 +1 星；`?demo=1` / `?review=1` 不加星。路由仍为 `/sound-fish`。
+**读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：每局从 15 词抽出 3 条带英文单词的鱼，鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。读对或点鱼钓到解锁图鉴；只点喇叭听 TTS 不解锁。第一章 `ch1-4`：`completeLevel` 首次 +1 星，并额外发「派对耳朵」；立刻跳到回声跟读。`?demo=1` / `?review=1` 不加星、不推进章节。路由仍为 `/sound-fish`。
 
 章节关卡进度跨日保留，跨午夜不会把孩子锁回「等明天」。同一关首次通关才加星；重玩、`?demo=1`、`?review=1`、找一找 / 唱一唱不加星。找一找 / 唱一唱仍只从玩法一览进入。
 
@@ -96,7 +96,8 @@ src/components/chapterLevelLights.vue 动物岛大厅 6 关亮格（读章节已
 src/components/islandDayCells.vue 旧 7 日亮格（大厅已不用；岛日仍只作展示 / 分析）
 src/components/gateTopBar.vue 主线关卡顶栏（回岛 + 今日星星条；试玩/复习改显示总星星）
 src/composables/useWordAtlas.ts 单词图鉴只读视图（写入走 progressStore）
-src/composables/usePlayMode.ts 每日路径 / 工坊复习模式
+src/composables/usePlayMode.ts 试玩 / 复习模式（通关后不推进章节）
+src/composables/useChapterLevel.ts 关卡页读 `?level=`、调用 `completeLevel`、跳下一关
 src/composables/useSpeech.ts   TTS
 src/composables/useSfx.ts      Howler 点按 / 成功 / 轻晃
 src/composables/useMotion.ts   GSAP shake / pulse / celebrate
@@ -127,14 +128,16 @@ src/views/*.vue                七种玩法 + Day Complete
 - `completeLevel(id)`：未解锁的关拒绝（方案 A 顺序）。首次通关写 `cleared`、发配置里的 `firstClearStars`、若是 ch1-6 发章节徽章 `atParty`。重玩 `starsAwarded=0`
 - `today`：兼容旧 UI。`starsGoal` 现为 6；`starsEarned` 与章节已通关数同步；`completed` = 第一章 6 关都过。`chainStep` 由下一关反推，仅兼容旧页
 - `lifetime`：`{ totalStars, stickers, unlockedWords, animalsIslandDays }`（岛日 0–7，展示用，不锁关）
-- helpers：`addStar(n)`、`completeGate(gateId)`（映射到 ch1-1…ch1-5 再调 `completeLevel`）、`routeAfterGate(gateId)` / `routeForNextMainline()`、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`（现为章节全通）、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
+- helpers：`addStar(n)`、`completeLevel(id)`（关卡页主路径）、`completeGate(gateId)`（旧日链入口，映射到 ch1-1…ch1-5 再调 `completeLevel`）、`locationForLevel` / `locationAfterClear` / `locationForNextMainline()`（带 `?level=`）、`routeAfterGate(gateId)` / `routeForNextMainline()`（兼容旧字符串路径）、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`（现为章节全通）、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards()`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回空白存档（含章节关卡）。不删词卡图片
 - **旧存档迁移**：没有 `chapter` 字段时，把日链映射进第一章。已打卡（`animalsIslandDays>0` / `lastIslandDate` / `today.completed`）→ ch1-1…ch1-5 已通、ch1-6 解锁，不发章节徽章。仅有当日 `gates` 时按关映射（旧热身 XOR 会给 ch1-1 记一笔，避免卡在第一关）。图鉴词、已有贴纸、终身星星保留
 - 图鉴解锁走 `unlockWord`（底层 `markWordSeen`）：主线点对 / 拖对 / 钓到 / 跟读通过，以及一览找一找点中、唱一唱「我唱好了」；只记已知音族词，不加星
 - 贴纸只存 id。日奖占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。章节徽章：`atParty`，只在 ch1-6 首次通关发，不进每日轮换池。相册读 `ALBUM_STICKERS`
 - `claimDayCompleteRewards()`：需第一章全通。首次庆祝展示章节徽章；岛日 +1 仅分析 / 展示，不锁关
 - 旧页仍可读兼容字段：`state.stars`（= `lifetime.totalStars`）、`state.dayStars`（= 岛日）、`state.daily.gates`（由章节通关回填）
-- `completeGate(gateId)`：闪卡/地鼠/拖一拖/钓鱼/回音分别对应 ch1-1…ch1-5；首次通关 +1 星。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用，因此不加星、不推进章节
+- 关卡页（闪卡 / 地鼠 / 拖一拖 / 钓鱼 / 回音 / 章节回顾）各自知道 `levelId`：大厅与通关跳转带 `?level=ch1-x`，页内用 `useChapterLevel` 解析；缺省时按玩法回落到第一章对应关。赢了调用 `completeLevel`，**不再只靠旧日链 `completeGate` 结算**
+- 通关后立刻去 **下一关未通关**（`getNextLevel()` + `?level=`）。ch1-6 首次或再玩后进入 `/day-complete` 章节奖励页。重玩已过关：轻表扬，不加星、不重复发章节徽章
+- `completeGate(gateId)`：闪卡/地鼠/拖一拖/钓鱼/回音分别对应 ch1-1…ch1-5，内部仍转 `completeLevel`。找一找 / 唱一唱不调用。`?demo=1` / `?review=1` 关卡页不调用 `completeLevel`，因此不加星、不推进章节
 - 回声通关后进入 ch1-6，不再把主线标成「今天做完了」
 
 ## 今日目标条
@@ -163,7 +166,7 @@ src/views/*.vue                七种玩法 + Day Complete
 
 大厅卡片列出 ch1-1…ch1-6，状态来自章节模型（`locked` / `unlocked` / `cleared`）：
 
-- 可玩（`unlocked` 或已过）：点进该关路由
+- 可玩（`unlocked` 或已过）：点进该关路由，并带 `?level=ch1-x`，让关卡页知道自己的 `levelId`
 - 未开：轻晃 + 中文提示「先过上一关吧」，不是硬错误
 - `getNextLevel()` 那一行暖色高亮，标「现在玩」；底部主按钮文案「去第N关 · 玩法名」
 - 进度标题同样是「第1章 x/6 关」，不再写「今日主线」或按天锁关
@@ -173,9 +176,18 @@ src/views/*.vue                七种玩法 + Day Complete
 
 首页与动物岛大厅右上角齿轮打开设置弹窗（关卡里没有，避免玩到一半误点）。「初始化」会先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键（含章节关卡）并回首页。不删 `public/word-cards`。
 
+## 关卡通关跳转
+
+主线六关赢了都走同一条：`useChapterLevel` → `completeLevel(levelId)` → `locationAfterClear`（下一关带 `?level=`，或 `/day-complete`）。
+
+- 首次通关：+1 星；ch1-4 额外「派对耳朵」；ch1-6 额外章节徽章 `atParty`
+- 重玩已过关：英语轻表扬 + 中文「再玩一遍也可以…」，不加星、不重复发章节徽章
+- 通关后立刻进下一关，**不用等日历日**
+- `?demo=1` 回玩法一览；`?review=1` 回字母工坊（或带着 `review=1` 进下一关复习），都不写章节进度
+
 ## 完成庆祝页
 
-`/day-complete` 在第一章 6 关走完后庆祝。进入页时调用 `claimDayCompleteRewards()`：
+`/day-complete` 在第一章 6 关走完后庆祝（ch1-6 通关后跳来）。进入页时调用 `claimDayCompleteRewards()`：
 
 - 未通关 ch1-6：不发徽章，文案提醒先玩完第一章
 - 首次庆祝：展示 ch1-6 发的 `-at 派对徽章`；岛日 +1 只作展示（同日一次，封顶 7）

@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
 import { flyStarFrom, tweenCelebrate, tweenFlipReveal, tweenShake, waitAfterStar } from '../composables/useMotion'
-import { usePlayMode } from '../composables/usePlayMode'
-import { useProgress } from '../composables/useProgress'
+import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
@@ -18,9 +16,7 @@ type CardFace = {
 
 const STUDY_LINGER_MS = 8000
 
-const router = useRouter()
-const { completeGate, routeAfterGate } = useProgress()
-const { isPractice, afterGate } = usePlayMode()
+const { isReplay, gateTag, finishLevel, goAfterLevel } = useChapterLevel('flashFlip')
 
 const words = sampleWords(4)
 const phase = ref<'study' | 'quiz'>('study')
@@ -116,11 +112,11 @@ async function finish() {
   prompt.value = 'You flipped them!'
   playSuccess()
   await tweenCelebrate(titleEl.value)
-  await speak(pickPraise('finish'))
-  const starsAwarded = isPractice.value ? 0 : completeGate('flashFlip').starsAwarded
+  const result = finishLevel()
+  await speak(pickPraise(result.firstClear ? 'finish' : 'soft'))
   if (!alive) return
-  await waitAfterStar(starsAwarded)
-  void router.push(afterGate(routeAfterGate('flashFlip')))
+  await waitAfterStar(result.starsAwarded)
+  goAfterLevel(result)
 }
 
 async function onTap(word: string, event: MouseEvent) {
@@ -166,7 +162,8 @@ onUnmounted(() => {
     <gate-top-bar />
 
     <div class="center">
-      <p class="gate-tag">{{ isPractice ? '试玩 · 闪卡翻翻' : '主线 · 闪卡翻翻' }}</p>
+      <p class="gate-tag">{{ gateTag }}</p>
+      <p v-if="isReplay" class="replay-hint">再玩一遍也可以，星星已经给你啦</p>
       <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
       <p class="sub">先看卡片，再听一听点对</p>
     </div>
@@ -214,6 +211,13 @@ onUnmounted(() => {
 .gate-tag {
   margin: 8px 0 0;
   font-weight: 700;
+  color: #7c3aed;
+}
+
+.replay-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 650;
   color: #7c3aed;
 }
 
