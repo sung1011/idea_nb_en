@@ -31,10 +31,10 @@ const {
 } = useChapterLevel('chapterFinale')
 const words = computed(() => {
   const list = levelWordList(level.value)
-  return list.length ? list : ['cat', 'hat', 'mat']
+  return list.length ? list : ['cap', 'map', 'nap']
 })
 const chapter = computed(() => getChapter(level.value?.chapterId))
-const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-at 派对」')
+const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-ap 派对」')
 const badgeName = computed(() => stickerLabel(chapter.value?.stickerId ?? ''))
 const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
 const celebrating = ref(false)

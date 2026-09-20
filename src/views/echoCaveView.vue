@@ -13,6 +13,7 @@ import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMot
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
+import { sentenceForWord } from '../data/shortSentences'
 import { gateEchoTitle } from '../data/todayTasks'
 
 const {
@@ -44,6 +45,7 @@ const micOk = canUseRecognition()
 const cardEl = ref<HTMLElement | null>(null)
 
 const word = computed(() => words[wordIndex.value] ?? words[0])
+const sentence = computed(() => sentenceForWord(word.value))
 const progressText = computed(() => `${wordIndex.value + 1} / ${words.length}`)
 
 let recognizer: ReturnType<typeof createRecognizer> = null
@@ -91,7 +93,7 @@ async function passWord() {
 
 function onHeard(transcript: string) {
   if (locked.value) return
-  if (looselyHeard(transcript, word.value)) {
+  if (looselyHeard(transcript, word.value) || looselyHeard(transcript, sentence.value)) {
     void passWord()
     return
   }
@@ -116,12 +118,13 @@ function startListen() {
 
 async function playCurrent() {
   stopMic()
-  status.value = 'Listen, then say it.'
+  status.value = '听句子，说一说'
   await speak(word.value)
+  await speak(sentence.value)
   if (micOk) {
     window.setTimeout(() => startListen(), 250)
   } else {
-    status.value = '说一说，或点「我说好了」'
+    status.value = '说句子，或点「我说好了」'
   }
 }
 
@@ -157,6 +160,7 @@ onUnmounted(() => {
         <word-pic :word="word" :size="140" />
       </div>
       <p class="word">{{ word }}</p>
+      <p class="sentence">{{ sentence }}</p>
       <div class="rings" aria-hidden="true">
         <span /><span /><span />
       </div>
@@ -220,6 +224,13 @@ onUnmounted(() => {
   margin: 8px 0 0;
   font-size: 40px;
   font-weight: 700;
+}
+
+.sentence {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .rings {

@@ -73,7 +73,7 @@ function goAlbum() {
         <span class="host floaty" aria-hidden="true">🐱</span>
         <div>
           <p class="island-name">动物岛</p>
-          <p class="island-goal">三章小派对：-at 派对、听声找伙伴、点心与天空</p>
+          <p class="island-goal">三章小派对：-ap 派对、听声找伙伴、石头袜子</p>
         </div>
       </div>
       <chapter-level-lights class="home-level-lights" embedded :show-label="false" />

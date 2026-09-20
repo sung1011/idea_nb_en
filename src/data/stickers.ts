@@ -19,7 +19,7 @@ export const CHAPTER_2_STICKER_ID = 'pawPrint'
 export const CHAPTER_3_STICKER_ID = 'littleStar'
 
 export const CHAPTER_STICKERS: StickerDef[] = [
-  { id: CHAPTER_1_STICKER_ID, label: '-at 派对徽章', emoji: '🎉' },
+  { id: CHAPTER_1_STICKER_ID, label: '-ap 派对徽章', emoji: '🎉' },
   { id: CHAPTER_2_STICKER_ID, label: '爪印徽章', emoji: '🐾' },
   { id: CHAPTER_3_STICKER_ID, label: '小星星徽章', emoji: '⭐' },
 ]

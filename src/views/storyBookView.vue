@@ -10,6 +10,7 @@ import { pickPraise, playPop, playSuccess, speak, speakZh } from '../composables
 import { unlockWord } from '../composables/useWordAtlas'
 import { chapterKidTitle } from '../data/chapters'
 import { preloadWordCards } from '../data/phonicsFamily'
+import { sentenceForWord } from '../data/shortSentences'
 import { gateBookSub } from '../data/todayTasks'
 
 const {
@@ -32,7 +33,7 @@ const {
 } = useChapterLevel('storyBook')
 
 const words = takeRunWords(3)
-const focus = computed(() => (level.value?.focusWord || words[0] || 'cat').toLowerCase())
+const focus = computed(() => (level.value?.focusWord || words[0] || 'cap').toLowerCase())
 const bookTitle = computed(() => chapterKidTitle(level.value?.chapterId ?? '') || '小小书')
 const bookSub = computed(() => gateBookSub(themeHint.value))
 const page = ref(0)
@@ -45,7 +46,7 @@ const pages = computed(() => {
   const story = words.slice(0, 3).map((word) => ({
     kind: 'page' as const,
     word,
-    line: word === focus.value ? '试着拼读这个词' : '点一页，听一听',
+    line: sentenceForWord(word),
   }))
   return [cover, ...story]
 })
@@ -64,9 +65,11 @@ async function hearPage() {
   if (current.value.kind === 'cover') {
     await speakZh(`小书：《${bookTitle.value}》`)
     await speak(current.value.word)
+    await speak(sentenceForWord(current.value.word))
     return
   }
   await speak(current.value.word)
+  await speak(current.value.line)
   if (current.value.word === focus.value) {
     await speakZh('试着拼读一下')
   }
@@ -109,9 +112,9 @@ async function finishBook() {
 
     <div ref="cardEl" class="card page" :class="{ pop: celebrating, cover: current.kind === 'cover' }">
       <p class="page-mark">{{ current.kind === 'cover' ? '封面' : `第 ${page} 页` }} · {{ progressText }}</p>
-      <h2 class="page-title">{{ current.kind === 'cover' ? bookTitle : current.word }}</h2>
+      <h2 class="page-title">{{ current.kind === 'cover' ? bookTitle : current.line }}</h2>
       <word-pic :word="current.word" :size="current.kind === 'cover' ? 120 : 96" />
-      <p class="page-line">{{ current.line }}</p>
+      <p v-if="current.kind !== 'cover'" class="page-word">{{ current.word }}</p>
       <p v-if="current.word === focus && current.kind !== 'cover'" class="focus-hint">焦点词，试着拼读</p>
     </div>
 
@@ -183,6 +186,13 @@ async function finishBook() {
   font-size: 16px;
   font-weight: 650;
   color: var(--ink);
+}
+
+.page-word {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .focus-hint {

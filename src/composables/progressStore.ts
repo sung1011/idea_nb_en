@@ -233,9 +233,20 @@ export function todayKey(): string {
   return dateKey()
 }
 
-/** Stable per Shanghai calendar day; rotates through the current 15-word bank. */
-export function pickRotatingFocusWord(day = dateKey(), words = getCurrentFamily().targets): string {
-  if (!words.length) return 'cat'
+function islandWordPool(): string[] {
+  const out: string[] = []
+  for (const chapter of CHAPTERS) {
+    for (const word of chapter.words) {
+      const key = normalizeWord(word)
+      if (key && !out.includes(key)) out.push(key)
+    }
+  }
+  return out.length ? out : getCurrentFamily().targets
+}
+
+/** Stable per Shanghai calendar day; rotates through configured chapter words. */
+export function pickRotatingFocusWord(day = dateKey(), words = islandWordPool()): string {
+  if (!words.length) return 'cap'
   let n = 0
   for (let i = 0; i < day.length; i += 1) {
     n = (n * 33 + day.charCodeAt(i)) >>> 0

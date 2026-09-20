@@ -103,15 +103,15 @@ export function gateBookSub(themeHint: string): string {
 export function gateFishLead(chapterId?: string, useTheme = false): string {
   if (!useTheme) return '小猫请客'
   if (chapterId === CHAPTER_2_ID) return '听声找伙伴'
-  if (chapterId === CHAPTER_3_ID) return '点心与天空'
+  if (chapterId === CHAPTER_3_ID) return '石头袜子'
   return '小猫请客'
 }
 
 export function gateEchoTitle(chapterId?: string, useTheme = false): string {
-  if (!useTheme) return '跟小猫喊朋友'
+  if (!useTheme) return '听句子，说一说'
   if (chapterId === CHAPTER_2_ID) return '听声喊伙伴'
-  if (chapterId === CHAPTER_3_ID) return '点心和天空'
-  return '跟小猫喊朋友'
+  if (chapterId === CHAPTER_3_ID) return '石头和袜子'
+  return '听句子，说一说'
 }
 
 export function gateThemeHint(chapterId?: string): string {

@@ -86,7 +86,7 @@ export const families: Record<string, PhonicsFamily> = {
   '-ap': {
     id: '-ap',
     family: '-ap',
-    targets: ['cap', 'map', 'nap'],
+    targets: ['cap', 'map', 'nap', 'tap', 'lap'],
     distractors: ['s', 'b', 't', 'd', 'r', 'h'],
     warmupPhonemes: [
       { ipa: '/k/', letter: 'C', speak: 'k' },
@@ -97,6 +97,50 @@ export const families: Record<string, PhonicsFamily> = {
       cap: { emoji: '🧢', label: 'cap' },
       map: { emoji: '🗺️', label: 'map' },
       nap: { emoji: '😴', label: 'nap' },
+      tap: { emoji: '🚰', label: 'tap' },
+      lap: { emoji: '🦵', label: 'lap' },
+    },
+    rewards: {
+      soundFishSticker: { id: 'ear', label: '耳朵' },
+    },
+  },
+  '-og': {
+    id: '-og',
+    family: '-og',
+    targets: ['frog', 'log', 'fog', 'jog', 'hog'],
+    distractors: ['d', 'b', 'p', 't', 's', 'h'],
+    warmupPhonemes: [
+      { ipa: '/f/', letter: 'F', speak: 'f' },
+      { ipa: '/l/', letter: 'L', speak: 'l' },
+      { ipa: '/j/', letter: 'J', speak: 'j' },
+    ],
+    wordArt: {
+      frog: { emoji: '🐸', label: 'frog' },
+      log: { emoji: '🪵', label: 'log' },
+      fog: { emoji: '🌫️', label: 'fog' },
+      jog: { emoji: '🏃', label: 'jog' },
+      hog: { emoji: '🐖', label: 'hog' },
+    },
+    rewards: {
+      soundFishSticker: { id: 'ear', label: '耳朵' },
+    },
+  },
+  '-ck': {
+    id: '-ck',
+    family: '-ck',
+    targets: ['duck', 'rock', 'sock', 'lock', 'pack'],
+    distractors: ['s', 't', 'b', 'p', 'h', 'r'],
+    warmupPhonemes: [
+      { ipa: '/d/', letter: 'D', speak: 'd' },
+      { ipa: '/r/', letter: 'R', speak: 'r' },
+      { ipa: '/s/', letter: 'S', speak: 's' },
+    ],
+    wordArt: {
+      duck: clayArt('duck', '🦆'),
+      rock: { emoji: '🪨', label: 'rock' },
+      sock: { emoji: '🧦', label: 'sock' },
+      lock: { emoji: '🔒', label: 'lock' },
+      pack: { emoji: '📦', label: 'pack' },
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },

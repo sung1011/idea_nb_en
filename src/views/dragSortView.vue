@@ -55,7 +55,7 @@ const titleEl = ref<HTMLElement | null>(null)
 const origin = ref({ x: 0, y: 0 })
 
 const trayItems = computed(() => trayOrder.value.filter((word) => !placed.value[word]))
-const demoWord = words.includes('cat') ? 'cat' : words[0]
+const demoWord = words[0]
 const dragOptions = {
   preventWindowScrollY: true,
   useTouch: true,

@@ -3,10 +3,11 @@ import { useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import wordPic from '../components/wordPic.vue'
-import { getCurrentFamily } from '../data/phonicsFamily'
+import { getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 
 const router = useRouter()
 const family = getCurrentFamily()
+const words = listAllFamilyWords()
 
 function startReview() {
   void router.push({ path: '/sound-fish', query: { review: '1' } })
@@ -28,13 +29,13 @@ function startReview() {
 
     <div class="card family-card">
       <p class="family-title">{{ family.family }} 家族</p>
-      <p class="family-note">图鉴里有 15 个派对词；每次玩只抽出几个，不用一次学完。</p>
+      <p class="family-note">图鉴按音族列出单词；每次玩只抽出几个，不用一次学完。</p>
       <ul class="word-list">
-        <li v-for="word in family.targets" :key="word">
+        <li v-for="item in words" :key="item.word">
           <span class="word-emoji">
-            <word-pic :word="word" :size="40" />
+            <word-pic :word="item.word" :size="40" />
           </span>
-          <b>{{ word }}</b>
+          <b>{{ item.word }}</b>
         </li>
       </ul>
     </div>

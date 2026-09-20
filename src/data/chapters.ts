@@ -129,40 +129,40 @@ function chapterLevels(
   )
 }
 
-/** Animals Island Chapter 1 — 「-at 派对」. Option A: levels unlock in order. */
+/** Animals Island Chapter 1 — 「-ap 派对」. Option A: levels unlock in order. */
 export const CHAPTER_1: ChapterDef = {
   id: CHAPTER_1_ID,
   islandId: 'animals',
-  titleEn: 'Animals Island · -at Party',
-  titleZh: '动物岛「-at 派对」',
+  titleEn: 'Animals Island · -ap Party',
+  titleZh: '动物岛「-ap 派对」',
   theme: 'atParty',
-  familyId: '-at',
+  familyId: '-ap',
   stickerId: CHAPTER_1_STICKER_ID,
-  words: ['cat', 'hat', 'mat', 'bat', 'rat'],
+  words: ['cap', 'map', 'nap', 'tap', 'lap'],
   levels: chapterLevels(CHAPTER_1_ID, [
     {
-      notes: 'cat focus, hat/mat appear',
-      focusWord: 'cat',
-      appearWords: ['hat', 'mat'],
-      words: ['cat', 'hat', 'mat'],
+      notes: 'cap focus, map/nap appear',
+      focusWord: 'cap',
+      appearWords: ['map', 'nap'],
+      words: ['cap', 'map', 'nap'],
     },
-    { notes: 'cat/hat/mat', words: ['cat', 'hat', 'mat'] },
-    { notes: 'three words', words: ['cat', 'hat', 'mat'] },
+    { notes: 'cap/map/nap', words: ['cap', 'map', 'nap'] },
+    { notes: 'three words', words: ['cap', 'map', 'nap'] },
     {
       notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'cat',
-      words: ['cat', 'hat', 'mat'],
+      focusWord: 'cap',
+      words: ['cap', 'map', 'nap'],
     },
-    { notes: 'read to catch', words: ['cat', 'hat', 'mat'] },
-    { notes: 'follow-read', words: ['cat', 'hat', 'mat'] },
+    { notes: 'read to catch', words: ['cap', 'map', 'nap'] },
+    { notes: 'follow-read + short sentence', words: ['cap', 'map', 'nap'] },
     {
-      notes: 'mini book, tap to hear, try-blend cat',
-      focusWord: 'cat',
-      words: ['cat', 'hat', 'mat'],
+      notes: 'mini book, one short sentence per page, try-blend cap',
+      focusWord: 'cap',
+      words: ['cap', 'map', 'nap'],
     },
     {
-      notes: 'short mixed recap + chapter sticker on first clear',
-      words: ['cat', 'hat', 'mat'],
+      notes: 'short mixed recap + one -at review + chapter sticker on first clear',
+      words: ['cap', 'map', 'nap', 'tap', 'cat'],
       chapterStickerId: CHAPTER_1_STICKER_ID,
     },
   ]),
@@ -175,75 +175,75 @@ export const CHAPTER_2: ChapterDef = {
   titleEn: 'Animals Island · Listen for Friends',
   titleZh: '动物岛「听声找伙伴」',
   theme: 'listenFriends',
-  familyId: '-at',
+  familyId: '-og',
   stickerId: CHAPTER_2_STICKER_ID,
-  words: ['dog', 'pig', 'duck', 'bird', 'fish'],
+  words: ['frog', 'log', 'fog', 'jog', 'hog'],
   levels: chapterLevels(CHAPTER_2_ID, [
     {
-      notes: 'dog focus, pig/duck appear',
-      focusWord: 'dog',
-      appearWords: ['pig', 'duck'],
-      words: ['dog', 'pig', 'duck'],
+      notes: 'frog focus, log/fog appear',
+      focusWord: 'frog',
+      appearWords: ['log', 'fog'],
+      words: ['frog', 'log', 'fog'],
     },
-    { notes: 'dog/pig/duck', words: ['dog', 'pig', 'duck'] },
-    { notes: 'dog/pig/fish', words: ['dog', 'pig', 'fish'] },
+    { notes: 'frog/log/fog', words: ['frog', 'log', 'fog'] },
+    { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
     {
       notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'dog',
-      words: ['dog', 'pig'],
+      focusWord: 'frog',
+      words: ['frog', 'log', 'fog'],
     },
-    { notes: 'dog/pig/fish', words: ['dog', 'pig', 'fish'] },
+    { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
     {
-      notes: 'dog→fish path through the five animal words',
-      words: ['dog', 'pig', 'duck', 'bird', 'fish'],
+      notes: 'frog→hog path through the five -og words + short sentence',
+      words: ['frog', 'log', 'fog', 'jog', 'hog'],
     },
     {
-      notes: 'mini book, tap to hear, try-blend dog',
-      focusWord: 'dog',
-      words: ['dog', 'pig', 'duck'],
+      notes: 'mini book, one short sentence per page, try-blend frog',
+      focusWord: 'frog',
+      words: ['frog', 'log', 'fog'],
     },
     {
       notes: 'five-word recap + chapter sticker on first clear',
-      words: ['dog', 'pig', 'duck', 'bird', 'fish'],
+      words: ['frog', 'log', 'fog', 'jog', 'hog'],
       chapterStickerId: CHAPTER_2_STICKER_ID,
     },
   ]),
 }
 
-/** Animals Island Chapter 3 — 「点心与天空」. Unlocks only after Chapter 2 is fully cleared. */
+/** Animals Island Chapter 3 — 「石头袜子」. Unlocks only after Chapter 2 is fully cleared. */
 export const CHAPTER_3: ChapterDef = {
   id: CHAPTER_3_ID,
   islandId: 'animals',
-  titleEn: 'Animals Island · Treats and Sky',
-  titleZh: '动物岛「点心与天空」',
+  titleEn: 'Animals Island · Rocks and Socks',
+  titleZh: '动物岛「石头袜子」',
   theme: 'treatsSky',
-  familyId: '-at',
+  familyId: '-ck',
   stickerId: CHAPTER_3_STICKER_ID,
-  words: ['cup', 'cake', 'ball', 'sun', 'star'],
+  words: ['duck', 'rock', 'sock', 'lock', 'pack'],
   levels: chapterLevels(CHAPTER_3_ID, [
     {
-      notes: 'cup/cake',
-      focusWord: 'cup',
-      appearWords: ['cake'],
-      words: ['cup', 'cake'],
+      notes: 'duck focus, rock appear',
+      focusWord: 'duck',
+      appearWords: ['rock'],
+      words: ['duck', 'rock'],
     },
-    { notes: 'cup/cake/ball', words: ['cup', 'cake', 'ball'] },
-    { notes: 'cake/ball/sun', words: ['cake', 'ball', 'sun'] },
+    { notes: 'duck/rock/sock', words: ['duck', 'rock', 'sock'] },
+    { notes: 'rock/sock/lock', words: ['rock', 'sock', 'lock'] },
     {
       notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'cup',
-      words: ['cup', 'sun'],
+      focusWord: 'duck',
+      words: ['duck', 'sock'],
     },
-    { notes: 'ball/sun/star', words: ['ball', 'sun', 'star'] },
-    { notes: 'sun/star', words: ['sun', 'star'] },
+    { notes: 'duck/rock/lock', words: ['duck', 'rock', 'lock'] },
+    { notes: 'duck/rock/sock + short sentence', words: ['duck', 'rock', 'sock'] },
     {
-      notes: 'mini book, tap to hear, try-blend cup',
-      focusWord: 'cup',
-      words: ['cup', 'sun', 'star'],
+      notes: 'mini book, one short sentence per page, try-blend duck',
+      focusWord: 'duck',
+      words: ['duck', 'rock', 'sock'],
     },
     {
-      notes: 'mix + two -at review words + chapter sticker on first clear',
-      words: ['cup', 'cake', 'ball', 'sun', 'star', 'cat', 'hat'],
+      notes: 'ck mix + one -ap review + chapter sticker on first clear',
+      words: ['duck', 'rock', 'sock', 'lock', 'pack', 'cap'],
       chapterStickerId: CHAPTER_3_STICKER_ID,
     },
   ]),
@@ -304,7 +304,7 @@ export function getChapterNumber(chapterId: string): number {
   return index >= 0 ? index + 1 : 1
 }
 
-/** Kid-facing short title: 「-at 派对」 / 「听声找伙伴」 / 「点心与天空」. */
+/** Kid-facing short title: 「-ap 派对」 / 「听声找伙伴」 / 「石头袜子」. */
 export function chapterKidTitle(chapterId: string): string {
   const chapter = getChapter(chapterId)
   if (!chapter) return ''

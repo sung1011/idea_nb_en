@@ -64,7 +64,7 @@ const ghostEl = ref<HTMLElement | null>(null)
 
 let alive = true
 
-const target = computed(() => (words[wordIndex.value] || words[0] || 'cat').toLowerCase())
+const target = computed(() => (words[wordIndex.value] || words[0] || 'cap').toLowerCase())
 const letters = computed(() => wordLetters(target.value))
 const progressText = computed(() => `${wordIndex.value + 1} / ${words.length}`)
 const nextSlot = computed(() => nextEmptySlot(slots.value))
