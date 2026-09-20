@@ -17,12 +17,10 @@ import {
   isAnimalsChapterId,
   listChapters,
 } from '../data/chapters'
-import { locationForChapterPractice } from '../data/playGallery'
 import { getCurrentFamily } from '../data/phonicsFamily'
 import {
   chapterLockHint,
   nextLevelCtaCopy,
-  practiceEntryCopy,
 } from '../data/todayTasks'
 
 const CHAPTER_LOCK_HINT = chapterLockHint()
@@ -33,7 +31,6 @@ const family = getCurrentFamily()
 const {
   nextLevel,
   nextRoute,
-  clearedChapterIds,
   isChapterUnlocked,
   getChapterProgress,
 } = useProgress()
@@ -125,11 +122,6 @@ function openChapter(row: (typeof chapterRows.value)[number], event: MouseEvent)
 function goNext() {
   playTap()
   void router.push(nextRoute.value)
-}
-
-function goPractice(chapterId: string) {
-  playTap()
-  void router.push(locationForChapterPractice(chapterId))
 }
 
 onMounted(() => {
@@ -240,17 +232,6 @@ onBeforeUnmount(() => {
         <p class="parent-line">通关一章，下一章就会打开。</p>
       </div>
 
-      <big-button
-        v-for="id in clearedChapterIds"
-        :key="id"
-        class="practice-btn"
-        variant="soft"
-        data-practice-entry
-        :data-practice-chapter="id"
-        @click="goPractice(id)"
-      >
-        {{ practiceEntryCopy(id) }}
-      </big-button>
       <big-button class="start-btn" data-next-level-cta @click="goNext">{{ startLabel }}</big-button>
     </template>
 
@@ -470,16 +451,8 @@ onBeforeUnmount(() => {
   color: var(--muted);
 }
 
-.practice-btn {
-  margin-top: 14px;
-}
-
 .start-btn {
   margin-top: 14px;
-}
-
-.practice-btn + .start-btn {
-  margin-top: 10px;
 }
 
 .album-btn {

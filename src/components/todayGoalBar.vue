@@ -4,19 +4,17 @@ import { useRouter } from 'vue-router'
 import { useProgress } from '../composables/useProgress'
 import { playTap } from '../composables/useSfx'
 import { getChapterNumber } from '../data/chapters'
-import { locationForChapterPractice } from '../data/playGallery'
 import {
-  chapterPracticeCopy,
+  chapterDoneCopy,
   chapterProgressCopy,
   focusWordHint,
   nextLevelCopy,
   nextLevelCtaCopy,
-  practiceEntryCopy,
 } from '../data/todayTasks'
 import todayStarBar from './todayStarBar.vue'
 
 const router = useRouter()
-const { today, chapter, nextLevel, nextRoute, clearedChapterIds, ensureTodayTask } = useProgress()
+const { today, chapter, nextLevel, nextRoute, ensureTodayTask } = useProgress()
 ensureTodayTask()
 
 const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
@@ -26,7 +24,7 @@ const progressText = computed(() =>
 )
 const nextLine = computed(() => {
   if (nextLevel.value) return nextLevelCopy(nextLevel.value.titleZh)
-  return chapterPracticeCopy(chapterNo.value)
+  return chapterDoneCopy(chapterNo.value)
 })
 const ctaLabel = computed(() => {
   if (!nextLevel.value) return '看章节奖励'
@@ -42,11 +40,6 @@ function goNext() {
   playTap()
   void router.push(nextRoute.value)
 }
-
-function goPractice(chapterId: string) {
-  playTap()
-  void router.push(locationForChapterPractice(chapterId))
-}
 </script>
 
 <template>
@@ -60,17 +53,6 @@ function goPractice(chapterId: string) {
       </div>
     </div>
     <today-star-bar class="goal-stars" size="compact" />
-    <button
-      v-for="id in clearedChapterIds"
-      :key="id"
-      class="goal-practice"
-      type="button"
-      data-practice-entry
-      :data-practice-chapter="id"
-      @click="goPractice(id)"
-    >
-      {{ practiceEntryCopy(id) }}
-    </button>
     <button class="goal-cta" type="button" data-next-level-cta @click="goNext">
       {{ ctaLabel }}
     </button>
@@ -143,23 +125,6 @@ function goPractice(chapterId: string) {
 .goal-stars {
   width: 100%;
   margin-top: 10px;
-}
-
-.goal-practice {
-  width: 100%;
-  margin-top: 10px;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--ink);
-  font-size: 18px;
-  font-weight: 800;
-  box-shadow: 0 6px 0 rgba(45, 58, 74, 0.12);
-}
-
-.goal-practice:active {
-  transform: translateY(2px);
 }
 
 .goal-cta {

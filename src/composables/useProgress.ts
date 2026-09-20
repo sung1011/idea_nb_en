@@ -191,9 +191,6 @@ export function useProgress() {
     if (next) return getChapterProgress(next.chapterId)
     return getChapterProgress(CHAPTERS[CHAPTERS.length - 1].id)
   })
-  const practiceChapterId = computed(() => latestClearedChapterId())
-  const clearedChapterIds = computed(() => listClearedChapterIds())
-  const hasPractice = computed(() => clearedChapterIds.value.length > 0)
   const gatesDone = computed(() => chapter.value.clearedCount)
   const gateTotal = computed(() => chapter.value.levelTotal)
   const allDoneToday = computed(() => !nextLevel.value)
@@ -215,9 +212,6 @@ export function useProgress() {
     lifetime,
     chapter,
     nextLevel,
-    practiceChapterId,
-    clearedChapterIds,
-    hasPractice,
     state,
     gatesDone,
     gateTotal,

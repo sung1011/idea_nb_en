@@ -34,6 +34,10 @@ export function chapterPracticeCopy(chapterNo = 1): string {
   return `第${chapterNo}章通关啦，下面可以随便练`
 }
 
+export function practiceHintCopy(): string {
+  return '想再玩可以点这里'
+}
+
 export function chapterLockHint(): string {
   return '先通关上一章吧'
 }

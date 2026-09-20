@@ -9,9 +9,9 @@ import { useProgress } from '../composables/useProgress'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { CHAPTER_1_ID, chapterKidTitle, getChapterNumber } from '../data/chapters'
-import { locationForChapterPractice, practiceChapterIdFromQuery } from '../data/playGallery'
+import { practiceChapterIdFromQuery } from '../data/playGallery'
 import { stickerById, stickerLabel } from '../data/stickers'
-import { chapterPracticeCopy, practiceEntryCopy } from '../data/todayTasks'
+import { chapterDoneCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const route = useRoute()
@@ -41,7 +41,7 @@ const leadLine = computed(() => {
     return `小猫把第${chapterNo.value}章徽章「${badgeName.value}」送给你啦！`
   }
   if (claim.freshClaim) return `这枚「${badgeName.value}」你已经贴过啦。`
-  return chapterPracticeCopy(chapterNo.value)
+  return chapterDoneCopy(chapterNo.value)
 })
 
 const stickerLine = computed(() => {
@@ -114,15 +114,6 @@ onMounted(() => {
     </div>
 
     <big-button @click="router.push('/')">回家</big-button>
-    <big-button
-      v-if="chapter.complete"
-      variant="soft"
-      data-practice-entry
-      :data-practice-chapter="chapterId"
-      @click="router.push(locationForChapterPractice(chapterId))"
-    >
-      {{ practiceEntryCopy(chapterId) }}
-    </big-button>
     <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
   </section>
 </template>

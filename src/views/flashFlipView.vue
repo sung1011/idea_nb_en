@@ -27,10 +27,8 @@ const {
   isChapterPractice,
   chapterComplete,
   chapterNo,
-  chapterId,
   replayCleared,
   continueAfterClear,
-  goPractice,
   goLobby,
   themeHint,
   takeRunWords,
@@ -223,12 +221,10 @@ onUnmounted(() => {
       :open="showClearSheet"
       :chapter-complete="chapterComplete"
       :chapter-no="chapterNo"
-      :chapter-id="chapterId"
       :from-practice="isChapterPractice"
       :has-next="Boolean(lastResult?.nextLevelId)"
       @replay="replayCleared"
       @next="continueAfterClear"
-      @practice="goPractice"
       @lobby="goLobby"
     />
   </section>

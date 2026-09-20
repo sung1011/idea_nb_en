@@ -7,10 +7,11 @@ import { playNudge, playTap } from '../composables/useSfx'
 import { getChapterNumber, getLevel } from '../data/chapters'
 import { PLAY_KIND_EMOJI, locationForChapterPractice } from '../data/playGallery'
 import {
-  chapterPracticeCopy,
+  chapterDoneCopy,
   levelLockHint,
   nextLevelCtaCopy,
   practiceEntryCopy,
+  practiceHintCopy,
   replayAgainCopy,
   replayClearedHintCopy,
 } from '../data/todayTasks'
@@ -65,7 +66,7 @@ const startLabel = computed(() => {
 })
 
 const parentLine = computed(() => {
-  if (chapter.value.complete) return chapterPracticeCopy(chapterNo.value)
+  if (chapter.value.complete) return chapterDoneCopy(chapterNo.value)
   if (chapter.value.clearedCount > 0) return replayClearedHintCopy()
   return '家长小记：通关立刻开下一关。'
 })
@@ -175,17 +176,19 @@ onBeforeUnmount(() => {
       <p class="parent-line">{{ parentLine }}</p>
     </div>
 
-    <big-button
-      v-if="chapter.complete"
-      class="practice-btn"
-      variant="soft"
-      data-practice-entry
-      :data-practice-chapter="chapterId"
-      @click="goPractice"
-    >
-      {{ practiceEntryCopy(chapterId) }}
-    </big-button>
     <big-button class="start-btn" data-next-level-cta @click="go">{{ startLabel }}</big-button>
+    <div v-if="chapter.complete" class="practice-wrap">
+      <p class="practice-hint">{{ practiceHintCopy() }}</p>
+      <big-button
+        class="practice-btn"
+        variant="soft"
+        data-practice-entry
+        :data-practice-chapter="chapterId"
+        @click="goPractice"
+      >
+        {{ practiceEntryCopy() }}
+      </big-button>
+    </div>
   </div>
 </template>
 
@@ -305,15 +308,25 @@ onBeforeUnmount(() => {
   color: var(--muted);
 }
 
-.practice-btn {
-  margin-top: 14px;
-}
-
 .start-btn {
   margin-top: 14px;
 }
 
-.practice-btn + .start-btn {
+.practice-wrap {
   margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.practice-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.practice-btn {
+  margin-top: 0;
 }
 </style>

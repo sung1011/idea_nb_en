@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  chapterPracticeCopy,
-  practiceEntryCopy,
-  replayAgainCopy,
-} from '../data/todayTasks'
+import { chapterDoneCopy, replayAgainCopy } from '../data/todayTasks'
 import bigButton from './bigButton.vue'
 
 const props = defineProps<{
   open: boolean
   chapterComplete?: boolean
   chapterNo?: number
-  chapterId?: string
   fromPractice?: boolean
   hasNext?: boolean
 }>()
@@ -19,17 +14,15 @@ const props = defineProps<{
 const emit = defineEmits<{
   replay: []
   next: []
-  practice: []
   lobby: []
 }>()
 
 const title = computed(() => (props.chapterComplete ? '过关啦' : '又玩了一遍'))
 const lead = computed(() =>
   props.chapterComplete
-    ? chapterPracticeCopy(props.chapterNo ?? 1)
+    ? chapterDoneCopy(props.chapterNo ?? 1)
     : '再玩一遍也可以，星星已经给你啦',
 )
-const showPractice = computed(() => Boolean(props.chapterComplete))
 const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
 </script>
 
@@ -50,15 +43,6 @@ const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
         <big-button data-clear-replay @click="emit('replay')">{{ replayAgainCopy() }}</big-button>
         <big-button v-if="showNext" variant="soft" data-clear-next @click="emit('next')">
           去下一关
-        </big-button>
-        <big-button
-          v-if="showPractice"
-          variant="soft"
-          data-practice-entry
-          :data-practice-chapter="chapterId"
-          @click="emit('practice')"
-        >
-          {{ practiceEntryCopy(chapterId) }}
         </big-button>
         <button class="lobby-link" type="button" data-clear-lobby @click="emit('lobby')">回岛</button>
       </div>

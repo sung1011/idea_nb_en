@@ -9,13 +9,12 @@ import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getChapterNumber } from '../data/chapters'
-import { locationForChapterPractice } from '../data/playGallery'
 import { getCurrentFamily } from '../data/phonicsFamily'
-import { chapterProgressCopy, practiceEntryCopy } from '../data/todayTasks'
+import { chapterProgressCopy } from '../data/todayTasks'
 
 const router = useRouter()
 const family = getCurrentFamily()
-const { chapter, clearedChapterIds } = useProgress()
+const { chapter } = useProgress()
 const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
 const chipText = computed(() =>
   chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value).replace(
@@ -35,10 +34,6 @@ function goIsland() {
 
 function goGallery() {
   void router.push('/play-gallery')
-}
-
-function goPractice(chapterId: string) {
-  void router.push(locationForChapterPractice(chapterId))
 }
 
 function goWorkshop() {
@@ -85,17 +80,6 @@ function goAlbum() {
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
-    <big-button
-      v-for="id in clearedChapterIds"
-      :key="id"
-      class="practice-btn"
-      variant="soft"
-      data-practice-entry
-      :data-practice-chapter="id"
-      @click="goPractice(id)"
-    >
-      {{ practiceEntryCopy(id) }}
-    </big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
     <button class="album-btn" type="button" @click="goAlbum">
       <span aria-hidden="true">📒</span>
@@ -182,7 +166,6 @@ function goAlbum() {
   margin-top: auto;
 }
 
-.practice-btn,
 .gallery-btn {
   margin-top: 10px;
 }

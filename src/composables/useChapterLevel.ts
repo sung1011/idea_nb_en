@@ -9,7 +9,6 @@ import {
   type PlayKind,
 } from '../data/chapters'
 import { matchingLevel, pickGateOtherWords, sampleGateWords, shouldUseLevelWords as resolveUseLevelWords } from '../data/gateWords'
-import { locationForChapterPractice } from '../data/playGallery'
 import { usePlayMode } from './usePlayMode'
 import {
   completeLevel,
@@ -142,11 +141,6 @@ export function useChapterLevel(play: PlayKind) {
     void router.push(nextLocation(result))
   }
 
-  function goPractice() {
-    showClearSheet.value = false
-    void router.push(locationForChapterPractice(level.value?.chapterId ?? ANIMALS_CHAPTER_ID))
-  }
-
   function goLobby() {
     showClearSheet.value = false
     void router.push(locationForIslandChapter(level.value?.chapterId))
@@ -177,7 +171,6 @@ export function useChapterLevel(play: PlayKind) {
     goAfterLevel,
     replayCleared,
     continueAfterClear,
-    goPractice,
     goLobby,
     locationAfterClear,
   }
