@@ -24,11 +24,11 @@
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
-**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（当前动物岛 15 词，以及配置里已有的 `-ap` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
-**玩法一览**列出主线玩法 + 唱一唱 / 找一找（含听音拼一拼、小书点读 stub）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。主路径不链到 `/play-gallery?chapter=` 按章画廊；该路由可留着但不从首页 / 大厅 / 完成页 / 关卡列表广告。已过关重玩走列表或结束层的「再玩一次」，不加星、不重复徽章，也不挡下一章。动物岛大厅主按钮与首页 CTA 走无参 `getNextLevel()`（跨章）。点一点已移除。
+**玩法一览**列出主线玩法 + 唱一唱 / 找一找（听音拼一拼已是正式关；小书点读仍是 stub）。一览试玩带 `?demo=1`，只庆祝、不加首次通关星星、不推进章节关卡。主路径不链到 `/play-gallery?chapter=` 按章画廊；该路由可留着但不从首页 / 大厅 / 完成页 / 关卡列表广告。已过关重玩走列表或结束层的「再玩一次」，不加星、不重复徽章，也不挡下一章。动物岛大厅主按钮与首页 CTA 走无参 `getNextLevel()`（跨章）。点一点已移除。
 
 **Flash Flip（闪卡翻翻）**是约 30–40 秒的词汇热身：有 `?level=`（或主线回落到该玩法关卡）时用该关 `focusWord` / `appearWords` / `words`（如 ch1-1 的 cat + hat/mat，ch2-1 的 dog + pig/duck，ch3-1 的 cup/cake）；试玩 / 复习且没有关卡 id 时仍从 15 词库抽 4 个。先翻开词卡图+英文并 TTS 读词，再听词点对图卡。点错轻晃再问，没有红叉。副文案可轻提章节主题（「-at 派对」/「听声找伙伴」/「点心与天空」）。通关调用 `completeLevel`，立刻解锁并跳下一关。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
 
@@ -36,7 +36,7 @@
 
 **Drag Sort（拖一拖）**是认词关，不是分类关：有关卡 id 时用该关词表（ch1-3 三词，ch2-3 dog/pig/fish，ch3-3 cake/ball/sun）；试玩 / 复习且没有关卡 id 时仍从 15 词库抽 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。通关后立刻解锁并跳到听音拼一拼。试玩仍走 `?demo=1`。拖对解锁单词图鉴。
 
-**听音拼一拼（Sound Spell）**是本阶段占位关（`/sound-spell`，`chN-4`）：听一个 CVC 词，用字母块点选拼出（不是打字考试）。词表读该关 `focusWord` / `words`。通关调用 `completeLevel`，立刻开下一关。完整玩法 UX 下一阶段再打磨。
+**听音拼一拼（Sound Spell）**是听音拼 CVC 关（`/sound-spell`，`chN-4`）：系统 TTS 读目标词，格子旁有喇叭可随时再听。字母块 = 目标词字母 + 1–2 个相近 CVC 干扰字母（优先同类词首字母，如 cat 配 h/m）。孩子按顺序点字母，或把字母拖进 C-V-C 格子；点错 / 拖错只轻晃并再读单词，没有红叉、不整盘清空。词表走该关 `focusWord` / `appearWords` / `words`（`sampleGateWords`），不是写死 cat/hat。一局把词表里的词轮流拼完。中文短指令，点对 / 通关抽 `praisePhrases`。通关 `unlockWord` + `completeLevel`，立刻开下一关。`?level=` 与其它关相同；试玩 `?demo=1` 无 id 时从 15 词库抽一小撮。
 
 **小书点读（Story Book）**是本阶段占位关（`/story-book`，`chN-7`）：封面 + 标题，再几页点读；鼓励对着焦点词试着拼读。通关调用 `completeLevel`。完整绘本 UX 下一阶段再打磨。
 
@@ -62,7 +62,7 @@ targets: [
 ]
 ```
 
-主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位，所以 ch2 / ch3 不会再打成 cat/hat/mat。试玩 / 复习 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部 15 个（外加 `-ap` / `-an` 槽位）。15 词的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
+主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 听音拼一拼 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位，所以 ch2 / ch3 不会再打成 cat/hat/mat。试玩 / 复习 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 听音拼一拼 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部 15 个（外加 `-ap` / `-an` 槽位）。15 词的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
 
 叙事：小猫是派对主人；hat / mat 等仍是派对道具或朋友。
 
@@ -75,7 +75,7 @@ targets: [
 | ch1-1 闪卡翻翻 | cat 焦点，hat/mat 出场；点对过关 | 首次 +1 星，立刻解锁 ch1-2 |
 | ch1-2 地鼠词 | cat/hat/mat | 首次 +1 星，立刻解锁 ch1-3 |
 | ch1-3 拖一拖 | 三词拖进对应词卡篮 | 首次 +1 星，立刻解锁 ch1-4 |
-| ch1-4 听音拼一拼 | 听 CVC，点字母块拼出来（本阶段 stub） | 首次 +1 星，立刻解锁 ch1-5 |
+| ch1-4 听音拼一拼 | 听 CVC，点/拖字母块拼出来；点错轻晃再听 | 首次 +1 星，立刻解锁 ch1-5 |
 | ch1-5 读词钓鱼 | 读出或点中池里单词鱼 | 首次 +1 星，额外贴纸「派对耳朵」，立刻解锁 ch1-6 |
 | ch1-6 回声跟读 | 听后跟读；永远可点「我说好了」 | 首次 +1 星，立刻解锁 ch1-7 |
 | ch1-7 小书点读 | 封面 + 几页点读，鼓励试着拼读（本阶段 stub） | 首次 +1 星，立刻解锁 ch1-8 |
@@ -94,6 +94,7 @@ targets: [
 src/data/phonicsFamily.ts      音族配置（动物岛 15 词 + sampleWords + 词卡 image）
 src/data/gateWords.ts          关卡词表解析（`?level=` / 主线用 chapters 词表；试玩无 id 回落 sampleWords）
 src/data/praisePhrases.ts      英语表扬词库（点对 / 通关 / 轻提示）
+src/data/spellTiles.ts         听音拼一拼字母块（目标字母 + 相近 CVC 干扰）
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
@@ -123,7 +124,7 @@ src/data/playGallery.ts        玩法一览条目（按章画廊路由仍在，�
 src/components/levelClearSheet.vue 重玩通关后的选择层（再玩一次 / 去下一关 / 回岛）
 src/views/homeView.vue         首页（跨章目标条 + 当前章亮格 + 去动物岛 + 玩法一览 + 贴纸相册 + 弱工坊 / 图鉴 + 设置）
 src/views/animalIslandView.vue 动物岛大厅（三章入口；点开后该章关卡列表 + 已过关「再玩一次」）
-src/views/soundSpellView.vue   听音拼一拼 stub（字母块拼 CVC）
+src/views/soundSpellView.vue   听音拼一拼（听词、点/拖字母、软失败、喇叭重听）
 src/views/storyBookView.vue    小书点读 stub（封面 + 几页点读）
 src/views/chapterFinaleView.vue 章节回顾 stub（读 `?level=` 的章标题 / 词表；ch1-8 / ch2-8 / ch3-8）
 src/views/letterWorkshopView.vue 字母工坊复习页
@@ -240,7 +241,7 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 
 - 第二座主题岛
 - 完整工坊体验
-- 听音拼一拼 / 小书点读的完整玩法 UX（本阶段仅 stub，可通关推进）
+- 小书点读的完整玩法 UX（本阶段仅 stub，可通关推进）
 - 真唱音高打分
 - 拼读前的独立热身路径（闪卡翻翻已作为一览热身关）
 - 真人手绘角色

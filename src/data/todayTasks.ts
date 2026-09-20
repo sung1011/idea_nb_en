@@ -88,6 +88,14 @@ export function gateSpellSub(themeHint: string): string {
   return themeHint ? `听单词，用字母块拼出来 · ${themeHint}` : '听单词，用字母块拼出来'
 }
 
+export function gateSpellPrompt(): string {
+  return '听一听，点字母'
+}
+
+export function gateSpellHint(): string {
+  return '点错会轻轻晃一下，再试就好'
+}
+
 export function gateBookSub(themeHint: string): string {
   return themeHint ? `点一页听一听，试着拼读 · ${themeHint}` : '点一页听一听，试着拼读'
 }

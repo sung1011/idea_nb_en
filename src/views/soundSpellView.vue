@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { dragDirective } from '@vueuse/gesture'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
 import levelClearSheet from '../components/levelClearSheet.vue'
 import wordPic from '../components/wordPic.vue'
+import { magnetPoint, nearestBasket, SNAP_RANGE } from '../composables/useDragSnap'
 import { useChapterLevel } from '../composables/useChapterLevel'
-import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMotion'
-import { pickPraise, playNudge, playPop, playSuccess, speak } from '../composables/useSpeech'
+import { flyStarFrom, tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo, waitAfterStar } from '../composables/useMotion'
+import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { shuffle } from '../data/playGallery'
-import { preloadWordCards } from '../data/phonicsFamily'
-import { gateSpellSub } from '../data/todayTasks'
+import { buildSpellTiles, nextEmptySlot, wordLetters, type SpellTile } from '../data/spellTiles'
+import { gateSpellHint, gateSpellPrompt, gateSpellSub } from '../data/todayTasks'
+
+type BoardTile = SpellTile & { used: boolean }
+
+type DragState = {
+  first: boolean
+  last: boolean
+  dragging: boolean
+  xy: [number, number]
+}
 
 const {
-  level,
   isReplay,
   canPlay,
   gateTag,
@@ -31,114 +40,317 @@ const {
   takeRunWords,
 } = useChapterLevel('soundSpell')
 
+const vDrag = dragDirective()
 const words = takeRunWords(3)
-const target = computed(() => (level.value?.focusWord || words[0] || 'cat').toLowerCase())
 const spellSub = computed(() => gateSpellSub(themeHint.value))
-const letters = computed(() => target.value.split(''))
-const tiles = ref<string[]>([])
-const slots = ref<string[]>([])
+const wordIndex = ref(0)
+const slots = ref<Array<string | null>>([])
+const tiles = ref<BoardTile[]>([])
+const prompt = ref(gateSpellPrompt())
+const locked = ref(true)
+const busy = ref(false)
 const celebrating = ref(false)
-const locked = ref(false)
-const shaking = ref(false)
+const revealed = ref(false)
+const done = ref(false)
+const shakingTile = ref('')
+const shakingSlot = ref(-1)
+const dragging = ref<string | null>(null)
+const hoverSlot = ref<number | null>(null)
+const origin = ref({ x: 0, y: 0 })
+const pulledFar = ref(false)
+const titleEl = ref<HTMLElement | null>(null)
 const boardEl = ref<HTMLElement | null>(null)
+const ghostEl = ref<HTMLElement | null>(null)
+
+let alive = true
+
+const target = computed(() => (words[wordIndex.value] || words[0] || 'cat').toLowerCase())
+const letters = computed(() => wordLetters(target.value))
+const progressText = computed(() => `${wordIndex.value + 1} / ${words.length}`)
+const nextSlot = computed(() => nextEmptySlot(slots.value))
+const dragTile = computed(() => tiles.value.find((tile) => tile.id === dragging.value) ?? null)
+const dragOptions = {
+  preventWindowScrollY: true,
+  useTouch: true,
+  filterTaps: true,
+}
+
+function slotEl(index: number): HTMLElement | null {
+  return document.querySelector(`[data-spell-slot="${index}"]`)
+}
+
+function tileEl(id: string): HTMLElement | null {
+  return document.querySelector(`[data-spell-tile="${id}"]`)
+}
 
 function resetBoard() {
-  slots.value = []
-  const extras = words
-    .filter((word) => word !== target.value)
-    .join('')
-    .split('')
-    .filter((ch) => !letters.value.includes(ch))
-    .slice(0, 2)
-  tiles.value = shuffle([...letters.value, ...extras])
+  slots.value = letters.value.map(() => null)
+  tiles.value = buildSpellTiles(target.value, words).map((tile) => ({ ...tile, used: false }))
+  celebrating.value = false
+  revealed.value = false
+  shakingTile.value = ''
+  shakingSlot.value = -1
 }
 
-onMounted(() => {
-  preloadWordCards(words)
+function moveGhost(x: number, y: number) {
+  if (ghostEl.value) {
+    ghostEl.value.style.left = `${x}px`
+    ghostEl.value.style.top = `${y}px`
+  }
+}
+
+async function ask() {
+  if (!alive) return
+  locked.value = true
+  busy.value = false
   resetBoard()
-  void speak(target.value)
-})
+  prompt.value = gateSpellPrompt()
+  await speak(target.value)
+  if (!alive) return
+  locked.value = !canPlay.value
+}
 
-function hearWord() {
-  if (locked.value) return
+async function hearWord() {
+  if (done.value) return
   playPop()
+  await speak(target.value)
+}
+
+function placeLetter(ch: string, slotIndex: number, tileId: string): boolean {
+  if (slots.value[slotIndex] || letters.value[slotIndex] !== ch) return false
+  slots.value = slots.value.map((slot, index) => (index === slotIndex ? ch : slot))
+  tiles.value = tiles.value.map((tile) => (tile.id === tileId ? { ...tile, used: true } : tile))
+  return true
+}
+
+async function softMiss(targetEl: unknown, slotIndex = -1) {
+  playNudge()
+  prompt.value = pickPraise('soft')
+  shakingSlot.value = slotIndex
+  await tweenShake(targetEl)
+  if (!alive) return
+  shakingTile.value = ''
+  shakingSlot.value = -1
   void speak(target.value)
 }
 
-function pickTile(index: number) {
-  if (locked.value || !canPlay.value) return
-  const letter = tiles.value[index]
-  if (!letter) return
+async function afterPlace(source: Element | null, slotIndex: number) {
   playPop()
-  tiles.value = tiles.value.filter((_, i) => i !== index)
-  slots.value = [...slots.value, letter]
-  if (slots.value.length < letters.value.length) return
-  void checkWord()
-}
-
-function undoSlot() {
-  if (locked.value || !slots.value.length) return
-  const last = slots.value[slots.value.length - 1]
-  slots.value = slots.value.slice(0, -1)
-  tiles.value = [...tiles.value, last]
-}
-
-async function checkWord() {
-  const built = slots.value.join('')
-  if (built !== target.value) {
-    shaking.value = true
-    playNudge()
-    await tweenShake(boardEl.value)
-    shaking.value = false
-    resetBoard()
-    void speak(target.value)
+  const filled = slotEl(slotIndex)
+  if (filled) void tweenPulse(filled)
+  if (slots.value.every(Boolean)) {
+    await succeedWord(source)
     return
   }
+}
+
+async function succeedWord(source: Element | null) {
+  if (!alive) return
   locked.value = true
   celebrating.value = true
-  playSuccess()
+  revealed.value = true
+  prompt.value = pickPraise('step')
   unlockWord(target.value)
-  await tweenCelebrate(boardEl.value)
+  void flyStarFrom(source)
+  await Promise.all([tweenCelebrate(boardEl.value), speak(prompt.value)])
+  if (!alive) return
+  await speak(target.value)
+  if (!alive) return
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 420))
+  if (wordIndex.value >= words.length - 1) {
+    await finishGate()
+    return
+  }
+  wordIndex.value += 1
+  await ask()
+}
+
+async function finishGate() {
+  if (!alive) return
+  done.value = true
+  celebrating.value = true
+  prompt.value = pickPraise('finish')
+  playSuccess()
+  await tweenCelebrate(titleEl.value)
   const result = finishLevel()
-  await speak(pickPraise(result.firstClear ? 'finish' : 'soft'))
+  await speak(prompt.value)
+  if (!alive) return
   await waitAfterStar(result.starsAwarded)
   goAfterLevel(result)
 }
+
+async function pickTile(tile: BoardTile, event?: Event) {
+  if (locked.value || busy.value || done.value || tile.used || !canPlay.value) return
+  if (dragging.value && pulledFar.value) return
+  dragging.value = null
+  hoverSlot.value = null
+  pulledFar.value = false
+  const index = nextSlot.value
+  const el = event?.currentTarget instanceof Element ? event.currentTarget : tileEl(tile.id)
+  if (index < 0) return
+  busy.value = true
+  if (letters.value[index] !== tile.ch) {
+    shakingTile.value = tile.id
+    await softMiss(el)
+    busy.value = false
+    return
+  }
+  placeLetter(tile.ch, index, tile.id)
+  await afterPlace(el, index)
+  busy.value = false
+}
+
+function onTileDrag(tileId: string) {
+  return (state: DragState) => {
+    if (locked.value || busy.value || done.value || !canPlay.value) return
+    const tile = tiles.value.find((item) => item.id === tileId && !item.used)
+    if (!tile) return
+    if (dragging.value && dragging.value !== tileId) return
+
+    const [x, y] = state.xy
+    const hit = nearestBasket(x, y, '[data-spell-slot]')
+
+    if (state.first) {
+      pulledFar.value = false
+      origin.value = { x, y }
+      return
+    }
+
+    if (state.dragging) {
+      if (Math.hypot(x - origin.value.x, y - origin.value.y) > 12) {
+        if (!dragging.value) {
+          dragging.value = tileId
+          playPop()
+        }
+        pulledFar.value = true
+      }
+      const pulled = magnetPoint(x, y, hit)
+      void nextTick(() => moveGhost(pulled.x, pulled.y))
+      hoverSlot.value = hit && hit.dist <= SNAP_RANGE ? Number(hit.word) : null
+    }
+
+    if (state.last) {
+      void dropAt(x, y)
+    }
+  }
+}
+
+async function dropAt(x: number, y: number) {
+  const tile = dragTile.value
+  const wasDrag = pulledFar.value
+  if (!tile || locked.value || celebrating.value || done.value) {
+    dragging.value = null
+    hoverSlot.value = null
+    pulledFar.value = false
+    return
+  }
+  if (!wasDrag) {
+    dragging.value = null
+    hoverSlot.value = null
+    pulledFar.value = false
+    return
+  }
+
+  busy.value = true
+  const hit = nearestBasket(x, y, '[data-spell-slot]')
+  const slotIndex = hit ? Number(hit.word) : -1
+  const snapped = Boolean(hit && hit.dist <= SNAP_RANGE && slotIndex >= 0)
+
+  if (!snapped || !hit) {
+    await tweenSnapTo(ghostEl.value, origin.value)
+    dragging.value = null
+    hoverSlot.value = null
+    pulledFar.value = false
+    busy.value = false
+    return
+  }
+
+  const ok = !slots.value[slotIndex] && letters.value[slotIndex] === tile.ch
+  if (!ok) {
+    shakingTile.value = tile.id
+    shakingSlot.value = slotIndex
+    hoverSlot.value = slotIndex
+    await Promise.all([softMiss(hit.el, slotIndex), tweenSnapTo(ghostEl.value, origin.value)])
+    dragging.value = null
+    hoverSlot.value = null
+    pulledFar.value = false
+    busy.value = false
+    return
+  }
+
+  hoverSlot.value = slotIndex
+  await tweenSnapTo(ghostEl.value, { x: hit.cx, y: hit.cy })
+  placeLetter(tile.ch, slotIndex, tile.id)
+  dragging.value = null
+  hoverSlot.value = null
+  pulledFar.value = false
+  await afterPlace(hit.el, slotIndex)
+  busy.value = false
+}
+
+onMounted(() => {
+  resetBoard()
+  void ask()
+})
+
+onUnmounted(() => {
+  alive = false
+  stopSpeech()
+})
 </script>
 
 <template>
   <section class="screen spell">
     <gate-top-bar />
 
-    <div class="hero center">
-      <p class="eyebrow">{{ gateTag }}</p>
-      <h1 class="title-xl">听音拼一拼</h1>
+    <div class="center">
+      <p class="gate-tag">{{ gateTag }}</p>
+      <p v-if="isReplay" class="replay-hint">再拼一遍也可以，星星已经给你啦</p>
+      <h1 ref="titleEl" class="title-lg">{{ prompt }}</h1>
       <p class="sub">{{ spellSub }}</p>
     </div>
 
-    <div ref="boardEl" class="card board" :class="{ pop: celebrating, shake: shaking }">
-      <word-pic :word="target" :size="88" />
-      <p class="hint">先听一听，再用字母块拼出来。不是打字考试哦。</p>
-      <div class="slots" aria-label="拼好的字母">
+    <div ref="boardEl" class="card board" :class="{ pop: celebrating }">
+      <button class="pic-btn" type="button" :disabled="done" @click="hearWord">
+        <word-pic :word="target" :size="96" />
+        <b v-if="revealed" class="word-reveal">{{ target }}</b>
+      </button>
+      <button class="speaker" type="button" :disabled="done" aria-label="再听一次" @click="hearWord">
+        🔊
+      </button>
+      <div class="slots" aria-label="字母格子">
         <span
           v-for="(_, index) in letters"
           :key="`slot-${index}`"
+          :data-spell-slot="index"
+          :data-basket="String(index)"
           class="slot"
-          :class="{ on: Boolean(slots[index]) }"
+          :class="{
+            on: Boolean(slots[index]),
+            next: nextSlot === index && !celebrating,
+            shake: shakingSlot === index,
+            hover: hoverSlot === index,
+          }"
         >
           {{ slots[index] ?? '' }}
         </span>
       </div>
       <div class="tiles">
         <button
-          v-for="(ch, index) in tiles"
-          :key="`${ch}-${index}`"
+          v-for="tile in tiles"
+          v-show="!tile.used"
+          :key="tile.id"
+          v-drag="onTileDrag(tile.id)"
+          :data-spell-tile="tile.id"
           class="tile"
           type="button"
-          :disabled="!canPlay || locked"
-          @click="pickTile(index)"
+          :class="{ shake: shakingTile === tile.id, dragging: dragging === tile.id }"
+          :disabled="!canPlay || locked || done"
+          :aria-label="tile.ch"
+          :drag-options="dragOptions"
+          @click="pickTile(tile, $event)"
         >
-          {{ ch }}
+          {{ tile.ch }}
         </button>
       </div>
     </div>
@@ -147,14 +359,12 @@ async function checkWord() {
       {{
         !canPlay
           ? '先把前面的关卡通完哦。'
-          : isReplay
-            ? '再拼一遍也可以。'
-            : '点字母块排好顺序就过关。'
+          : `${progressText} · ${gateSpellHint()}`
       }}
     </p>
-    <div class="actions">
-      <big-button variant="soft" :disabled="locked" @click="hearWord">听一听</big-button>
-      <big-button variant="soft" :disabled="locked || !slots.length" @click="undoSlot">退一格</big-button>
+    <big-button variant="listen" :disabled="done" @click="hearWord">再听一次</big-button>
+    <div ref="ghostEl" class="ghost" :class="{ show: Boolean(dragging) }">
+      {{ dragTile?.ch }}
     </div>
     <level-clear-sheet
       :open="showClearSheet"
@@ -174,10 +384,17 @@ async function checkWord() {
   gap: 12px;
 }
 
-.eyebrow {
+.gate-tag {
   margin: 8px 0 0;
-  font-size: 15px;
-  color: var(--muted);
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.replay-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: #0f766e;
 }
 
 .board {
@@ -185,67 +402,137 @@ async function checkWord() {
   justify-items: center;
   gap: 12px;
   margin-top: 8px;
-  padding: 16px 12px;
+  padding: 16px 12px 18px;
 }
 
-.hint {
-  margin: 0;
-  font-size: 15px;
-  color: var(--muted);
+.pic-btn {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 4px;
+  background: transparent;
+}
+
+.word-reveal {
+  font-size: 32px;
+  letter-spacing: 0.04em;
+}
+
+.speaker {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a78bfa 0%, var(--grape) 100%);
+  color: #fff;
+  box-shadow: 0 6px 0 #5b4d9a;
+  font-size: 32px;
+}
+
+.speaker:active:not(:disabled) {
+  transform: translateY(2px);
 }
 
 .slots {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .slot {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 56px;
-  border-radius: 14px;
+  width: 64px;
+  height: 72px;
+  border-radius: 18px;
   background: #eef6f4;
-  border: 2px dashed #c5d8d2;
-  font-size: 28px;
+  border: 3px dashed #c5d8d2;
+  font-size: 32px;
   font-weight: 800;
   text-transform: lowercase;
 }
 
 .slot.on {
   background: #fff6d0;
-  border: 2px solid #f4b400;
+  border: 3px solid #f4b400;
+}
+
+.slot.next {
+  box-shadow: 0 0 0 6px rgba(139, 124, 246, 0.22);
+  border-color: #8b7cf6;
+}
+
+.slot.hover {
+  box-shadow: inset 0 0 0 4px rgba(255, 159, 67, 0.55);
 }
 
 .tiles {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tile {
-  min-width: 52px;
-  min-height: 52px;
-  padding: 0 12px;
-  border-radius: 16px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 0 14px;
+  border-radius: 18px;
   background: #fff3c4;
-  box-shadow: 0 4px 0 rgba(244, 180, 0, 0.28);
-  font-size: 26px;
+  box-shadow: 0 5px 0 rgba(244, 180, 0, 0.28);
+  font-size: 28px;
   font-weight: 800;
   text-transform: lowercase;
+  touch-action: none;
+  user-select: none;
 }
 
-.tile:active {
+.tile:nth-child(2n) {
+  background: #ffe0c2;
+  box-shadow: 0 5px 0 rgba(255, 143, 67, 0.28);
+}
+
+.tile:nth-child(3n) {
+  background: #d9f3ff;
+  box-shadow: 0 5px 0 rgba(61, 184, 199, 0.28);
+}
+
+.tile:active:not(:disabled) {
   transform: translateY(2px);
 }
 
-.actions {
+.tile.dragging {
+  opacity: 0.35;
+}
+
+.ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  min-width: 64px;
+  min-height: 64px;
+  margin: -32px 0 0 -32px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  place-items: center;
+  border-radius: 18px;
+  background: #fff3c4;
+  font-size: 28px;
+  font-weight: 800;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 8px 0 rgba(244, 180, 0, 0.28);
+  text-transform: lowercase;
+}
+
+.ghost.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.hint {
+  margin: 0;
 }
 
 .pop {
