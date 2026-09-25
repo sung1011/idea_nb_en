@@ -7,6 +7,8 @@ export type WarmupPhoneme = {
 export type WordArt = {
   emoji: string
   label: string
+  /** Kid-facing Chinese gloss. Flash cards show it; speech does not. */
+  zh?: string
   image?: string
 }
 
@@ -14,10 +16,11 @@ export function wordCardSrc(word: string): string {
   return `${import.meta.env.BASE_URL}word-cards/${word.toLowerCase()}.webp`
 }
 
-function clayArt(word: string, emoji: string): WordArt {
+function clayArt(word: string, emoji: string, zh?: string): WordArt {
   return {
     emoji,
     label: word,
+    zh,
     image: wordCardSrc(word),
   }
 }
@@ -63,21 +66,21 @@ export const families: Record<string, PhonicsFamily> = {
     ],
     // Animals island word bank: cat hosts; others are party friends / props.
     wordArt: {
-      cat: clayArt('cat', '🐱'),
-      hat: clayArt('hat', '🎩'),
-      mat: clayArt('mat', '🧶'),
-      bat: clayArt('bat', '🦇'),
-      rat: clayArt('rat', '🐀'),
-      cup: clayArt('cup', '🥤'),
-      dog: clayArt('dog', '🐶'),
-      pig: clayArt('pig', '🐷'),
-      duck: clayArt('duck', '🦆'),
-      bird: clayArt('bird', '🐦'),
-      fish: clayArt('fish', '🐟'),
-      cake: clayArt('cake', '🎂'),
-      ball: clayArt('ball', '⚽'),
-      sun: clayArt('sun', '☀️'),
-      star: clayArt('star', '⭐'),
+      cat: clayArt('cat', '🐱', '猫'),
+      hat: clayArt('hat', '🎩', '帽子'),
+      mat: clayArt('mat', '🧶', '垫子'),
+      bat: clayArt('bat', '🦇', '蝙蝠'),
+      rat: clayArt('rat', '🐀', '老鼠'),
+      cup: clayArt('cup', '🥤', '杯子'),
+      dog: clayArt('dog', '🐶', '狗'),
+      pig: clayArt('pig', '🐷', '猪'),
+      duck: clayArt('duck', '🦆', '鸭子'),
+      bird: clayArt('bird', '🐦', '鸟'),
+      fish: clayArt('fish', '🐟', '鱼'),
+      cake: clayArt('cake', '🎂', '蛋糕'),
+      ball: clayArt('ball', '⚽', '球'),
+      sun: clayArt('sun', '☀️', '太阳'),
+      star: clayArt('star', '⭐', '星星'),
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '派对耳朵' },
@@ -94,11 +97,11 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/n/', letter: 'N', speak: 'n' },
     ],
     wordArt: {
-      cap: { emoji: '🧢', label: 'cap' },
-      map: { emoji: '🗺️', label: 'map' },
-      nap: { emoji: '😴', label: 'nap' },
-      tap: { emoji: '🚰', label: 'tap' },
-      lap: { emoji: '🦵', label: 'lap' },
+      cap: { emoji: '🧢', label: 'cap', zh: '帽子' },
+      map: { emoji: '🗺️', label: 'map', zh: '地图' },
+      nap: { emoji: '😴', label: 'nap', zh: '午睡' },
+      tap: { emoji: '🚰', label: 'tap', zh: '水龙头' },
+      lap: { emoji: '🦵', label: 'lap', zh: '腿' },
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },
@@ -115,11 +118,11 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/j/', letter: 'J', speak: 'j' },
     ],
     wordArt: {
-      frog: { emoji: '🐸', label: 'frog' },
-      log: clayArt('log', '🪵'),
-      fog: { emoji: '🌫️', label: 'fog' },
-      jog: { emoji: '🏃', label: 'jog' },
-      hog: { emoji: '🐖', label: 'hog' },
+      frog: { emoji: '🐸', label: 'frog', zh: '青蛙' },
+      log: clayArt('log', '🪵', '木头'),
+      fog: { emoji: '🌫️', label: 'fog', zh: '雾' },
+      jog: { emoji: '🏃', label: 'jog', zh: '慢跑' },
+      hog: { emoji: '🐖', label: 'hog', zh: '猪' },
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },
@@ -136,11 +139,11 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/s/', letter: 'S', speak: 's' },
     ],
     wordArt: {
-      duck: clayArt('duck', '🦆'),
-      rock: { emoji: '🪨', label: 'rock' },
-      sock: { emoji: '🧦', label: 'sock' },
-      lock: clayArt('lock', '🔒'),
-      pack: { emoji: '📦', label: 'pack' },
+      duck: clayArt('duck', '🦆', '鸭子'),
+      rock: { emoji: '🪨', label: 'rock', zh: '石头' },
+      sock: { emoji: '🧦', label: 'sock', zh: '袜子' },
+      lock: clayArt('lock', '🔒', '锁'),
+      pack: { emoji: '📦', label: 'pack', zh: '包' },
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },
@@ -175,22 +178,22 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/k/', letter: 'K', speak: 'k' },
     ],
     wordArt: {
-      hop: clayArt('hop', '🐇'),
-      pot: clayArt('pot', '🍲'),
-      top: clayArt('top', '🪀'),
-      mop: clayArt('mop', '🧹'),
-      van: clayArt('van', '🚐'),
-      vet: clayArt('vet', '🩺'),
-      vest: clayArt('vest', '🦺'),
-      vat: clayArt('vat', '🪣'),
-      log: clayArt('log', '🪵'),
-      lid: clayArt('lid', '🫙'),
-      lamp: clayArt('lamp', '💡'),
-      lock: clayArt('lock', '🔒'),
-      kid: clayArt('kid', '🧒'),
-      kit: clayArt('kit', '🧰'),
-      keg: clayArt('keg', '🛢️'),
-      kick: clayArt('kick', '👟'),
+      hop: clayArt('hop', '🐇', '跳'),
+      pot: clayArt('pot', '🍲', '锅'),
+      top: clayArt('top', '🪀', '陀螺'),
+      mop: clayArt('mop', '🧹', '拖把'),
+      van: clayArt('van', '🚐', '面包车'),
+      vet: clayArt('vet', '🩺', '兽医'),
+      vest: clayArt('vest', '🦺', '背心'),
+      vat: clayArt('vat', '🪣', '大桶'),
+      log: clayArt('log', '🪵', '木头'),
+      lid: clayArt('lid', '🫙', '盖子'),
+      lamp: clayArt('lamp', '💡', '台灯'),
+      lock: clayArt('lock', '🔒', '锁'),
+      kid: clayArt('kid', '🧒', '小孩'),
+      kit: clayArt('kit', '🧰', '工具包'),
+      keg: clayArt('keg', '🛢️', '小木桶'),
+      kick: clayArt('kick', '👟', '踢'),
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },
@@ -207,9 +210,9 @@ export const families: Record<string, PhonicsFamily> = {
       { ipa: '/n/', letter: 'N', speak: 'n' },
     ],
     wordArt: {
-      can: { emoji: '🥫', label: 'can' },
-      man: { emoji: '👨', label: 'man' },
-      pan: { emoji: '🍳', label: 'pan' },
+      can: { emoji: '🥫', label: 'can', zh: '罐子' },
+      man: { emoji: '👨', label: 'man', zh: '人' },
+      pan: { emoji: '🍳', label: 'pan', zh: '平底锅' },
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },
@@ -239,6 +242,17 @@ export function wordEmoji(word: string, family = familyForWord(word)): string {
 
 export function wordImage(word: string, family = familyForWord(word)): string | undefined {
   return family.wordArt[word.trim().toLowerCase()]?.image
+}
+
+/** First non-empty gloss. Later families can fill a word the earlier entry left blank. */
+export function wordZh(word: string): string | undefined {
+  const key = word.trim().toLowerCase()
+  if (!key) return undefined
+  for (const family of Object.values(families)) {
+    const zh = family.wordArt[key]?.zh?.trim()
+    if (zh) return zh
+  }
+  return undefined
 }
 
 /** Warm the browser cache for a small sampled set (gates / atlas extras). */

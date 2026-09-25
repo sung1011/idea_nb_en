@@ -8,6 +8,7 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
+import { wordZh } from '../data/phonicsFamily'
 import { shuffle } from '../data/playGallery'
 import {
   gateFlashStudyHint,
@@ -60,6 +61,7 @@ const studyWord = computed(() => words[studyIndex.value] ?? words[0])
 const studyFace = computed<CardFace>(() => ({
   word: studyWord.value,
 }))
+const studyZh = computed(() => wordZh(studyWord.value))
 const trialWord = computed(() => words[trialIndex.value] ?? words[0])
 const isFirstStudy = computed(() => studyIndex.value <= 0)
 const isLastStudy = computed(() => studyIndex.value >= studyCount.value - 1)
@@ -241,8 +243,11 @@ onUnmounted(() => {
           <span>⭐</span>
         </div>
         <div v-else class="face front">
-          <word-pic :word="studyFace.word" :size="168" />
-          <b>{{ studyFace.word }}</b>
+          <word-pic :word="studyFace.word" :size="140" />
+          <div class="name">
+            <b>{{ studyFace.word }}</b>
+            <span v-if="studyZh" class="zh">{{ studyZh }}</span>
+          </div>
         </div>
       </button>
       <p class="center hint">{{ studyHint }}</p>
@@ -268,8 +273,11 @@ onUnmounted(() => {
           :disabled="locked"
           @click="onTap(choice.word, $event)"
         >
-          <word-pic :word="choice.word" :size="72" />
-          <small>{{ choice.word }}</small>
+          <word-pic :word="choice.word" :size="64" />
+          <div class="name">
+            <small>{{ choice.word }}</small>
+            <span v-if="wordZh(choice.word)" class="zh">{{ wordZh(choice.word) }}</span>
+          </div>
         </button>
       </div>
       <p class="center hint">{{ progressText }} · 点错会再问一遍</p>
@@ -314,9 +322,9 @@ onUnmounted(() => {
 
 .flash-card {
   width: 100%;
-  min-height: 260px;
+  min-height: 0;
   border: 0;
-  padding: 16px;
+  padding: 12px 16px;
   border-radius: 32px;
   background: #fff;
   color: inherit;
@@ -338,17 +346,31 @@ onUnmounted(() => {
 }
 
 .face :deep(.word-pic) {
-  width: 168px;
-  height: 168px;
+  width: 140px;
+  height: 140px;
 }
 
 .face.back span {
   font-size: 72px;
 }
 
+.name {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
 .face b {
   font-size: 40px;
+  line-height: 1.05;
   letter-spacing: 0.02em;
+}
+
+.face .zh {
+  font-size: 23px;
+  line-height: 1.15;
+  font-weight: 650;
+  color: #8a7564;
 }
 
 .study-nav {
@@ -369,19 +391,33 @@ onUnmounted(() => {
 }
 
 .target {
-  min-height: 120px;
+  min-height: 112px;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 8px 0 rgba(45, 58, 74, 0.12);
   display: grid;
   justify-items: center;
-  gap: 4px;
+  align-content: center;
+  gap: 2px;
   font-weight: 700;
+  padding: 8px 6px;
+}
+
+.target small {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.target .zh {
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 650;
+  color: #8a7564;
 }
 
 .target :deep(.word-pic) {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
 }
 
 .target.cheer {
@@ -389,6 +425,28 @@ onUnmounted(() => {
 }
 
 .hint {
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+@media (max-height: 700px) {
+  .flip {
+    gap: 8px;
+  }
+
+  .study {
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .study :deep(.big-btn) {
+    min-height: 52px;
+    padding: 8px 14px;
+    font-size: 18px;
+  }
+
+  .board {
+    gap: 8px;
+    margin: 4px 0;
+  }
 }
 </style>
