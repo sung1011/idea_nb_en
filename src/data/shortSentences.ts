@@ -154,6 +154,13 @@ export const shortSentences: Record<string, string> = {
   cut: 'Dad likes to cut.',
   stir: 'Dad likes to stir.',
   mash: 'Dad likes to mash.',
+  nest: 'E is in nest.',
+  sled: 'E is in sled.',
+  shed: 'E is in shed.',
+  melt: 'E is in melt.',
+  sand: 'Go past the sand.',
+  pit: 'Go past the pit.',
+  raft: 'Go past the raft.',
 }
 
 export function sentenceForWord(word: string): string {

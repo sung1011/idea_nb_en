@@ -40,7 +40,7 @@ export const RISE_CHAPTER_STICKERS: StickerDef[] = [
   { id: 'rise12', label: '毕业徽章', emoji: '🎓' },
 ]
 
-/** Lesson badges for chapters 4–10 (课13–40). Not indexed with chapter stickers. */
+/** Lesson badges for chapters 4–11 (课13–44). Not indexed with chapter stickers. */
 export const RISE_LESSON_STICKERS: StickerDef[] = [
   { id: 'rise13', label: '母鸡会跳徽章', emoji: '🐔' },
   { id: 'rise14', label: '字母 G 徽章', emoji: '🐶' },
@@ -70,6 +70,10 @@ export const RISE_LESSON_STICKERS: StickerDef[] = [
   { id: 'rise38', label: '爸爸爱做饭徽章', emoji: '👨‍🍳' },
   { id: 'rise39', label: '复习徽章', emoji: '🔁' },
   { id: 'rise40', label: '拍手徽章', emoji: '👏' },
+  { id: 'rise41', label: '字母 E 徽章', emoji: '🪺' },
+  { id: 'rise42', label: '点一点 E 徽章', emoji: '👆' },
+  { id: 'rise43', label: '往前走徽章', emoji: '🧭' },
+  { id: 'rise44', label: '给我看徽章', emoji: '👀' },
 ]
 
 export const CHAPTER_STICKERS: StickerDef[] = [...RISE_CHAPTER_STICKERS]

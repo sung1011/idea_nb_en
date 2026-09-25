@@ -98,7 +98,7 @@ export const families: Record<string, PhonicsFamily> = {
     ],
     wordArt: {
       cap: clayArt('cap', '🧢', '帽子'),
-      map: { emoji: '🗺️', label: 'map', zh: '地图' },
+      map: clayArt('map', '🗺️', '地图'),
       nap: clayArt('nap', '😴', '小睡'),
       tap: clayArt('tap', '🚰', '水龙头'),
       lap: { emoji: '🦵', label: 'lap', zh: '腿' },
@@ -611,6 +611,28 @@ export const families: Record<string, PhonicsFamily> = {
       cut: clayArt('cut', '✂️', '剪'),
       stir: clayArt('stir', '🥄', '搅动'),
       mash: clayArt('mash', '🥔', '捣烂'),
+    },
+    rewards: {
+      soundFishSticker: { id: 'ear', label: '耳朵' },
+    },
+  },
+  'rise-11': {
+    id: 'rise-11',
+    family: 'rise-11',
+    targets: ['nest', 'sled', 'shed', 'melt', 'sand', 'pit', 'raft'],
+    distractors: ['n', 's', 'm', 'p', 'r', 'd', 'l', 't'],
+    warmupPhonemes: [
+      { ipa: '/e/', letter: 'E', speak: 'e' },
+      { ipa: '/m/', letter: 'M', speak: 'm' },
+    ],
+    wordArt: {
+      nest: clayArt('nest', '🪺', '鸟巢'),
+      sled: clayArt('sled', '🛷', '雪橇'),
+      shed: clayArt('shed', '🏚️', '小棚屋'),
+      melt: clayArt('melt', '💧', '融化'),
+      sand: clayArt('sand', '🏖️', '沙子'),
+      pit: clayArt('pit', '🕳️', '坑'),
+      raft: clayArt('raft', '🛶', '木筏'),
     },
     rewards: {
       soundFishSticker: { id: 'ear', label: '耳朵' },

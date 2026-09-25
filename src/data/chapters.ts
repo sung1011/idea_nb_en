@@ -531,10 +531,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: "Hope's Map",
     emoji: '🗺️',
     lessons: [
-      { titleZh: '我是 E', titleEn: 'I am E', type: 'story' },
-      { titleZh: '找出带 e 的词', titleEn: 'Find e words', type: 'review' },
-      { titleZh: '霍普的地图', titleEn: "Hope's Map", type: 'story' },
-      { titleZh: '小测验', titleEn: 'Test', type: 'review' },
+      { titleZh: '我是 E', titleEn: 'I am E', type: 'story', sentence: 'E is in nest.' },
+      { titleZh: '复习 · 找出带 e 的词', titleEn: 'Find e words', type: 'review', sentence: 'Tap the e in bed.' },
+      { titleZh: '霍普的地图', titleEn: "Hope's Map", type: 'story', sentence: 'Hope has a map.' },
+      { titleZh: '复习 · 小测验', titleEn: 'Test', type: 'review', sentence: 'Show me the yak.' },
     ],
   },
   {
@@ -945,6 +945,48 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
     },
     null,
   ],
+  ch11: [
+    {
+      words: ['nest', 'sled', 'shed', 'melt'],
+      spell: ['nest', 'sled', 'shed'],
+      pages: [
+        { word: 'nest', line: 'E is in nest.' },
+        { word: 'sled', line: 'E is in sled.' },
+        { word: 'shed', line: 'E is in shed.' },
+        { word: 'melt', line: 'E is in melt.' },
+      ],
+    },
+    {
+      words: ['bed', 'jet', 'web', 'tent'],
+      spell: ['bed', 'jet', 'web'],
+      pages: [
+        { word: 'bed', line: 'Tap the e in bed.' },
+        { word: 'jet', line: 'Tap the e in jet.' },
+        { word: 'web', line: 'Tap the e in web.' },
+        { word: 'tent', line: 'Tap the e in tent.' },
+      ],
+    },
+    {
+      words: ['map', 'sand', 'pit', 'raft'],
+      spell: ['map', 'sand', 'pit'],
+      pages: [
+        { word: 'map', line: 'Hope has a map.' },
+        { word: 'sand', line: 'Go past the sand.' },
+        { word: 'pit', line: 'Go past the pit.' },
+        { word: 'raft', line: 'Go past the raft.' },
+      ],
+    },
+    {
+      words: ['yak', 'frog', 'king', 'ox'],
+      spell: ['yak', 'frog', 'king'],
+      pages: [
+        { word: 'yak', line: 'Show me the yak.' },
+        { word: 'frog', line: 'Show me the frog.' },
+        { word: 'king', line: 'Show me the king.' },
+        { word: 'ox', line: 'Show me the ox.' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
@@ -956,7 +998,8 @@ function playableLevels(chapterId: string, lessonId: string, lessonOrder: number
     chapterId === 'ch7' ||
     chapterId === 'ch8' ||
     chapterId === 'ch9' ||
-    chapterId === 'ch10'
+    chapterId === 'ch10' ||
+    chapterId === 'ch11'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)

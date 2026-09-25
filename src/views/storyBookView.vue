@@ -95,6 +95,10 @@ const isLast = computed(() => Boolean(story.value) && page.value >= pages.value.
 const storyCount = computed(() => Math.max(1, pages.value.length - 1))
 const storyIndex = computed(() => Math.max(0, page.value - 1))
 const pageLetters = computed(() => story.value?.word.split('') ?? [])
+const markE = computed(() => level.value?.chapterId === 'ch11')
+function isLetterE(ch: string): boolean {
+  return ch.toLowerCase() === 'e'
+}
 const sentenceBits = computed(() =>
   story.value ? splitSentence(story.value.line, story.value.word) : [],
 )
@@ -307,7 +311,12 @@ onUnmounted(() => {
           :aria-label="story.word"
           @click="hearWord(story.word)"
         >
-          <span v-for="(letter, index) in pageLetters" :key="`${story.word}-${index}`" class="cvc-letter">
+          <span
+            v-for="(letter, index) in pageLetters"
+            :key="`${story.word}-${index}`"
+            class="cvc-letter"
+            :class="{ 'e-mark': markE && isLetterE(letter) }"
+          >
             {{ letter }}
           </span>
         </button>
@@ -321,9 +330,25 @@ onUnmounted(() => {
                 :disabled="locked || !sentenceShown"
                 @click.stop="hearWord(story.word)"
               >
-                {{ bit.text }}
+                <template v-if="markE">
+                  <span
+                    v-for="(ch, charIndex) in bit.text"
+                    :key="`focus-${index}-${charIndex}`"
+                    :class="{ 'e-mark': isLetterE(ch) }"
+                  >{{ ch }}</span>
+                </template>
+                <template v-else>{{ bit.text }}</template>
               </button>
-              <span v-else>{{ bit.text }}</span>
+              <span v-else>
+                <template v-if="markE">
+                  <span
+                    v-for="(ch, charIndex) in bit.text"
+                    :key="`rest-${index}-${charIndex}`"
+                    :class="{ 'e-mark': isLetterE(ch) }"
+                  >{{ ch }}</span>
+                </template>
+                <template v-else>{{ bit.text }}</template>
+              </span>
             </template>
           </p>
           <button
@@ -434,6 +459,10 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #ffe7c2 0%, #fffdf3 76%);
 }
 
+.page.cover.ch11 {
+  background: linear-gradient(180deg, #d9f6ef 0%, #fffdf3 76%);
+}
+
 .page.revealed {
   background: linear-gradient(180deg, #fffdf6 0%, #fff8e4 100%);
 }
@@ -501,6 +530,13 @@ onUnmounted(() => {
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: lowercase;
+}
+
+.cvc-letter.e-mark,
+.sentence .e-mark {
+  color: #c2410c;
+  background: #ffd7a8;
+  border-radius: 8px;
 }
 
 .blending .cvc-letter {
