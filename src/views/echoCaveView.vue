@@ -7,6 +7,7 @@ import {
   canUseRecognition,
   createRecognizer,
   looselyHeard,
+  recognitionUnavailable,
 } from '../composables/useRecognition'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, tweenShake, waitAfterStar } from '../composables/useMotion'
@@ -41,7 +42,7 @@ const listening = ref(false)
 const celebrating = ref(false)
 const locked = ref(false)
 const status = ref('Listen, then say it.')
-const micOk = canUseRecognition()
+const micOk = ref(canUseRecognition())
 const cardEl = ref<HTMLElement | null>(null)
 
 const word = computed(() => words[wordIndex.value] ?? words[0])
@@ -105,7 +106,7 @@ function onHeard(transcript: string) {
 }
 
 function startListen() {
-  if (!recognizer || locked.value) return
+  if (!recognizer || !micOk.value || locked.value) return
   try {
     recognizer.start()
     listening.value = true
@@ -121,7 +122,7 @@ async function playCurrent() {
   status.value = '听句子，说一说'
   await speak(word.value)
   await speak(sentence.value)
-  if (micOk) {
+  if (micOk.value) {
     window.setTimeout(() => startListen(), 250)
   } else {
     status.value = '说句子，或点「我说好了」'
@@ -133,6 +134,12 @@ onMounted(() => {
     onResult: onHeard,
     onEnd: () => {
       listening.value = false
+    },
+    onError: (error) => {
+      if (!recognitionUnavailable(error)) return
+      micOk.value = false
+      listening.value = false
+      status.value = '点「我说好了」也可以'
     },
   })
   void playCurrent()

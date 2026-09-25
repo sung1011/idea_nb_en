@@ -10,6 +10,7 @@ import {
   canUseRecognition,
   createRecognizer,
   matchSpokenWord,
+  recognitionUnavailable,
 } from '../composables/useRecognition'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
@@ -164,10 +165,9 @@ onMounted(() => {
       listening.value = false
     },
     onError: (error) => {
-      if (error === 'not-allowed' || error === 'service-not-allowed') {
-        micOk.value = false
-        prompt.value = '点小鱼钓上来，或点 ♪ 先听'
-      }
+      if (!recognitionUnavailable(error)) return
+      micOk.value = false
+      prompt.value = '点小鱼钓上来，或点 ♪ 先听'
     },
   })
   void replayPrompt()

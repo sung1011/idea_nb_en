@@ -1,5 +1,16 @@
 export function canUseRecognition(): boolean {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
   return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
+}
+
+/** Permission, missing mic, or no network: the gate still finishes by tap. */
+export function recognitionUnavailable(error: string): boolean {
+  return (
+    error === 'network' ||
+    error === 'not-allowed' ||
+    error === 'service-not-allowed' ||
+    error === 'audio-capture'
+  )
 }
 
 export function createRecognizer(handlers: {
