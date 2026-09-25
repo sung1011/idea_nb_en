@@ -56,20 +56,33 @@ type DecorVisit = {
   until: number
   started: number
   fired: boolean
+  /** The spoken line for this visit has already played. */
+  said: boolean
+  fromX: number
+  fromY: number
+  firedAt: number
+  pulses: number
 }
 
-type BallMotion = {
+type BallLeg = {
   fromX: number
   fromY: number
   toX: number
   toY: number
   start: number
   until: number
+  apex: number
+}
+
+type BallMotion = {
+  legs: BallLeg[]
+  index: number
   spin0: number
   spin1: number
-  /** A chaser may give one extra nudge during this roll. */
-  nudge: boolean
-  nudged: boolean
+  hopped: Set<string>
+  kickerId: string | null
+  /** How many landings have already squashed and puffed. */
+  landed: number
 }
 
 type Actor = {
@@ -123,6 +136,18 @@ type Actor = {
   /** Degrees, matching the swing seat while a special ride is playing. */
   swingAngle: number
   stretchUntil: number
+  /** Walking to the spot where a kicked ball will rest. Does not kick again. */
+  ballFollow: boolean
+  /** Extra lift in pixels, drawn with transform only. */
+  launchLift: number
+  exitStart: number
+  exitUntil: number
+  exitFromX: number
+  exitFromY: number
+  exitToX: number
+  exitToY: number
+  /** Wake-up stretch is taller than the ordinary one. */
+  bigStretch: boolean
 }
 
 type Decor = {
@@ -135,6 +160,8 @@ type Decor = {
   py: number
   spin: number
   motion: BallMotion | null
+  /** Epoch ms. While this is in the future the ball squishes on landing. */
+  squashUntil: number
 }
 
 type Session = {
@@ -360,13 +387,11 @@ export function createMeadowStage(options: {
       sy = pose.sy
       rot = pose.rot
       lift = pose.lift
-      if (actor.decor.interaction === 'swing' && actor.decor.role === 'special') rot = actor.swingAngle
+      if (actor.decor.interaction === 'swing' && actor.decor.role === 'special' && !actor.decor.fired) {
+        rot = actor.swingAngle
+      }
     }
-    if (now < actor.stretchUntil && actor.mode !== 'drag' && actor.mode !== 'pet') {
-      sx = 0.84
-      sy = 1.26
-      lift = 12
-    }
+    if (actor.launchLift > 0) lift = actor.launchLift
     if (now < actor.popUntil) {
       const k = 1 - (actor.popUntil - now) / 420
       const s = 1 + Math.sin(Math.min(1, Math.max(0, k)) * Math.PI) * 0.18
@@ -392,11 +417,24 @@ export function createMeadowStage(options: {
         lift = (1 - k) * 8
       }
     }
+    if (now < actor.stretchUntil && actor.mode !== 'drag' && actor.mode !== 'pet') {
+      if (actor.bigStretch) {
+        sx = 0.7
+        sy = 1.48
+        lift = 16
+      } else {
+        sx = 0.84
+        sy = 1.26
+        lift = 12
+      }
+    }
     actor.body.style.transform = `translateY(${bob - lift}px) rotate(${rot}deg) scale(${actor.face * sx}, ${sy})`
     actor.shadow.style.transform = `scale(${shadow}, ${shadow * 0.9})`
     actor.shadow.style.opacity = String(shadowOpacity)
     const hungry = animalIsHungry(actor.lastFedAt, options.hungerNow())
     const visit = actor.decor
+    const snooze = visit?.interaction === 'house' && (visit.role === 'idle' || visit.fired)
+    const rosy = visit?.interaction === 'fire' && visit.role === 'special' && visit.said
     actor.el.classList.toggle('is-nap', actor.mode === 'nap')
     actor.el.classList.toggle('is-play', actor.mode === 'play')
     actor.el.classList.toggle('is-dance', actor.mode === 'dance')
@@ -410,7 +448,8 @@ export function createMeadowStage(options: {
     actor.el.classList.toggle('is-ball', visit?.interaction === 'ball')
     actor.el.classList.toggle('is-sniff', visit?.interaction === 'flower')
     actor.el.classList.toggle('is-home', visit?.interaction === 'house')
-    actor.el.classList.toggle('is-snooze', visit?.interaction === 'house')
+    actor.el.classList.toggle('is-snooze', !!snooze)
+    actor.el.classList.toggle('is-rosy', !!rosy)
     actor.el.dataset.hunger = hungry ? 'hungry' : 'full'
     actor.el.dataset.decor = visit?.id ?? ''
     actor.el.dataset.decorRole = visit?.role ?? ''
@@ -837,6 +876,12 @@ export function createMeadowStage(options: {
     if (session || ev.button !== 0 || actor.mode === 'play') return
     ev.preventDefault()
     actor.seeking = null
+    actor.ballFollow = false
+    if (actor.exitUntil > 0) {
+      setFeet(actor, actor.px, actor.py)
+      actor.exitUntil = 0
+      actor.launchLift = 0
+    }
     if (actor.decor && actor.decor.interaction !== 'house') clearDecor(actor)
     actor.el.setPointerCapture(ev.pointerId)
     const now = performance.now()
@@ -908,7 +953,10 @@ export function createMeadowStage(options: {
     img.alt = seed.name
     img.draggable = false
     img.src = meadowSrc(seed.id)
-    body.append(shadow, img)
+    const cheeks = document.createElement('span')
+    cheeks.className = 'meadow-cheeks'
+    cheeks.append(document.createElement('i'), document.createElement('i'))
+    body.append(shadow, img, cheeks)
     el.append(zzz, body)
     field.appendChild(el)
     const actor: Actor = {
@@ -956,6 +1004,15 @@ export function createMeadowStage(options: {
       mallow: null,
       swingAngle: 0,
       stretchUntil: 0,
+      ballFollow: false,
+      launchLift: 0,
+      exitStart: 0,
+      exitUntil: 0,
+      exitFromX: 0,
+      exitFromY: 0,
+      exitToX: 0,
+      exitToY: 0,
+      bigStretch: false,
     }
     actor.el.dataset.hearts = String(seed.hearts)
     syncAccessory(actor, false)
@@ -1008,8 +1065,15 @@ export function createMeadowStage(options: {
 
   function tick(actor: Actor, dt: number, now: number) {
     settleFull(actor, now)
-    if (hungryNow(actor) && (actor.seeking || actor.decor)) {
+    if (actor.bigStretch && now >= actor.stretchUntil) actor.bigStretch = false
+    if (actor.exitUntil > 0 && actor.mode !== 'drag' && actor.mode !== 'pet') {
+      stepExit(actor, now)
+      paint(actor, now)
+      return
+    }
+    if (hungryNow(actor) && (actor.seeking || actor.decor || actor.ballFollow)) {
       actor.seeking = null
+      actor.ballFollow = false
       clearDecor(actor)
       if (actor.mode === 'decor') {
         actor.mode = 'idle'
@@ -1026,25 +1090,8 @@ export function createMeadowStage(options: {
       actor.mode === 'decor'
     if (actor.mode === 'eat' && now >= actor.eatUntil) finishEat(actor, now)
     if (actor.mode === 'decor' && actor.decor) {
-      if (now >= actor.decor.until) endDecor(actor, now)
-      else if (actor.decor.interaction === 'water' && actor.decor.role === 'special' && now - actor.lastSplash > 460) {
-        actor.lastSplash = now
-        const pond = decors.get(actor.decor.id)
-        if (pond) burstSplash(pond, 3)
-      } else if (actor.decor.interaction === 'swing' && actor.decor.role === 'special') {
-        const swing = decors.get(actor.decor.id)
-        if (swing) rideSwing(actor, swing, now)
-      } else if (
-        actor.decor.interaction === 'flower' &&
-        actor.decor.role === 'special' &&
-        !actor.decor.fired &&
-        now - actor.decor.started > 1100
-      ) {
-        actor.decor.fired = true
-        const bed = decors.get(actor.decor.id)
-        if (bed) burstPetals(bed, 12)
-        showDecorLine(actor, bed?.def.line ?? 'Achoo!')
-      }
+      stepDecor(actor, now)
+      if (actor.decor && now >= actor.decor.until) endDecor(actor, now)
     }
     if (!busy && !paused) {
       if (actor.mode === 'walk') {
@@ -1057,10 +1104,15 @@ export function createMeadowStage(options: {
         if (dist < near) {
           if (actor.seeking) {
             const decor = decors.get(actor.seeking)
+            const follow = actor.ballFollow
             actor.seeking = null
-            if (decor?.def.interaction === 'ball' && !hungryNow(actor)) {
+            actor.ballFollow = false
+            if (follow) {
+              actor.mode = 'idle'
+              schedule(actor, now)
+            } else if (decor?.def.interaction === 'ball' && !hungryNow(actor)) {
               const dir = actor.px < decor.px ? 1 : -1
-              kickBall(decor, dir, 0.2, 40, actor, false)
+              launchBall(decor, dir, 0.2, false, actor, true)
               actor.mode = 'idle'
               schedule(actor, now)
             } else if (decor && !hungryNow(actor)) beginDecor(actor, decor, 'idle', now)
@@ -1073,7 +1125,7 @@ export function createMeadowStage(options: {
             schedule(actor, now)
           }
         } else {
-          const step = Math.min(dist, 60 * dt)
+          const step = Math.min(dist, (actor.ballFollow ? 240 : 60) * dt)
           setFeet(actor, actor.px + (dx / dist) * step, actor.py + (dy / dist) * step)
           if (dx > 1.5) actor.face = -1
           else if (dx < -1.5) actor.face = 1
@@ -1197,7 +1249,7 @@ export function createMeadowStage(options: {
     actors.clear()
     for (const decor of decors.values()) decor.el.remove()
     decors.clear()
-    field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note').forEach((node) => node.remove())
+    field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note, .meadow-petal, .meadow-dust, .meadow-splash').forEach((node) => node.remove())
   }
 
   function hitActor(clientX: number, clientY: number): Actor | null {
@@ -1318,26 +1370,57 @@ export function createMeadowStage(options: {
   function decorPose(visit: DecorVisit, now: number) {
     switch (visit.interaction) {
       case 'water':
-        if (visit.role === 'special') {
-          return { bob: Math.sin(now / 180) * 7, sx: 1.14, sy: 0.76, rot: Math.sin(now / 220) * 8, lift: 10 }
-        }
+        if (visit.role === 'special') return waterPose(visit, now)
         return { bob: Math.sin(now / 260) * 2, sx: 1.06, sy: 0.86, rot: 18, lift: 0 }
       case 'fire':
+        if (visit.role === 'special') {
+          return {
+            bob: 0,
+            sx: 1.02,
+            sy: 0.98,
+            rot: Math.sin(now / 180) * 16,
+            lift: Math.abs(Math.sin(now / 180)) * 8,
+          }
+        }
         return { bob: Math.sin(now / 300) * 2, sx: 1.03, sy: 0.94, rot: Math.sin(now / 280) * 5, lift: 0 }
       case 'swing':
-        return visit.role === 'idle'
-          ? { bob: 1, sx: 1.02, sy: 0.9, rot: 0, lift: 4 }
-          : { bob: 0, sx: 1, sy: 0.94, rot: 0, lift: 0 }
+        if (visit.role === 'idle') return { bob: 1, sx: 1.02, sy: 0.9, rot: 0, lift: 4 }
+        return { bob: 0, sx: 1, sy: visit.fired ? 1 : 0.94, rot: 0, lift: 0 }
       case 'ball':
-        return { bob: Math.abs(Math.sin(now / 150)) * 8, sx: 1, sy: 1, rot: 0, lift: 0 }
+        return { bob: 0, sx: 1.12, sy: 0.78, rot: -16, lift: 0 }
       case 'flower':
         if (visit.role === 'special' && visit.fired) {
-          return { bob: 0, sx: 1.18, sy: 0.76, rot: -10, lift: 8 }
+          const spinT = clamp((now - visit.firedAt) / 900, 0, 1)
+          return { bob: 0, sx: 1.05, sy: 0.92, rot: -360 * spinT, lift: Math.sin(spinT * Math.PI) * sprite * 0.62 }
+        }
+        if (visit.role === 'special') {
+          const lean = clamp((now - visit.started) / 500, 0, 1)
+          return { bob: Math.sin(now / 280) * 1.5, sx: 1.04, sy: 0.9, rot: 28 * lean, lift: 0 }
         }
         return { bob: Math.sin(now / 220) * 2, sx: 1.04, sy: 0.92, rot: 18, lift: 0 }
       case 'house':
+        if (visit.role === 'special' && !visit.fired) return { bob: 0, sx: 0.92, sy: 1.08, rot: 12, lift: 0 }
         return { bob: Math.sin(now / 520) * 1.2, sx: 0.56, sy: 0.5, rot: 0, lift: 2 }
     }
+  }
+
+  function waterPose(visit: DecorVisit, now: number) {
+    const elapsed = now - visit.started
+    if (elapsed < 700) return { bob: 0, sx: 1, sy: 1, rot: 0, lift: 0 }
+    if (elapsed < 1300) {
+      const k = (elapsed - 700) / 600
+      return k < 0.72
+        ? { bob: 0, sx: 0.86, sy: 1.18, rot: k * 18, lift: 0 }
+        : { bob: 0, sx: 1.28, sy: 0.68, rot: 8, lift: 0 }
+    }
+    if (elapsed < 1900) {
+      const k = (elapsed - 1300) / 600
+      return k < 0.4
+        ? { bob: 0, sx: 1.22, sy: 0.5, rot: 0, lift: 0 }
+        : { bob: 0, sx: 0.92, sy: 1.24, rot: -6, lift: 0 }
+    }
+    if (elapsed < 2700) return { bob: 0, sx: 1.04, sy: 0.94, rot: 0, lift: 0 }
+    return { bob: 0, sx: 1.06, sy: 0.9, rot: Math.sin(now / 60) * 16, lift: Math.abs(Math.sin(now / 60)) * 4 }
   }
 
   function layoutDecor(decor: Decor) {
@@ -1357,9 +1440,16 @@ export function createMeadowStage(options: {
       setFeet(actor, decor.px, decor.py - size * 0.38)
       return
     }
+    if (decor.def.interaction === 'water' && role === 'special') {
+      const side: 1 | -1 = actor.px < decor.px ? -1 : 1
+      setFeet(actor, decor.px + side * sprite * 1.45, decor.py + sprite * 0.04)
+      actor.face = side === 1 ? 1 : -1
+      return
+    }
     if (decor.def.interaction === 'house') {
       const size = decorSize(decor)
-      setFeet(actor, decor.px, decor.py - size * 0.2)
+      if (role === 'special') setFeet(actor, decor.px, decor.py + sprite * 0.55)
+      else setFeet(actor, decor.px, decor.py - size * 0.2)
       return
     }
     const where = anchorKind(decor.def.interaction, role)
@@ -1380,9 +1470,12 @@ export function createMeadowStage(options: {
   function decorDuration(interaction: MeadowDecorInteraction, role: DecorRole) {
     if (interaction === 'house') return 30000
     if (interaction === 'swing' && role === 'idle') return 2400
-    if (interaction === 'swing') return 4600
+    if (interaction === 'swing') return 3700
     if (interaction === 'flower' && role === 'idle') return 2400
-    if (interaction === 'flower') return 3200
+    if (interaction === 'flower') return 3400
+    if (interaction === 'ball') return 560
+    if (interaction === 'water' && role === 'special') return 3800
+    if (interaction === 'fire' && role === 'special') return 3200
     return 4200
   }
 
@@ -1396,13 +1489,41 @@ export function createMeadowStage(options: {
   function wakeHouse(actor: Actor, now: number) {
     const decor = actor.decor ? decors.get(actor.decor.id) : null
     const line = decor?.def.wakeLine ?? 'Good morning!'
+    const fromX = actor.px
+    const fromY = actor.py
     clearDecor(actor)
-    if (decor) setFeet(actor, decor.px, decor.py + sprite * 0.16)
-    actor.stretchUntil = now + 780
     actor.mode = 'idle'
     actor.swingAngle = 0
+    actor.bigStretch = false
+    if (decor) {
+      actor.exitStart = now
+      actor.exitUntil = now + 1100
+      actor.exitFromX = fromX
+      actor.exitFromY = fromY
+      actor.exitToX = decor.px
+      actor.exitToY = decor.py + sprite * 0.42
+    } else {
+      actor.bigStretch = true
+      actor.stretchUntil = now + 900
+    }
     schedule(actor, now)
     showDecorLine(actor, line)
+  }
+
+  function stepExit(actor: Actor, now: number) {
+    const span = Math.max(1, actor.exitUntil - actor.exitStart)
+    const p = clamp((now - actor.exitStart) / span, 0, 1)
+    const x = actor.exitFromX + (actor.exitToX - actor.exitFromX) * p
+    const y = actor.exitFromY + (actor.exitToY - actor.exitFromY) * Math.min(1, p / 0.7)
+    glideFeet(actor, x, y)
+    actor.launchLift = arcLift(p, sprite * 0.72)
+    if (p >= 1) {
+      setFeet(actor, actor.exitToX, actor.exitToY)
+      actor.launchLift = 0
+      actor.exitUntil = 0
+      actor.bigStretch = true
+      actor.stretchUntil = now + 900
+    }
   }
 
   function rideSwing(actor: Actor, decor: Decor, now: number) {
@@ -1440,12 +1561,18 @@ export function createMeadowStage(options: {
     const visit = actor.decor
     actor.decor = null
     actor.swingAngle = 0
+    actor.launchLift = 0
+    actor.el.classList.remove('is-rosy')
     hideMallow(actor)
-    if (visit?.interaction !== 'swing') return
+    if (!visit) return
     const decor = decors.get(visit.id)
     if (!decor) return
+    if (visit.interaction === 'fire') decor.el.classList.remove('is-flaring')
+    if (visit.interaction === 'flower') decor.el.classList.remove('is-shaking')
+    if (visit.interaction === 'house') decor.el.classList.remove('is-snoozing')
+    if (visit.interaction !== 'swing') return
     const stillRiding = [...actors.values()].some(
-      (other) => other.decor?.id === decor.id && other.decor.role === 'special',
+      (other) => other.decor?.id === decor.id && other.decor.role === 'special' && !other.decor.fired,
     )
     if (!stillRiding) {
       decor.el.classList.remove('is-swinging')
@@ -1453,68 +1580,110 @@ export function createMeadowStage(options: {
     }
   }
 
-  function burstSplash(decor: Decor, count = 6) {
+  function burstSplash(decor: Decor, count = 6, big = false) {
+    const spread = big ? sprite * 0.95 : sprite * 0.55
+    const rise = big ? 78 : 30
     for (let i = 0; i < count; i += 1) {
       const drop = document.createElement('i')
-      drop.className = 'meadow-splash'
-      drop.style.left = `${decor.px + (Math.random() - 0.5) * sprite * 0.55}px`
-      drop.style.top = `${decor.py - sprite * 0.32}px`
-      drop.style.setProperty('--dx', `${(Math.random() - 0.5) * 40}px`)
-      drop.style.setProperty('--dy', `${-16 - Math.random() * 30}px`)
+      drop.className = big ? 'meadow-splash is-big' : 'meadow-splash'
+      drop.style.left = `${decor.px + (Math.random() - 0.5) * spread}px`
+      drop.style.top = `${decor.py - sprite * (big ? 0.2 : 0.32)}px`
+      drop.style.setProperty('--dx', `${(Math.random() - 0.5) * (big ? 110 : 40)}px`)
+      drop.style.setProperty('--dy', `${-(big ? 28 : 16) - Math.random() * rise}px`)
       field.appendChild(drop)
       drop.addEventListener('animationend', () => drop.remove())
     }
   }
 
-  function spawnRipple(decor: Decor) {
+  function flingDrops(actor: Actor, count = 6) {
+    for (let i = 0; i < count; i += 1) {
+      const drop = document.createElement('i')
+      drop.className = 'meadow-splash'
+      drop.style.left = `${actor.px + (Math.random() - 0.5) * sprite * 0.5}px`
+      drop.style.top = `${actor.py - sprite * 0.55}px`
+      drop.style.setProperty('--dx', `${(Math.random() - 0.5) * 96}px`)
+      drop.style.setProperty('--dy', `${-18 - Math.random() * 54}px`)
+      field.appendChild(drop)
+      drop.addEventListener('animationend', () => drop.remove())
+    }
+  }
+
+  function spawnRipple(decor: Decor, wide = false) {
     const ripple = document.createElement('i')
-    ripple.className = 'meadow-ripple'
+    ripple.className = wide ? 'meadow-ripple is-wide' : 'meadow-ripple'
     decor.el.appendChild(ripple)
     ripple.addEventListener('animationend', () => ripple.remove())
   }
 
-  function spawnSparks(decor: Decor) {
-    for (let i = 0; i < 5; i += 1) {
+  function spawnSparks(decor: Decor, tall = false) {
+    const count = tall ? 8 : 5
+    for (let i = 0; i < count; i += 1) {
       const spark = document.createElement('i')
-      spark.className = 'meadow-spark'
+      spark.className = tall ? 'meadow-spark is-tall' : 'meadow-spark'
       spark.style.left = `${40 + Math.random() * 20}%`
-      spark.style.top = `${28 + Math.random() * 16}%`
-      spark.style.setProperty('--dx', `${(Math.random() - 0.5) * 30}px`)
-      spark.style.setProperty('--dy', `${-14 - Math.random() * 26}px`)
+      spark.style.top = `${tall ? 18 : 28 + Math.random() * 16}%`
+      spark.style.setProperty('--dx', `${(Math.random() - 0.5) * (tall ? 48 : 30)}px`)
+      spark.style.setProperty('--dy', `${tall ? -40 - Math.random() * 62 : -14 - Math.random() * 26}px`)
       decor.el.appendChild(spark)
       spark.addEventListener('animationend', () => spark.remove())
     }
   }
 
+  function makeVisit(actor: Actor, decor: Decor, role: DecorRole, now: number): DecorVisit {
+    return {
+      id: decor.id,
+      interaction: decor.def.interaction,
+      role,
+      started: now,
+      fired: false,
+      said: false,
+      fromX: actor.px,
+      fromY: actor.py,
+      firedAt: 0,
+      pulses: 0,
+      until: now + decorDuration(decor.def.interaction, role),
+    }
+  }
+
   function beginDecor(actor: Actor, decor: Decor, role: DecorRole, now: number) {
     actor.seeking = null
+    actor.ballFollow = false
     if (decor.def.interaction === 'ball') {
       const dir = actor.px <= decor.px ? 1 : -1
-      kickBall(decor, dir, -0.05, role === 'special' ? 120 : 42, actor, role === 'special')
-      hop(actor, now, 280)
+      if (role !== 'special') {
+        launchBall(decor, dir, -0.05, false, actor, true)
+        hop(actor, now, 280)
+        return
+      }
+      actor.decor = makeVisit(actor, decor, role, now)
+      actor.mode = 'decor'
+      actor.poseUntil = actor.decor.until
+      actor.face = dir > 0 ? -1 : 1
+      actor.launchLift = 0
+      hideMallow(actor)
       return
     }
     if (decor.def.interaction === 'house' && houseOccupant(decor.id, actor)) {
       hop(actor, now, 320)
       return
     }
-    const quiet = (decor.def.interaction === 'flower') || (decor.def.interaction === 'swing' && role === 'idle')
-    actor.decor = {
-      id: decor.id,
-      interaction: decor.def.interaction,
-      role,
-      started: now,
-      fired: false,
-      until: now + decorDuration(decor.def.interaction, role),
-    }
+    const quiet =
+      decor.def.interaction === 'flower' ||
+      decor.def.interaction === 'swing' ||
+      (decor.def.interaction === 'water' && role === 'special') ||
+      (decor.def.interaction === 'fire' && role === 'special') ||
+      (decor.def.interaction === 'house' && role === 'special')
+    actor.decor = makeVisit(actor, decor, role, now)
     actor.mode = 'decor'
     actor.poseUntil = actor.decor.until
     actor.swingAngle = 0
+    actor.launchLift = 0
     placeForDecor(actor, decor, role)
+    actor.decor.fromX = actor.px
+    actor.decor.fromY = actor.py
     if (decor.def.interaction === 'fire' && role === 'special') showMallow(actor)
     else hideMallow(actor)
     if (!quiet) showDecorLine(actor, decor.def.line)
-    if (decor.def.interaction === 'water' && role === 'special') burstSplash(decor)
   }
 
   function endDecor(actor: Actor, now: number) {
@@ -1525,19 +1694,29 @@ export function createMeadowStage(options: {
       return
     }
     const decor = visit ? decors.get(visit.id) : null
+    const role = visit?.role
+    const interaction = visit?.interaction
     clearDecor(actor)
     actor.swingAngle = 0
+    actor.launchLift = 0
     if (decor?.def.interaction === 'swing') {
       decor.el.classList.remove('is-swinging')
       decor.el.style.removeProperty('--swing')
     }
     actor.nextVisitAt = now + visitDelay()
-    if (visit?.interaction === 'water' && visit.role === 'special') {
-      if (decor) setFeet(actor, decor.px, decor.py + sprite * 0.62)
-      hop(actor, now, 420)
+    if (interaction === 'swing' && role === 'special') {
+      setFeet(actor, actor.px, actor.py)
+      actor.mode = 'idle'
+      schedule(actor, now)
       return
     }
-    if (visit?.interaction === 'swing' && decor) {
+    if (interaction === 'water' && role === 'special') {
+      setFeet(actor, actor.px, actor.py)
+      actor.mode = 'idle'
+      schedule(actor, now)
+      return
+    }
+    if (interaction === 'swing' && decor) {
       setFeet(actor, decor.px, decor.py + sprite * 0.08)
       hop(actor, now, 360)
       return
@@ -1679,103 +1858,452 @@ export function createMeadowStage(options: {
     options.onDecorLine(line)
   }
 
-  function burstPetals(decor: Decor, count: number) {
+  function burstPetals(decor: Decor, count: number, drift = false) {
     const colors = ['#ff8fab', '#ffd166', '#fff4ea', '#c9b6ff']
     for (let i = 0; i < count; i += 1) {
       const petal = document.createElement('i')
-      petal.className = 'meadow-petal'
+      petal.className = drift ? 'meadow-petal is-drift' : 'meadow-petal'
       petal.style.left = `${decor.px + (Math.random() - 0.5) * sprite * 0.4}px`
       petal.style.top = `${decor.py - sprite * 0.35}px`
       petal.style.background = colors[i % colors.length] ?? '#ff8fab'
-      petal.style.setProperty('--dx', `${(Math.random() - 0.5) * 70}px`)
-      petal.style.setProperty('--dy', `${-20 - Math.random() * 48}px`)
-      petal.style.setProperty('--rot', `${Math.random() * 180 - 90}deg`)
+      const dir = Math.random() < 0.5 ? -1 : 1
+      if (drift) {
+        petal.style.setProperty('--dx', `${dir * (fieldW * 0.28 + Math.random() * fieldW * 0.5)}px`)
+        petal.style.setProperty('--dy', `${-40 + Math.random() * fieldH * 0.42}px`)
+        petal.style.setProperty('--rot', `${dir * (220 + Math.random() * 380)}deg`)
+      } else {
+        petal.style.setProperty('--dx', `${(Math.random() - 0.5) * 70}px`)
+        petal.style.setProperty('--dy', `${-20 - Math.random() * 48}px`)
+        petal.style.setProperty('--rot', `${Math.random() * 180 - 90}deg`)
+      }
       field.appendChild(petal)
       petal.addEventListener('animationend', () => petal.remove())
     }
   }
 
-  function kickBall(decor: Decor, dirX: number, dirY: number, distance: number, speaker: Actor | null, chase: boolean, speak = true) {
+  function burstDust(x: number, y: number) {
+    for (let i = 0; i < 3; i += 1) {
+      const puff = document.createElement('i')
+      puff.className = 'meadow-dust'
+      puff.style.left = `${x + (i - 1) * 6}px`
+      puff.style.top = `${y}px`
+      puff.style.setProperty('--dx', `${(i - 1) * 16}px`)
+      puff.style.setProperty('--dy', `${-8 - Math.random() * 12}px`)
+      field.appendChild(puff)
+      puff.addEventListener('animationend', () => puff.remove())
+    }
+  }
+
+  function arcLift(p: number, height: number) {
+    if (p < 0.62) return Math.sin((p / 0.62) * Math.PI) * height
+    return Math.sin(((p - 0.62) / 0.38) * Math.PI) * height * 0.38
+  }
+
+  function meadowBox() {
+    return {
+      minX: fieldW * 0.12,
+      maxX: fieldW * 0.88,
+      minY: fieldH * 0.34,
+      maxY: fieldH * 0.9,
+    }
+  }
+
+  function launchBall(
+    decor: Decor,
+    dirX: number,
+    dirY: number,
+    big: boolean,
+    speaker: Actor | null,
+    speak: boolean,
+  ) {
+    const box = meadowBox()
+    const count = big ? 3 : 2
     const len = Math.hypot(dirX, dirY) || 1
-    const travel = Math.max(28, distance)
-    const destX = clamp(decor.px + (dirX / len) * travel, fieldW * 0.14, fieldW * 0.86)
-    const destY = clamp(decor.py + (dirY / len) * travel * 0.65, fieldH * 0.32, fieldH * 0.88)
+    let vx = (dirX / len) * fieldW * (big ? 0.85 : 0.42)
+    let vy = (dirY / len) * fieldH * (big ? 0.48 : 0.22)
+    if (Math.abs(vy) < fieldH * 0.12) vy = Math.sign(vy || -1) * fieldH * (big ? 0.32 : 0.16)
+    let x = decor.px
+    let y = decor.py
     const now = performance.now()
-    const spins = distance > 70 ? 360 : 180
+    const legs: BallLeg[] = []
+    let t = now
+    for (let i = 0; i < count; i += 1) {
+      const dur = Math.round((big ? 820 : 560) * 0.75 ** i)
+      const apex = sprite * (big ? 1.65 : 0.7) * 0.48 ** i
+      let nx = x + vx
+      let ny = y + vy
+      if (nx < box.minX || nx > box.maxX) {
+        const hit = nx < box.minX ? box.minX : box.maxX
+        nx = hit + (hit - nx)
+        vx = -vx * 0.7
+      } else vx *= 0.7
+      if (ny < box.minY || ny > box.maxY) {
+        const hit = ny < box.minY ? box.minY : box.maxY
+        ny = hit + (hit - ny)
+        vy = -vy * 0.7
+      } else vy *= 0.7
+      nx = clamp(nx, box.minX, box.maxX)
+      ny = clamp(ny, box.minY, box.maxY)
+      legs.push({ fromX: x, fromY: y, toX: nx, toY: ny, start: t, until: t + dur, apex })
+      t += dur
+      x = nx
+      y = ny
+    }
+    const signX = Math.sign(dirX) || 1
     decor.motion = {
-      fromX: decor.px,
-      fromY: decor.py,
-      toX: destX,
-      toY: destY,
-      start: now,
-      until: now + (distance > 70 ? 720 : 460),
+      legs,
+      index: 0,
       spin0: decor.spin,
-      spin1: decor.spin + Math.sign(dirX || 1) * spins,
-      nudge: chase,
-      nudged: false,
+      spin1: decor.spin + signX * (big ? 1080 : 540),
+      hopped: new Set(),
+      kickerId: speaker?.id ?? null,
+      landed: 0,
     }
     decor.el.dataset.kicking = '1'
     if (speak) {
       if (speaker) showDecorLine(speaker, decor.def.line)
       else looseLine(decor, decor.def.line)
     }
-    if (!chase) return
-    const hunters = [...actors.values()]
-      .filter((actor) => {
-        if (actor === speaker || hungryNow(actor)) return false
-        if (actor.decor || actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'eat' || actor.mode === 'play' || actor.mode === 'dance') {
-          return false
-        }
-        return Math.hypot(actor.px - decor.px, actor.py - decor.py) < 260
-      })
-      .sort((a, b) => Math.hypot(a.px - decor.px, a.py - decor.py) - Math.hypot(b.px - decor.px, b.py - decor.py))
-      .slice(0, 2)
-    for (const actor of hunters) {
-      actor.seeking = decor.id
-      actor.mode = 'walk'
-      actor.walkTx = clamp((destX / fieldW) * 100, 8, 92)
-      actor.walkTy = clamp((destY / fieldH) * 100, 24, 90)
-      actor.hopUntil = 0
+    return { x, y }
+  }
+
+  function squashBall(decor: Decor, now: number) {
+    decor.squashUntil = now + 140
+    burstDust(decor.px, decor.py)
+  }
+
+  function paintSquash(decor: Decor, now: number) {
+    if (!decor.squashUntil) return
+    if (now >= decor.squashUntil) {
+      decor.squashUntil = 0
+      decor.el.style.setProperty('--squash-x', '1')
+      decor.el.style.setProperty('--squash-y', '1')
+      return
     }
+    const k = (decor.squashUntil - now) / 140
+    decor.el.style.setProperty('--squash-x', String(1 + 0.35 * k))
+    decor.el.style.setProperty('--squash-y', String(1 - 0.38 * k))
+  }
+
+  function hopNearBall(decor: Decor, motion: BallMotion, now: number) {
+    const reach = sprite * 1.2
+    for (const actor of actors.values()) {
+      if (motion.hopped.has(actor.id) || actor.id === motion.kickerId) continue
+      if (hungryNow(actor) || actor.ballFollow || actor.decor) continue
+      if (
+        actor.mode === 'drag' ||
+        actor.mode === 'pet' ||
+        actor.mode === 'play' ||
+        actor.mode === 'eat' ||
+        actor.mode === 'decor'
+      ) {
+        continue
+      }
+      if (Math.hypot(actor.px - decor.px, actor.py - decor.py) < reach) {
+        motion.hopped.add(actor.id)
+        hop(actor, now, 380)
+      }
+    }
+  }
+
+  function settleBall(decor: Decor) {
+    decor.motion = null
+    decor.el.dataset.kicking = '0'
+    decor.el.style.setProperty('--bounce', '0px')
+    decor.el.style.setProperty('--shade', '1')
+    options.onSaveDecor(decor.id, Math.round(decor.x * 10) / 10, Math.round(decor.y * 10) / 10)
   }
 
   function tickDecors(now: number) {
     for (const decor of decors.values()) {
+      paintSquash(decor, now)
       const motion = decor.motion
-      if (!motion) continue
-      const span = Math.max(1, motion.until - motion.start)
-      const p = clamp((now - motion.start) / span, 0, 1)
-      const ease = 1 - (1 - p) * (1 - p)
-      const bounce = Math.sin(p * Math.PI) * Math.min(18, sprite * 0.22)
-      decor.px = motion.fromX + (motion.toX - motion.fromX) * ease
-      decor.py = motion.fromY + (motion.toY - motion.fromY) * ease
+      if (!motion || !motion.legs.length) continue
+      while (motion.index < motion.legs.length - 1 && now >= motion.legs[motion.index]!.until) {
+        const done = motion.legs[motion.index]!
+        decor.px = done.toX
+        decor.py = done.toY
+        if (motion.landed <= motion.index) {
+          motion.landed = motion.index + 1
+          squashBall(decor, now)
+        }
+        motion.index += 1
+      }
+      const leg = motion.legs[motion.index]
+      if (!leg) {
+        settleBall(decor)
+        continue
+      }
+      const span = Math.max(1, leg.until - leg.start)
+      const p = clamp((now - leg.start) / span, 0, 1)
+      const height = Math.sin(p * Math.PI) * leg.apex
+      decor.px = leg.fromX + (leg.toX - leg.fromX) * p
+      decor.py = leg.fromY + (leg.toY - leg.fromY) * p
       decor.x = clamp((decor.px / fieldW) * 100, 8, 92)
       decor.y = clamp((decor.py / fieldH) * 100, 24, 90)
-      decor.spin = motion.spin0 + (motion.spin1 - motion.spin0) * p
+      const first = motion.legs[0]!
+      const last = motion.legs[motion.legs.length - 1]!
+      const spinP = clamp((now - first.start) / Math.max(1, last.until - first.start), 0, 1)
+      decor.spin = motion.spin0 + (motion.spin1 - motion.spin0) * spinP
       layoutDecor(decor)
-      decor.el.style.setProperty('--bounce', `${-bounce}px`)
+      decor.el.style.setProperty('--bounce', `${-height}px`)
       decor.el.style.setProperty('--spin', `${decor.spin}deg`)
-      if (motion.nudge && !motion.nudged) {
-        for (const actor of actors.values()) {
-          if (actor.seeking !== decor.id || hungryNow(actor)) continue
-          actor.walkTx = decor.x
-          actor.walkTy = decor.y
-          if (Math.hypot(actor.px - decor.px, actor.py - decor.py) < 52) {
-            motion.nudged = true
-            actor.seeking = null
-            hop(actor, now, 260)
-            const dir = actor.px < decor.px ? 1 : -1
-            kickBall(decor, dir, 0.25, 52, null, false, false)
-            break
-          }
+      decor.el.style.setProperty('--shade', String(clamp(1 - height / (sprite * 1.8), 0.28, 1)))
+      hopNearBall(decor, motion, now)
+      if (p >= 1 && motion.index === motion.legs.length - 1 && decor.motion === motion) {
+        decor.px = leg.toX
+        decor.py = leg.toY
+        decor.x = clamp((decor.px / fieldW) * 100, 8, 92)
+        decor.y = clamp((decor.py / fieldH) * 100, 24, 90)
+        layoutDecor(decor)
+        if (motion.landed <= motion.index) {
+          motion.landed = motion.index + 1
+          squashBall(decor, now)
         }
+        settleBall(decor)
       }
-      if (p >= 1 && decor.motion === motion) {
-        decor.motion = null
-        decor.el.dataset.kicking = '0'
-        decor.el.style.setProperty('--bounce', '0px')
-        options.onSaveDecor(decor.id, Math.round(decor.x * 10) / 10, Math.round(decor.y * 10) / 10)
+    }
+  }
+
+  function hopNearby(origin: Actor, x: number, y: number, now: number, radius: number) {
+    for (const other of actors.values()) {
+      if (other === origin || hungryNow(other) || other.decor) continue
+      if (
+        other.mode === 'drag' ||
+        other.mode === 'pet' ||
+        other.mode === 'play' ||
+        other.mode === 'eat' ||
+        other.mode === 'decor' ||
+        other.mode === 'hop'
+      ) {
+        continue
       }
+      if (Math.hypot(other.px - x, other.py - y) < radius) hop(other, now, 420)
+    }
+  }
+
+  function sparkle(actor: Actor) {
+    actor.el.classList.add('is-gleam')
+    const who = actor
+    later(() => {
+      if (gleamActor !== who) who.el.classList.remove('is-gleam')
+    }, 1200)
+  }
+
+  function stepDecor(actor: Actor, now: number) {
+    const visit = actor.decor
+    if (!visit) return
+    const decor = decors.get(visit.id)
+    if (!decor) return
+    actor.launchLift = 0
+    switch (visit.interaction) {
+      case 'ball':
+        stepBallWindup(actor, decor, now)
+        break
+      case 'swing':
+        stepSwing(actor, decor, now)
+        break
+      case 'flower':
+        stepFlower(actor, decor, now)
+        break
+      case 'water':
+        stepWater(actor, decor, now)
+        break
+      case 'fire':
+        stepFire(actor, decor, now)
+        break
+      case 'house':
+        stepHouse(actor, decor, now)
+        break
+    }
+  }
+
+  function stepBallWindup(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit || visit.fired) return
+    const dir = actor.face === -1 ? 1 : -1
+    const t = clamp((now - visit.started) / 420, 0, 1)
+    glideFeet(actor, visit.fromX - dir * sprite * 0.55 * t, visit.fromY)
+    if (t < 1) return
+    visit.fired = true
+    const rest = launchBall(decor, dir, -0.15, true, actor, true)
+    clearDecor(actor)
+    actor.ballFollow = true
+    actor.seeking = decor.id
+    actor.mode = 'walk'
+    actor.walkTx = clamp(((rest.x - dir * sprite * 0.75) / fieldW) * 100, 8, 92)
+    actor.walkTy = clamp((rest.y / fieldH) * 100, 24, 90)
+    actor.hopUntil = 0
+  }
+
+  function stepSwing(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit) return
+    if (visit.role !== 'special') {
+      rideSwing(actor, decor, now)
+      return
+    }
+    const swingMs = 2600
+    const elapsed = now - visit.started
+    const size = decorSize(decor)
+    const pivotX = decor.px
+    const pivotY = decor.py - size * 0.94
+    const arm = size * 0.58
+    if (elapsed < swingMs) {
+      const peaks = (elapsed / swingMs) * 3
+      const amp = ((28 + peaks * 54) * Math.PI) / 180
+      const angle = Math.sin(peaks * Math.PI) * amp
+      actor.swingAngle = (angle * 180) / Math.PI
+      glideFeet(actor, pivotX + Math.sin(angle) * arm, pivotY + Math.cos(angle) * arm)
+      decor.el.classList.add('is-swinging')
+      decor.el.style.setProperty('--swing', `${actor.swingAngle}deg`)
+      if (!visit.said && peaks >= 2.35) {
+        visit.said = true
+        showDecorLine(actor, decor.def.line)
+      }
+      return
+    }
+    if (!visit.fired) {
+      visit.fired = true
+      visit.fromX = actor.px
+      visit.fromY = actor.py
+      actor.swingAngle = 0
+      decor.el.classList.remove('is-swinging')
+      decor.el.style.removeProperty('--swing')
+    }
+    const lp = clamp((elapsed - swingMs) / 1100, 0, 1)
+    const ground = decor.py + sprite * 0.02
+    const x = visit.fromX + sprite * 2.1 * (1 - (1 - lp) * (1 - lp))
+    const y = visit.fromY + (ground - visit.fromY) * Math.min(1, lp / 0.55)
+    glideFeet(actor, x, y)
+    actor.launchLift = arcLift(lp, sprite * 1.05)
+    actor.face = -1
+    if (!visit.pulses && lp >= 0.58) {
+      visit.pulses = 1
+      sparkle(actor)
+    }
+  }
+
+  function stepFlower(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit || visit.role !== 'special' || visit.fired) return
+    if (now - visit.started < 1400) return
+    visit.fired = true
+    visit.firedAt = now
+    burstPetals(decor, 18, true)
+    decor.el.classList.add('is-shaking')
+    const bed = decor.el
+    later(() => bed.classList.remove('is-shaking'), 700)
+    showDecorLine(actor, decor.def.line)
+  }
+
+  function stepWater(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit || visit.role !== 'special') return
+    const elapsed = now - visit.started
+    const side: 1 | -1 = visit.fromX < decor.px ? -1 : 1
+    const edgeX = decor.px + side * sprite * 0.42
+    const edgeY = decor.py
+    if (elapsed < 700) {
+      const p = elapsed / 700
+      const n = p < 0.5 ? 0 : 1
+      const local = p < 0.5 ? p / 0.5 : (p - 0.5) / 0.5
+      const prev = n === 0 ? 0 : 0.38
+      const next = n === 0 ? 0.38 : 1
+      const along = prev + (next - prev) * local
+      glideFeet(
+        actor,
+        visit.fromX + (edgeX - visit.fromX) * along,
+        visit.fromY + (edgeY - visit.fromY) * along,
+      )
+      actor.launchLift = Math.sin(local * Math.PI) * sprite * 0.22
+      return
+    }
+    if (elapsed < 1300) {
+      const k = (elapsed - 700) / 600
+      glideFeet(actor, edgeX + (decor.px - edgeX) * k, edgeY + (decor.py - edgeY) * Math.min(1, k))
+      actor.launchLift = Math.sin(k * Math.PI) * sprite * 1.25
+      return
+    }
+    if (!visit.fired) {
+      visit.fired = true
+      visit.firedAt = now
+      showDecorLine(actor, decor.def.line)
+      burstSplash(decor, 16, true)
+      spawnRipple(decor, true)
+      later(() => spawnRipple(decor, true), 150)
+      later(() => spawnRipple(decor, true), 300)
+      playWater()
+      hopNearby(actor, decor.px, decor.py, now, sprite * 2.4)
+    }
+    if (elapsed < 1900) {
+      const k = (elapsed - 1300) / 600
+      glideFeet(actor, decor.px, decor.py - sprite * 0.04)
+      actor.launchLift = k < 0.45 ? 2 : Math.sin(((k - 0.45) / 0.55) * Math.PI) * sprite * 0.55
+      return
+    }
+    const outX = decor.px + side * sprite * 0.9
+    const outY = decor.py + sprite * 0.08
+    if (elapsed < 2700) {
+      const k = (elapsed - 1900) / 800
+      glideFeet(actor, decor.px + (outX - decor.px) * k, decor.py + (outY - decor.py) * k)
+      actor.launchLift = Math.sin(k * Math.PI) * sprite * 0.38
+      return
+    }
+    glideFeet(actor, outX, outY)
+    actor.launchLift = 0
+    const shakeTick = Math.floor((elapsed - 2700) / 220)
+    if (shakeTick > visit.pulses && shakeTick < 4) {
+      visit.pulses = shakeTick
+      flingDrops(actor, 5)
+    }
+  }
+
+  function stepFire(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit || visit.role !== 'special') return
+    if (!visit.fired && now - visit.started > 80) {
+      visit.fired = true
+      decor.el.classList.add('is-flaring')
+      spawnSparks(decor, true)
+      later(() => spawnSparks(decor, true), 420)
+      later(() => spawnSparks(decor, true), 880)
+    }
+    if (!visit.said && now - visit.started > 400) {
+      visit.said = true
+      showDecorLine(actor, decor.def.line)
+    }
+  }
+
+  function stepHouse(actor: Actor, decor: Decor, now: number) {
+    const visit = actor.decor
+    if (!visit) return
+    if (visit.role !== 'special') {
+      decor.el.classList.add('is-snoozing')
+      return
+    }
+    const elapsed = now - visit.started
+    const size = decorSize(decor)
+    const doorX = decor.px
+    const doorY = decor.py - size * 0.2
+    if (elapsed < 900) {
+      const p = elapsed / 900
+      glideFeet(
+        actor,
+        visit.fromX + (doorX - visit.fromX) * p,
+        visit.fromY + (doorY - visit.fromY) * Math.min(1, p * 1.15),
+      )
+      actor.launchLift = Math.sin(Math.min(1, p * 1.2) * Math.PI) * sprite * 0.45
+      if (!visit.said && p >= 0.45) {
+        visit.said = true
+        showDecorLine(actor, decor.def.line)
+      }
+      return
+    }
+    if (!visit.fired) {
+      visit.fired = true
+      decor.el.classList.add('is-snoozing')
+      setFeet(actor, doorX, doorY)
     }
   }
 
@@ -1792,7 +2320,7 @@ export function createMeadowStage(options: {
     }
     if (decor.def.interaction === 'ball') {
       const dir = Math.random() < 0.5 ? -1 : 1
-      kickBall(decor, dir, Math.random() * 0.4 - 0.1, 110, null, true)
+      launchBall(decor, dir, Math.random() * 0.4 - 0.1, false, null, true)
       return
     }
     if (decor.def.interaction === 'flower') {
@@ -1862,9 +2390,14 @@ export function createMeadowStage(options: {
     const guide = document.createElement('i')
     guide.className = 'meadow-hit-guide'
     el.append(ring, fit, bubble, guide)
+    if (def.interaction === 'ball') {
+      const shade = document.createElement('i')
+      shade.className = 'meadow-ball-shadow'
+      el.insertBefore(shade, fit)
+    }
     if (hitGuides) el.classList.add('is-hit-guide')
     field.appendChild(el)
-    const decor: Decor = { id: def.id, def, el, x: item.x, y: item.y, px: 0, py: 0, spin: 0, motion: null }
+    const decor: Decor = { id: def.id, def, el, x: item.x, y: item.y, px: 0, py: 0, spin: 0, motion: null, squashUntil: 0 }
     decors.set(def.id, decor)
     layoutDecor(decor)
     if (drop) el.addEventListener('animationend', () => el.classList.remove('is-dropping'), { once: true })

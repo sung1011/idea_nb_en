@@ -1232,6 +1232,36 @@ function onHatched() {
   display: block;
 }
 
+.meadow-actor.is-snooze .meadow-zzz {
+  font-size: 22px;
+  animation: meadow-zzz-big 1.6s ease-in-out infinite;
+}
+
+.meadow-cheeks {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 34%;
+  height: 16%;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.meadow-cheeks i {
+  width: 28%;
+  height: 80%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 112, 138, 0.92), rgba(255, 112, 138, 0));
+}
+
+.meadow-actor.is-rosy .meadow-cheeks {
+  opacity: 1;
+}
+
 .meadow-actor.is-hungry:not(.is-play) .meadow-sprite {
   transform-origin: 50% 100%;
   animation: meadow-hungry 1.8s ease-in-out infinite;
@@ -1390,18 +1420,57 @@ function onHatched() {
   animation: meadow-flame 0.48s ease-in-out infinite;
 }
 
+.meadow-decor.is-fire.is-flaring img {
+  animation-name: meadow-flame-flare;
+  animation-duration: 0.32s;
+}
+
 .meadow-decor.is-swing.is-swinging img {
   transform-origin: 50% 1%;
   transform: rotate(var(--swing, 0deg));
 }
 
-.meadow-decor.is-ball {
+.meadow-decor.is-ball .meadow-decor-fit {
   transform: translateY(var(--bounce, 0px));
+}
+
+.meadow-decor.is-ball[data-kicking='1'] .meadow-decor-fit {
+  transition: none;
+}
+
+.meadow-decor.is-ball.is-drop-ready .meadow-decor-fit,
+.meadow-decor.is-ball.is-drop-hungry .meadow-decor-fit {
+  transform: translateY(var(--bounce, 0px)) scale(1.1);
 }
 
 .meadow-decor.is-ball img {
   transform-origin: 50% 58%;
-  transform: rotate(var(--spin, 0deg));
+  transform: rotate(var(--spin, 0deg)) scale(var(--squash-x, 1), var(--squash-y, 1));
+}
+
+.meadow-ball-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 42%;
+  height: 12%;
+  border-radius: 50%;
+  background: rgba(35, 60, 25, 0.38);
+  pointer-events: none;
+  transform: translateX(-50%) scale(var(--shade, 1));
+  opacity: calc(0.2 + var(--shade, 1) * 0.45);
+}
+
+.meadow-decor.is-flower.is-shaking .meadow-decor-fit {
+  transform-origin: 50% 100%;
+  transition: none;
+  animation: meadow-flower-shake 0.45s ease-in-out;
+}
+
+.meadow-decor.is-house.is-snoozing .meadow-decor-fit {
+  transform-origin: 50% 100%;
+  transition: none;
+  animation: meadow-house-puff 1.25s ease-in-out infinite;
 }
 
 .meadow-decor-line {
@@ -1431,6 +1500,12 @@ function onHatched() {
   animation: meadow-petal 0.85s ease-out forwards;
 }
 
+.meadow-petal.is-drift {
+  width: 14px;
+  height: 18px;
+  animation: meadow-petal-drift 2.2s ease-out forwards;
+}
+
 .meadow-decor.is-dropping {
   animation: meadow-drop 0.72s cubic-bezier(0.18, 1.35, 0.36, 1) both;
 }
@@ -1456,6 +1531,10 @@ function onHatched() {
   animation: meadow-ripple 0.7s ease-out forwards;
 }
 
+.meadow-ripple.is-wide {
+  animation: meadow-ripple-wide 1.05s ease-out forwards;
+}
+
 .meadow-spark {
   width: 7px;
   height: 7px;
@@ -1465,6 +1544,10 @@ function onHatched() {
   animation: meadow-spark 0.55s ease-out forwards;
 }
 
+.meadow-spark.is-tall {
+  animation-duration: 0.95s;
+}
+
 .meadow-splash {
   width: 8px;
   height: 8px;
@@ -1472,6 +1555,23 @@ function onHatched() {
   background: #9ad7f5;
   z-index: 30;
   animation: meadow-splash 0.55s ease-out forwards;
+}
+
+.meadow-splash.is-big {
+  width: 13px;
+  height: 13px;
+}
+
+.meadow-dust {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: rgba(214, 184, 132, 0.9);
+  z-index: 28;
+  pointer-events: none;
+  animation: meadow-dust 0.45s ease-out forwards;
 }
 
 .meadow-mallow {
@@ -1512,6 +1612,44 @@ function onHatched() {
   }
 }
 
+@keyframes meadow-flame-flare {
+  0%,
+  100% {
+    transform: scale(1, 1.12);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08, 1.5);
+    opacity: 1;
+  }
+}
+
+@keyframes meadow-flower-shake {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  20% {
+    transform: rotate(-8deg) scale(1.06, 0.92);
+  }
+  45% {
+    transform: rotate(7deg) scale(0.96, 1.08);
+  }
+  70% {
+    transform: rotate(-4deg) scale(1.04, 0.96);
+  }
+}
+
+@keyframes meadow-house-puff {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.05, 1.12);
+  }
+}
+
 @keyframes meadow-drop {
   0% {
     transform: translateY(-48vh) scale(0.82);
@@ -1547,6 +1685,17 @@ function onHatched() {
   }
 }
 
+@keyframes meadow-ripple-wide {
+  from {
+    transform: scale(0.35);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
 @keyframes meadow-spark {
   to {
     transform: translate(var(--dx), var(--dy)) scale(0.4);
@@ -1564,6 +1713,20 @@ function onHatched() {
 @keyframes meadow-petal {
   to {
     transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-petal-drift {
+  to {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-dust {
+  to {
+    transform: translate(var(--dx), var(--dy)) scale(1.8);
     opacity: 0;
   }
 }
@@ -1586,6 +1749,20 @@ function onHatched() {
   50% {
     transform: translateY(-8px);
     opacity: 1;
+  }
+}
+
+@keyframes meadow-zzz-big {
+  0% {
+    transform: translateY(0) scale(0.55);
+    opacity: 0.15;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-32px) scale(1.85);
+    opacity: 0;
   }
 }
 
