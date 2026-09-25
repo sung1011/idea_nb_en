@@ -130,6 +130,22 @@ export const shortSentences: Record<string, string> = {
   zap: 'Jump up and zap!',
   buzz: 'Jump up and buzz!',
   zigzag: 'Run up and zigzag!',
+  king: 'What a king!',
+  ring: 'What a ring!',
+  wing: 'What a wing!',
+  swing: 'What a swing!',
+  pond: 'Run to the pond.',
+  stump: 'Run to the stump.',
+  moss: 'Run to the moss.',
+  elk: 'Run to the elk.',
+  quack: 'She says, "Quack!"',
+  quick: 'She says, "Quick!"',
+  quiz: 'She says, "A quiz!"',
+  quilt: 'She says, "My quilt!"',
+  nip: 'Do not nip me, Bug!',
+  sting: 'Do not sting me, Bug!',
+  bump: 'Do not bump me, Bug!',
+  pinch: 'Do not pinch me, Bug! Quit it!',
 }
 
 export function sentenceForWord(word: string): string {

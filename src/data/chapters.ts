@@ -509,10 +509,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'In the Forest',
     emoji: '🌲',
     lessons: [
-      { titleZh: '词块和词族', titleEn: 'Word Builder/Family', type: 'wordFamily' },
-      { titleZh: '在森林里', titleEn: 'In the Forest', type: 'story' },
-      { titleZh: '字母 Q · she say', titleEn: 'Letter Q · she say', type: 'letterSight', letter: 'Q', sightWords: ['she', 'say'] },
-      { titleZh: '停下，小虫', titleEn: 'Quit it, Bug', type: 'story' },
+      { titleZh: '词块和词族', titleEn: 'Word Builder/Family', type: 'wordFamily', sentence: 'What a king!' },
+      { titleZh: '在森林里', titleEn: 'In the Forest', type: 'story', sentence: 'Run to the pond.' },
+      { titleZh: '字母 Q · she say', titleEn: 'Letter Q · she say', type: 'letterSight', letter: 'Q', sightWords: ['she', 'say'], sentence: 'She says, "Quack!"' },
+      { titleZh: '停下，小虫', titleEn: 'Quit it, Bug', type: 'story', sentence: 'Do not nip me, Bug!' },
     ],
   },
   {
@@ -870,6 +870,48 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch9: [
+    {
+      words: ['king', 'ring', 'wing', 'swing'],
+      spell: ['king', 'ring', 'wing'],
+      pages: [
+        { word: 'king', line: 'What a king!' },
+        { word: 'ring', line: 'What a ring!' },
+        { word: 'wing', line: 'What a wing!' },
+        { word: 'swing', line: 'What a swing!' },
+      ],
+    },
+    {
+      words: ['pond', 'stump', 'moss', 'elk'],
+      spell: ['pond', 'stump', 'moss'],
+      pages: [
+        { word: 'pond', line: 'Run to the pond.' },
+        { word: 'stump', line: 'Run to the stump.' },
+        { word: 'moss', line: 'Run to the moss.' },
+        { word: 'elk', line: 'Run to the elk.' },
+      ],
+    },
+    {
+      words: ['quack', 'quick', 'quiz', 'quilt'],
+      spell: ['quack', 'quick', 'quiz'],
+      pages: [
+        { word: 'quack', line: 'She says, "Quack!"' },
+        { word: 'quick', line: 'She says, "Quick!"' },
+        { word: 'quiz', line: 'She says, "A quiz!"' },
+        { word: 'quilt', line: 'She says, "My quilt!"' },
+      ],
+    },
+    {
+      words: ['nip', 'sting', 'bump', 'pinch'],
+      spell: ['nip', 'sting', 'bump'],
+      pages: [
+        { word: 'nip', line: 'Do not nip me, Bug!' },
+        { word: 'sting', line: 'Do not sting me, Bug!' },
+        { word: 'bump', line: 'Do not bump me, Bug!' },
+        { word: 'pinch', line: 'Do not pinch me, Bug! Quit it!' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
@@ -879,7 +921,8 @@ function playableLevels(chapterId: string, lessonId: string, lessonOrder: number
     chapterId === 'ch5' ||
     chapterId === 'ch6' ||
     chapterId === 'ch7' ||
-    chapterId === 'ch8'
+    chapterId === 'ch8' ||
+    chapterId === 'ch9'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
