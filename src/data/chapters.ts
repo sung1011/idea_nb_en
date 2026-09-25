@@ -368,7 +368,7 @@ const SYLLABUS: ChapterSeed[] = [
     lessons: [
       { titleZh: '小豹子', titleEn: 'Leopard', type: 'story' },
       { titleZh: '回收小书', titleEn: 'Recycle it', type: 'story' },
-      { titleZh: '词块工坊 · we', titleEn: 'Work builder · we', type: 'wordFamily', sightWords: ['we'] },
+      { titleZh: '词块工坊 · we', titleEn: 'Word builder · we', type: 'wordFamily', sightWords: ['we'] },
       { titleZh: '我想吃', titleEn: 'I like to eat · for', type: 'story', sightWords: ['for'] },
     ],
   },

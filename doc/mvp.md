@@ -26,7 +26,7 @@
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
-**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + 第 1 章 `rise-1` 词）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。没有 webp 的新词用 emoji。
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + 第 1 章 `rise-1` 词）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章 14 个词已有 Style-5 词卡；其余还没有 webp 的词用 emoji。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
@@ -54,7 +54,7 @@
 
 ## 音族配置
 
-`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`（hop / pot / top / mop / log / van / vet / lip / leg / lid / kid / kit / keg / kick），没有 webp 时用 emoji。旧 `-at` / `-ap` / `-og` / `-ck` / `-an` 仍留在图鉴。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。
+`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`（hop / pot / top / mop / log / van / vet / lip / leg / lid / kid / kit / keg / kick），词卡在 `public/word-cards/{word}.webp`。`log` 也在更早的 `-og` 里，两边的 `wordArt.image` 都指向同一张卡，图鉴和关卡都按先命中的家族取图。旧 `-at` / `-ap` / `-og` / `-ck` / `-an` 仍留在图鉴。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。
 
 主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 听音拼一拼 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位。试玩 / 复习 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 听音拼一拼 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部音族 `targets`。已有卡的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
 
