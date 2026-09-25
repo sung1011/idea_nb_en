@@ -13,7 +13,7 @@ export function matchingLevel(play: PlayKind, raw: unknown): LevelDef | undefine
   const def = getLevel(id)
   if (!def) return undefined
   if (def.play === play) return def
-  const remapped = levelIdForPlay(play, def.chapterId)
+  const remapped = levelIdForPlay(play, def.lessonId)
   return remapped ? getLevel(remapped) : undefined
 }
 

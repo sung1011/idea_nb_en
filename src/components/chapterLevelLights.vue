@@ -3,11 +3,12 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { tweenCelebrate, tweenPulse } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getChapterNumber } from '../data/chapters'
-import { chapterDoneCopy } from '../data/todayTasks'
+import { lessonProgressCopy } from '../data/todayTasks'
 
 const props = withDefaults(
   defineProps<{
     chapterId?: string
+    lessonId?: string
     celebrateOnGain?: boolean
     showLabel?: boolean
     embedded?: boolean
@@ -19,15 +20,29 @@ const props = withDefaults(
   },
 )
 
-const { chapter, getChapterProgress } = useProgress()
-const view = computed(() => (props.chapterId ? getChapterProgress(props.chapterId) : chapter.value))
-const chapterNo = computed(() => getChapterNumber(view.value.chapterId))
+const { lesson, getLessonProgress, getChapterProgress } = useProgress()
+const view = computed(() => {
+  if (props.lessonId) return getLessonProgress(props.lessonId)
+  if (props.chapterId) {
+    const progress = getChapterProgress(props.chapterId)
+    const current = progress.lessons.find((item) => item.status === 'unlocked' || item.status === 'soon')
+    return current ?? progress.lessons[progress.lessons.length - 1] ?? lesson.value
+  }
+  return lesson.value
+})
+const chapterNo = computed(() => getChapterNumber(view.value?.chapterId ?? ''))
+const lessonNo = computed(() => view.value?.order ?? 1)
 
-const cap = computed(() => Math.max(1, view.value.levelTotal))
-const lit = computed(() => Math.min(cap.value, Math.max(0, view.value.clearedCount)))
-const full = computed(() => view.value.complete || lit.value >= cap.value)
-const labelText = computed(() => `第${chapterNo.value}章 ${lit.value}/${cap.value} 关`)
-const teaserText = computed(() => chapterDoneCopy(chapterNo.value))
+const cap = computed(() => Math.max(0, view.value?.levelTotal ?? 0))
+const lit = computed(() => Math.min(cap.value, Math.max(0, view.value?.clearedCount ?? 0)))
+const full = computed(() => view.value?.status === 'cleared' && cap.value > 0 && lit.value >= cap.value)
+const labelText = computed(() =>
+  lessonProgressCopy(chapterNo.value, lessonNo.value, lit.value, cap.value, {
+    soon: view.value?.status === 'soon',
+    clearedLesson: view.value?.status === 'cleared',
+  }),
+)
+const teaserText = computed(() => (view.value?.status === 'soon' ? '即将开放' : '这一课通关啦'))
 const slots = computed(() =>
   Array.from({ length: cap.value }, (_, index) => ({
     index,
@@ -64,7 +79,7 @@ watch(lit, async (next, prev) => {
 
 onMounted(() => {
   if (!props.celebrateOnGain || lit.value <= 0) return
-  if (!view.value.complete) return
+  if (view.value?.status !== 'cleared') return
   void celebrateCell(lit.value - 1)
 })
 </script>

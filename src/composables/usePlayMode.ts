@@ -67,7 +67,7 @@ export function usePlayMode() {
   }
 
   function afterLevel(
-    result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute' | 'chapterId'>,
+    result: Pick<CompleteLevelResult, 'nextLevelId' | 'nextRoute' | 'chapterId' | 'lessonId' | 'chapterFinished'>,
   ): RouteLocationRaw {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isChapterPractice.value) return practiceGalleryPath()
@@ -86,7 +86,7 @@ export function usePlayMode() {
     const raw = route.query.level
     const value = Array.isArray(raw) ? raw[0] : raw
     const def = typeof value === 'string' ? getLevel(value) : undefined
-    return locationForIslandChapter(def?.chapterId)
+    return locationForIslandChapter(def?.chapterId, def?.lessonId)
   })
   const backLabel = computed(() => {
     if (isDemo.value) return '回一览'

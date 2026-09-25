@@ -31,11 +31,12 @@ const {
 } = useChapterLevel('chapterFinale')
 const words = computed(() => {
   const list = levelWordList(level.value)
-  return list.length ? list : ['cap', 'map', 'nap']
+  return list.length ? list : ['hop', 'pot', 'top']
 })
 const chapter = computed(() => getChapter(level.value?.chapterId))
-const titleZh = computed(() => chapter.value?.titleZh ?? '动物岛「-ap 派对」')
-const badgeName = computed(() => stickerLabel(chapter.value?.stickerId ?? ''))
+const isBadge = computed(() => Boolean(level.value?.chapterStickerId))
+const titleZh = computed(() => (isBadge.value ? (chapter.value?.kidTitle ?? '章节回顾') : (level.value?.titleZh ?? '小小回顾')))
+const badgeName = computed(() => stickerLabel(level.value?.chapterStickerId || chapter.value?.stickerId || ''))
 const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
 const celebrating = ref(false)
 const locked = ref(false)
@@ -80,9 +81,11 @@ async function finish() {
       {{
         !canPlay
           ? '先把前面的关卡通完哦。'
-          : isReplay
-            ? `再玩一遍也可以，「${badgeName}」已经给你啦。`
-            : `第一次过关会拿到「${badgeName}」。`
+          : !isBadge
+            ? '再看一看这课的词，过关就去下一课。'
+            : isReplay
+              ? `再玩一遍也可以，「${badgeName}」已经给你啦。`
+              : `第一次过完这一章会拿到「${badgeName}」。`
       }}
     </p>
     <big-button :disabled="!canPlay || locked" @click="finish">我复习好了</big-button>

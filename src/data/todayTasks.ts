@@ -1,4 +1,4 @@
-import { CHAPTER_2_ID, CHAPTER_3_ID, chapterKidTitle } from './chapters'
+import { chapterKidTitle } from './chapters'
 
 /** Chapter goal copy. One line, not a list. Old task ids still map here. */
 export const MAIN_TASK_FISH_ECHO = 'fishEcho'
@@ -17,9 +17,34 @@ export function mainTaskCopy(taskId: string): string {
 }
 
 export function chapterProgressCopy(cleared: number, total: number, chapterNo = 1): string {
+  const safeTotal = Math.max(0, Math.floor(total))
+  const safeCleared = Math.max(0, Math.min(safeTotal, Math.floor(cleared)))
+  if (safeTotal <= 0) return `第${chapterNo}章 即将开放`
+  return `第${chapterNo}章 ${safeCleared}/${safeTotal} 关`
+}
+
+/** Home / lobby line, e.g. 「第1章·第2课 3/5」. */
+export function lessonProgressCopy(
+  chapterNo: number,
+  lessonNo: number,
+  cleared: number,
+  total: number,
+  opts?: { soon?: boolean; clearedLesson?: boolean },
+): string {
+  const head = `第${chapterNo}章·第${lessonNo}课`
+  if (opts?.clearedLesson) return `${head} 通关啦`
+  if (opts?.soon || total <= 0) return `${head} 即将开放`
   const safeTotal = Math.max(1, Math.floor(total))
   const safeCleared = Math.max(0, Math.min(safeTotal, Math.floor(cleared)))
-  return `第${chapterNo}章 ${safeCleared}/${safeTotal} 关`
+  return `${head} ${safeCleared}/${safeTotal}`
+}
+
+export function comingSoonCopy(): string {
+  return '即将开放'
+}
+
+export function lessonLockHint(): string {
+  return '先把上一课玩完吧'
 }
 
 export function nextLevelCopy(titleZh: string): string {
@@ -46,7 +71,13 @@ export function levelLockHint(): string {
   return '先过上一关吧'
 }
 
-export function nextLevelCtaCopy(order: number, titleZh: string, chapterNo?: number): string {
+export function nextLevelCtaCopy(
+  order: number,
+  titleZh: string,
+  chapterNo?: number,
+  lessonNo?: number,
+): string {
+  if (chapterNo != null && lessonNo != null) return `去第${chapterNo}章第${lessonNo}课 · ${titleZh}`
   if (chapterNo != null) return `去第${chapterNo}章第${order}关 · ${titleZh}`
   return `去第${order}关 · ${titleZh}`
 }
@@ -140,16 +171,12 @@ export function gateBookPrompt(kind: 'cover' | 'blend' | 'page' | 'done'): strin
 
 export function gateFishLead(chapterId?: string, useTheme = false): string {
   if (!useTheme) return '小猫请客'
-  if (chapterId === CHAPTER_2_ID) return '听声找伙伴'
-  if (chapterId === CHAPTER_3_ID) return '石头袜子'
-  return '小猫请客'
+  return chapterKidTitle(chapterId ?? '') || '小猫请客'
 }
 
 export function gateEchoTitle(chapterId?: string, useTheme = false): string {
   if (!useTheme) return '听句子，说一说'
-  if (chapterId === CHAPTER_2_ID) return '听声喊伙伴'
-  if (chapterId === CHAPTER_3_ID) return '石头和袜子'
-  return '听句子，说一说'
+  return chapterKidTitle(chapterId ?? '') || '听句子，说一说'
 }
 
 export function gateThemeHint(chapterId?: string): string {

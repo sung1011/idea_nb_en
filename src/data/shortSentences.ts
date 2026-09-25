@@ -33,6 +33,19 @@ export const shortSentences: Record<string, string> = {
   can: 'I can hop.',
   man: 'A man can jog.',
   pan: 'A pan is hot.',
+  hop: 'I can hop.',
+  pot: 'I hop. Pot.',
+  top: 'Top. I can hop.',
+  mop: 'I can mop.',
+  van: 'My van.',
+  vet: 'Vet. My van.',
+  lip: 'My lip is good.',
+  leg: 'My leg is good.',
+  lid: 'Lid is good.',
+  kid: 'Three kids.',
+  kit: 'My kit is good.',
+  keg: 'Keg. Three kids.',
+  kick: 'I can kick.',
 }
 
 export function sentenceForWord(word: string): string {

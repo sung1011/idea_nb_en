@@ -7,8 +7,8 @@
 - Vue 3 + Vite + TypeScript + Vue Router（hash 路由，静态托管更稳）
 - 动效 / 音效 / 拖拽：GSAP、Howler、`@vueuse/gesture`
 - 找一找 / 读词钓鱼：PixiJS 画布嵌在 Vue 壳里（不整站换引擎，不用 Phaser）
-- 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 章节关卡 / 动物岛日格 / 当日文案）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁入，v2 日链存档再升到章节模型（persist `version: 3`），8 关路径再升到 `version: 4`（按玩法重映射旧 6 关 id），听音拼一拼改到第 7 关后再升到 `version: 5`（按玩法重映射 v4 的 chN-4 拼写 / chN-5 钓鱼等 id），之后只读写 v2，避免两套互相覆盖
-- 章节目标条：首页顶部展示当前下一关所在章的「第N章 x/N 关」（N = 该章 `levels.length`，当前 8）+ 下一关名（如 ch1 通关后「下一关：闪卡翻翻」指向 ch2-1）+ 可选焦点词 + **过关星星条** + CTA（走无参 `getNextLevel()`）。缺省仍写入 `mainTaskId=animalsCh1`，并从各章 `words` 轮换 `focusWord`（只作文案，不锁关）。动物岛大厅先列三章，点开一章再看该章关卡列表，不再挂这条
+- 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 章·课·关卡 / 动物岛日格 / 当日文案）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁入。persist `version: 6` 起按 RISE 课表的「章 → 课 → 关」。v5 及更早的 `chN-x` 关卡进度会重置，终身星星、贴纸、图鉴词保留。之后只读写 v2
+- 章节目标条：首页顶部展示当前课的「第N章·第M课 x/y」（y = 该课 `levels.length`）+ 下一关名 + 可选焦点词 + **过关星星条**（格数跟当前课）+ CTA（走无参 `getNextLevel()`）。没有关卡内容的课显示「即将开放」。缺省仍写入 `mainTaskId=animalsCh1`，并从已配置的课词表轮换 `focusWord`（只作文案，不锁关）。动物岛大厅先列章，点开再列课，再进关卡
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
 - TTS：`speechSynthesis`；读词钓鱼 / 回音洞：`SpeechRecognition`（不可用则点按通过）
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
@@ -16,15 +16,17 @@
 
 ## 信息架构
 
-每日主路径 = **主题岛**（第一座：动物岛）。主线已改为 **章节 + 关卡**（方案 A：章内按顺序解锁）。动物岛三章配置在 `src/data/chapters.ts`：`ch1`「-ap 派对」、`ch2`「听声找伙伴」、`ch3`「石头袜子」，每章关卡数读 `levels.length`（当前 8：闪卡 → 地鼠 → 拖一拖 → 钓鱼 → 回声 → **小书点读** → **听音拼一拼** → 回顾）。章内通关立刻开下一关；**下一章只在上一章全通后解锁**（`isChapterUnlocked`）。已开过的后章在 6→8 / v4→v5 迁移后仍可进（grandfather）。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析，不再软锁主线。大厅先列三章入口，点开已解锁章再进该章关卡列表。
+每日主路径 = **主题岛**（第一座：动物岛），内容按学校 **RISE Mart P1** 课表，从 **L49** 起。配置在 `src/data/chapters.ts`：两节学校课 = 一课（L49-50 是第 1 课，L143-144 是第 48 课），每 4 课 = 一章，共 **12 章**。课的 `type` 为 `letterSight` / `story` / `wordFamily` / `math` / `review`。关卡数读该课的 `levels.length`，不要写死。
 
-首页 → 动物岛大厅（三章）→ 第1章 8 关 → ch1-8 章节回顾 → 完成页 →（第一章全通后）大厅打开第2章、「听声找伙伴」；首页目标条指向 ch2-1 → 同骨架走到 ch3-8
+解锁：课内关卡严格按顺序；上一课全通才开下一课；一章 4 课都通才开下一章。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析。没有 `levels` 的课显示「即将开放」，点了不会进游戏、也不会被当成已通关。当前只有第 1 章四课有内容（字母 O/V/L/K，每课 5 关：闪卡、地鼠、听音拼一拼、小书点读、小小回顾）。第 4 课的回顾关带章节徽章。数学课只标记 `type: 'math'`，这一期不做数字关。
 
-找一找 / 唱一唱只在玩法一览，不进主线。动物岛大厅先列三章：`ch1` 永远可进；`ch2` / `ch3` 未开时软锁，轻提示「先通关上一章吧」。点开一章后的关卡列表（`chN-1`…`chN-8`）：未开 / 可玩 / 已过；可玩点进该关路由（带 `?level=chN-x`），已过关写「再玩一次」，未开轻提示「先过上一关吧」。主按钮高亮该章或跨章 `getNextLevel()`。进度文案是「第N章 x/N 关」（N = `levels.length`），不再按日历锁关。旧 7 日亮格换成按配置格数画的亮格（跟该章已通关数走）。产品 UI 不再挂「练一练」；自由重玩只走已过关「再玩一次」（不加首次通关奖励）。
+首页 → 动物岛（12 章）→ 点开一章看 4 课（小字课表范围，如 L49-50）→ 点开一课看关卡。进度文案是「第1章·第2课 3/5」。
+
+找一找 / 唱一唱只在玩法一览，不进主线。未开的章轻提示「先通关上一章吧」。课内未开关轻提示「先过上一关吧」。已过关写「再玩一次」，不加首次通关星星。产品 UI 不再挂「练一练」。
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
-**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + 第 1 章 `rise-1` 词）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。没有 webp 的新词用 emoji。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
@@ -46,25 +48,17 @@
 
 **回声跟读（Echo）**听后跟读：有关卡 id 时用该关词表（ch1-5 三词，ch2-5 走完 frog→hog 五词，ch3-5 duck/rock/sock）；试玩 / 复习且没有关卡 id 时仍从 15 词库抽 3 个。每轮先听单词再听一句短句（`shortSentences`，如 “A cap on a map.”），孩子跟读句子或单词；永远可点「我说好了」。标题按章轻提（听句子说一说 / 听声喊伙伴 / 石头和袜子）。
 
-**章节回顾（Finale）**读 `?level=` 的章标题与 `levelWordList`（ch1-8 -ap + cat 复习，ch2-8 五只 -og 词，ch3-8 -ck + cap 复习）。词卡图已有的用图，没有的回退 emoji。
+**小小回顾（Finale）**读 `?level=` 的词表。课内回顾不发徽章；一章最后一课的回顾关带 `chapterStickerId`（第 1 章是 `rise1`）。词卡没有图时回退 emoji。
 
 章节关卡进度跨日保留，跨午夜不会把孩子锁回「等明天」。同一关首次通关才加星；重玩、`?practice=1`、`?demo=1`、`?review=1`、找一找 / 唱一唱不加星。找一找 / 唱一唱仍只从玩法一览进入。
 
 ## 音族配置
 
-`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样；主线三章换成稍难的短词族（配置驱动）：
-
-```ts
-ch1 -ap: cap, map, nap, tap, lap
-ch2 -og: frog, log, fog, jog, hog
-ch3 -ck: duck, rock, sock, lock, pack
-```
-
-旧 `-at` 15 词（cat/hat/…/star）留在图鉴；ch1 终章可带 1 个 cat 复习。新词没有 Style-5 卡时用 emoji 回退。短句在 `src/data/shortSentences.ts`。
+`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`（hop / pot / top / mop / log / van / vet / lip / leg / lid / kid / kit / keg / kick），没有 webp 时用 emoji。旧 `-at` / `-ap` / `-og` / `-ck` / `-an` 仍留在图鉴。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。
 
 主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 听音拼一拼 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位。试玩 / 复习 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 听音拼一拼 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部音族 `targets`。已有卡的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
 
-叙事：第一章仍是派对（帽子 / 地图 / 小睡）；第二章在雾里找青蛙朋友；第三章是石头和袜子。
+叙事：第 1 章是字母 O / V / L / K 和对应的 sight word（I / my / good / three）。小书句子只用该课 CVC、该课 sight word、更早的 sight word，以及该课示范句里已经出现的功能词（如 can / it / is）。
 
 同文件已写好 `-ap` / `-og` / `-ck` / `-an`。试玩抽样切换：改 `currentFamilyId`。`warmupPhonemes` 仍留在配置里，本关不再走音素试次。
 
@@ -99,8 +93,8 @@ src/data/spellTiles.ts         听音拼一拼字母块（目标字母 + 相近 
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
-src/data/chapters.ts           动物岛三章关卡配置（-ap / -og / -ck 词表 + play / 路由 / 章节徽章；当前 8 关）
-src/data/stickers.ts           贴纸目录（5 个日奖占位 + 章节徽章 `atParty` / `pawPrint` / `littleStar`；相册按格展示）
+src/data/chapters.ts           RISE 12 章 × 48 课（课类型、课表范围、关卡；目前只有第 1 章有关卡）
+src/data/stickers.ts           贴纸目录（5 个日奖占位 + 旧三枚岛徽章 + `rise1`…`rise12` 章徽章）
 src/data/todayTasks.ts         章节目标文案（进度 / 下一关 / 焦点词）
 src/composables/progressStore.ts 进度数据模型 + 章节关卡 + localStorage 迁移 + 初始化清档 + 完全化打满
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 章节关卡 / 岛日 / 当日文案
@@ -153,7 +147,7 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 - helpers：`addStar(n)`、`completeLevel(id)`（关卡页主路径）、`completeGate(gateId)`（旧日链入口，按玩法映射到第一章对应关再调 `completeLevel`）、`locationForLevel` / `locationAfterClear` / `locationForNextMainline()` / `locationForDayComplete(chId)`（带 `?level=` / `?chapter=`）、`listClearedChapterIds()`、`routeAfterGate(gateId)` / `routeForNextMainline()`（兼容旧字符串路径）、`unlockWord(word)` / `markWordSeen(word)`、`grantSticker(id)`、`completeDailyIfReady()`（现为第一章全通）、`advanceIslandDayOncePerDate()`、`claimDayCompleteRewards(chapterId?)`、`ensureTodayTask()`、`pickRotatingFocusWord()`、`resetAllProgress()`、`maxOutProgressFromConfig()`
 - `resetAllProgress()`：删掉 `starWords.v2` 以及仍在的 `starWords.v1` / `starWords.atlas.v1` / 其它 `starWords.*` 键，并把内存态写回空白存档（含章节关卡）。不删词卡图片
 - `maxOutProgressFromConfig()`：设置「完全化」用。遍历现有配置打满进度，**不写死章节 id / 关卡数**：`CHAPTERS` 全部关标 `cleared` 并发首次通关星、章徽章写入 `chapterStickers` + `celebratedChapters`；`ALBUM_STICKERS` 以及各章 / 终章列出的贴纸 id 全部发放；`phonicsFamily` 全部家族词 + 各章词表解锁图鉴；`animalsIslandDays` 拉到展示上限。之后只加配置、不用改这个 GM 函数
-- **旧存档迁移**：没有 `chapter` 字段时，把日链按玩法映射进第一章（钓鱼→`wordFish` 现 ch1-4）。已打卡 → 闪卡/地鼠/拖一拖/钓鱼/回声已通，小书 / 听音拼一拼按新顺序解锁，终章锁定等新关。v3 的 6 关章节存档升到 persist `version: 4`：按玩法重映射 id（旧 chN-4 钓鱼→现 chN-4，旧 chN-6 回顾→现 chN-8）。v4 的 8 关存档升到 `version: 5`：再按玩法重映射（旧 chN-4 听音拼一拼→现 chN-7，旧 chN-5 钓鱼→现 chN-4，旧 chN-6 回声→现 chN-5，旧 chN-7 小书→现 chN-6），**不**把中间空档自动标成已通；已过的拼写关仍记在新 id 上，不会逼孩子重玩；若终章已过但新关未过，终章改回锁定。后章若已有 unlocked/cleared，即使前章不再全清也保持可进（grandfather）。图鉴词、已有贴纸、终身星星保留
+- **旧存档迁移**：persist `version` 小于 6（含旧 `chN-1`…`chN-8` 和没有 `chapter` 的日链）会把关卡进度重置到第 1 章第 1 课，避免旧 id 对不上新课。终身星星、贴纸、图鉴词保留。坏掉的 JSON 不会把应用打崩，按空档重新开始。v6 自己的课 id（`chN-kM-x`）会按顺序修好锁关
 - 图鉴解锁走 `unlockWord`（底层 `markWordSeen`）：主线点对 / 拖对 / 钓到 / 跟读通过，以及一览找一找点中、唱一唱「我唱好了」；只记已知音族词，不加星
 - 贴纸只存 id。日奖占位：`ear` / `paw` / `leaf` / `shell` / `sun`（`ear` 仍是钓鱼「派对耳朵」）。章节徽章：`atParty` / `pawPrint` / `littleStar`，只在对应章终章首次通关发，不进每日轮换池。相册读 `ALBUM_STICKERS`
 - `claimDayCompleteRewards(chapterId?)`：需该章全清（`clearedCount === levelTotal`）。首次庆祝展示该章徽章（ch1 `atParty` / ch2 `pawPrint` / ch3 `littleStar`），不把别的章徽章混进来；岛日 +1 仅分析 / 展示，不锁关。`locationAfterClear` 终章跳 `/day-complete?chapter=chN`
@@ -165,10 +159,10 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 
 ## 章节目标条
 
-`todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）。主文案读**当前下一关所在章**的进度，不再写「今天做完了」或按天锁关。动物岛大厅先列三章，不再挂这条。
+`todayGoalBar` 挂在**首页**（标题下、动物岛卡片上）。主文案读**当前课**的进度，不再写「今天做完了」或按天锁关。动物岛大厅先列章，不再挂这条。
 
-- 主行「第N章 x/N 关」（N = `levelTotal`），下一行「下一关：闪卡翻翻」（三章都通完才改成「第3章通关啦」）。ch1 全通后显示第2章 0/N 与 ch2-1
-- CTA 走无参 `getNextLevel()` / `locationForNextMainline()`：未通关写「去第N章第M关 · 玩法名」，三章全通写「看章节奖励」。主线只走下一关 / 下一章
+- 主行「第N章·第M课 x/y」（y = 该课关卡数）。没有内容时写「即将开放」。全部可玩内容都过完才写「通关啦」
+- CTA 走无参 `getNextLevel()` / `locationForNextMainline()`：未通关写「去第N章第M课 · 玩法名」。下一课即将开放时按钮也写「即将开放」，并回到该章的课列表。整章通关后的回顾关才去完成页
 - 有 `focusWord` 时多一行「多听一听 cat」；只是提示，不按 `dateKey` 锁关
 - 下方是 **过关星星条**：按 `today.starsGoal`（第一章 `levels.length`）画空星/实星；关卡首次通关亮一颗并轻量弹跳
 - 首页岛卡、大厅、完成页都用配置格数亮格（旧 7 日太阳格不再出现在主线）
@@ -188,13 +182,12 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 
 ## 动物岛多章大厅
 
-大厅默认列出三章入口（儿童向中文标题）：
+大厅默认列出 12 章（儿童向中文标题 + 课表范围，如 L49-56）：
 
-- 第1章 · -ap 派对：永远解锁
-- 第2章 · 听声找伙伴：ch1 全通后解锁（或该章已有进度）
-- 第3章 · 石头袜子：ch2 全通后解锁（或该章已有进度）
-- 未开章：软锁 + 轻晃 + 「先通关上一章吧」，不是硬错误
-- 已开章：点进 `/animal-island?chapter=chN`，打开该章关卡列表
+- 第 1 章「字母朋友」：永远解锁
+- 后一章：上一章 4 课都通后解锁
+- 未开章：软锁 + 轻晃 + 「先通关上一章吧」
+- 已开章：点进 `/animal-island?chapter=chN`，先看 4 课。有内容的课再进 `/animal-island?chapter=chN&lesson=chN-kM` 看关卡。没有关卡的课写「即将开放」，点了只提示，不跳进游戏
 
 章内列表 UX 与原先第一章相同（`locked` / `unlocked` / `cleared`）：
 
@@ -207,7 +200,11 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 
 ## 设置
 
-首页与动物岛大厅右上角齿轮打开设置弹窗（关卡里没有，避免玩到一半误点）。「初始化」会先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键（含章节关卡）并回首页。不删 `public/word-cards`。「完全化」是调试按钮，确认「一键打满所有进度？」后调用 `maxOutProgressFromConfig()`，按配置解锁全部关卡 / 贴纸 / 图鉴并刷新当前页。
+首页与动物岛大厅右上角齿轮打开设置弹窗（关卡里没有，避免玩到一半误点）。
+
+- 「设置当前课」：家长选一课。这一课之前的课标成已过，按配置补首次通关星星和已完整章的徽章（跟「完全化」同一套账，已发过的不重复加）。选中的课从第 1 关打开，后面的课重新锁上。终身星星不会变少
+- 「初始化」：先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键并回首页。不删 `public/word-cards`
+- 「完全化」：确认后 `maxOutProgressFromConfig()`，按当前 `CHAPTERS` / 课 / 关卡 / 贴纸目录 / 音族词打满。空关卡的课也会记成已过，这样以后只加配置就能被打满。不写死章 id 或课数
 
 ## 关卡通关跳转
 

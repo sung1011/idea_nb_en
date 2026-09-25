@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router'
 import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
-import { getChapterNumber, getLevel } from '../data/chapters'
+import { getChapterNumber, getLesson, getLevel } from '../data/chapters'
 import { PLAY_KIND_EMOJI } from '../data/playGallery'
 import {
-  chapterDoneCopy,
+  comingSoonCopy,
+  lessonProgressCopy,
   levelLockHint,
   nextLevelCtaCopy,
   replayAgainCopy,
@@ -17,6 +18,7 @@ import bigButton from './bigButton.vue'
 
 const props = defineProps<{
   chapterId: string
+  lessonId: string
 }>()
 
 const STATUS_LABEL: Record<'locked' | 'unlocked' | 'cleared', string> = {
@@ -30,44 +32,70 @@ const LOCK_HINT = levelLockHint()
 const router = useRouter()
 const {
   getChapterProgress,
+  getLessonProgress,
   getNextLevel,
   locationForLevel,
   locationForNextMainline,
 } = useProgress()
 
-const chapter = computed(() => getChapterProgress(props.chapterId))
+const lesson = computed(() => getLessonProgress(props.lessonId))
+const lessonMeta = computed(() => getLesson(props.lessonId))
 const chapterNo = computed(() => getChapterNumber(props.chapterId))
+const lessonNo = computed(() => lesson.value?.order ?? lessonMeta.value?.order ?? 1)
 const chapterNext = computed(() => getNextLevel(props.chapterId))
 const globalNext = computed(() => getNextLevel())
 
 const levelRows = computed(() => {
-  const nextId = chapterNext.value?.id ?? (globalNext.value?.chapterId === props.chapterId ? globalNext.value.id : '')
-  return chapter.value.levels.map((item, index) => ({
-    ...item,
-    order: getLevel(item.id)?.order ?? index + 1,
-    emoji: PLAY_KIND_EMOJI[item.play],
-    isNext: item.id === nextId,
-    playable: item.status === 'unlocked' || item.status === 'cleared',
-  }))
+  const progress = getChapterProgress(props.chapterId)
+  const nextId =
+    chapterNext.value?.lessonId === props.lessonId
+      ? chapterNext.value.id
+      : globalNext.value?.lessonId === props.lessonId
+        ? globalNext.value.id
+        : ''
+  return progress.levels
+    .filter((item) => getLevel(item.id)?.lessonId === props.lessonId)
+    .map((item, index) => ({
+      ...item,
+      order: getLevel(item.id)?.order ?? index + 1,
+      emoji: PLAY_KIND_EMOJI[item.play],
+      isNext: item.id === nextId,
+      playable: item.status === 'unlocked' || item.status === 'cleared',
+    }))
 })
 
 const startLabel = computed(() => {
-  if (chapterNext.value) return nextLevelCtaCopy(chapterNext.value.order, chapterNext.value.titleZh)
+  if (lesson.value?.status === 'soon') return comingSoonCopy()
+  if (chapterNext.value?.lessonId === props.lessonId) {
+    return nextLevelCtaCopy(chapterNext.value.order, chapterNext.value.titleZh)
+  }
   if (globalNext.value) {
+    const meta = getLesson(globalNext.value.lessonId)
     return nextLevelCtaCopy(
       globalNext.value.order,
       globalNext.value.titleZh,
       getChapterNumber(globalNext.value.chapterId),
+      meta?.order,
     )
   }
-  return '看章节奖励'
+  if (lesson.value?.status === 'cleared') return '看章节奖励'
+  return '即将开放'
 })
 
 const parentLine = computed(() => {
-  if (chapter.value.complete) return chapterDoneCopy(chapterNo.value)
-  if (chapter.value.clearedCount > 0) return replayClearedHintCopy()
-  return '家长小记：通关立刻开下一关。'
+  const range = lessonMeta.value?.syllabusRange ?? ''
+  if (lesson.value?.status === 'soon') return `${range} 即将开放`.trim()
+  if (lesson.value?.status === 'cleared') return replayClearedHintCopy()
+  if ((lesson.value?.clearedCount ?? 0) > 0) return replayClearedHintCopy()
+  return range ? `家长小记：${range}，通关立刻开下一关。` : '家长小记：通关立刻开下一关。'
 })
+
+const progressTitle = computed(() =>
+  lessonProgressCopy(chapterNo.value, lessonNo.value, lesson.value?.clearedCount ?? 0, lesson.value?.levelTotal ?? 0, {
+    soon: lesson.value?.status === 'soon',
+    clearedLesson: lesson.value?.status === 'cleared',
+  }),
+)
 
 const nextRowEl = ref<HTMLElement | null>(null)
 const lockHint = ref('')
@@ -95,7 +123,8 @@ function bindNextRow(el: Element | null, isNext: boolean) {
 
 function go() {
   playTap()
-  if (chapterNext.value) {
+  if (lesson.value?.status === 'soon') return
+  if (chapterNext.value?.lessonId === props.lessonId) {
     void router.push(locationForLevel(chapterNext.value))
     return
   }
@@ -127,7 +156,8 @@ onBeforeUnmount(() => {
 <template>
   <div class="chapter-levels">
     <div class="card progress-card">
-      <p class="progress-title">第{{ chapterNo }}章 {{ chapter.clearedCount }}/{{ chapter.levelTotal }} 关</p>
+      <p class="progress-title">{{ progressTitle }}</p>
+      <p v-if="lessonMeta" class="range-line">{{ lessonMeta.syllabusRange }} · {{ lessonMeta.titleEn }}</p>
       <div class="gates" role="list">
         <button
           v-for="row in levelRows"
@@ -184,9 +214,16 @@ onBeforeUnmount(() => {
 }
 
 .progress-title {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 18px;
   font-weight: 700;
+}
+
+.range-line {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
 }
 
 .gates {

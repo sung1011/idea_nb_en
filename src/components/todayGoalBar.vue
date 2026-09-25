@@ -3,32 +3,45 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProgress } from '../composables/useProgress'
 import { playTap } from '../composables/useSfx'
-import { getChapterNumber } from '../data/chapters'
+import { getChapterNumber, getLesson } from '../data/chapters'
 import {
-  chapterDoneCopy,
-  chapterProgressCopy,
+  comingSoonCopy,
   focusWordHint,
+  lessonProgressCopy,
   nextLevelCopy,
   nextLevelCtaCopy,
 } from '../data/todayTasks'
 import todayStarBar from './todayStarBar.vue'
 
 const router = useRouter()
-const { today, chapter, nextLevel, nextRoute, ensureTodayTask } = useProgress()
+const { today, lesson, nextLevel, nextRoute, ensureTodayTask } = useProgress()
 ensureTodayTask()
 
-const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
-const done = computed(() => !nextLevel.value)
+const chapterNo = computed(() => getChapterNumber(lesson.value?.chapterId ?? ''))
+const lessonNo = computed(() => lesson.value?.order ?? 1)
+const soon = computed(() => lesson.value?.status === 'soon')
+const done = computed(() => !nextLevel.value && lesson.value?.status === 'cleared')
 const progressText = computed(() =>
-  chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value),
+  lessonProgressCopy(chapterNo.value, lessonNo.value, lesson.value?.clearedCount ?? 0, lesson.value?.levelTotal ?? 0, {
+    soon: soon.value,
+    clearedLesson: done.value,
+  }),
 )
 const nextLine = computed(() => {
   if (nextLevel.value) return nextLevelCopy(nextLevel.value.titleZh)
-  return chapterDoneCopy(chapterNo.value)
+  if (soon.value) return comingSoonCopy()
+  return '课表先玩到这里啦'
 })
 const ctaLabel = computed(() => {
+  if (soon.value) return comingSoonCopy()
   if (!nextLevel.value) return '看章节奖励'
-  return nextLevelCtaCopy(nextLevel.value.order, nextLevel.value.titleZh, chapterNo.value)
+  const meta = getLesson(nextLevel.value.lessonId)
+  return nextLevelCtaCopy(
+    nextLevel.value.order,
+    nextLevel.value.titleZh,
+    getChapterNumber(nextLevel.value.chapterId),
+    meta?.order,
+  )
 })
 const focusLine = computed(() => {
   if (done.value) return ''

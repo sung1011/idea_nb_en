@@ -12,6 +12,7 @@ import {
   dateKey,
   ensureTodayTask,
   getChapterProgress,
+  getLessonProgress,
   getNextLevel,
   isChapterUnlocked,
   latestClearedChapterId,
@@ -28,6 +29,7 @@ import {
   maxOutProgressFromConfig,
   persistState,
   resetAllProgress,
+  setCurrentLesson,
   routeAfterGate,
   routeForChainStep,
   routeForNextMainline,
@@ -57,6 +59,8 @@ export {
   ensureTodayTask,
   getChapterProgress,
   getCurrentChapterId,
+  getFrontierLesson,
+  getLessonProgress,
   getNextLevel,
   isChapterCleared,
   isChapterUnlocked,
@@ -79,6 +83,7 @@ export {
   markWordSeen,
   maxOutProgressFromConfig,
   persistState,
+  setCurrentLesson,
   pickRotatingFocusWord,
   progressStore,
   resetAllProgress,
@@ -95,6 +100,8 @@ export type {
   ChapterLevelView,
   ChapterProgressView,
   ChapterSave,
+  LessonProgressView,
+  LessonStatus,
   CompleteLevelResult,
   DailyGateId,
   ChapterLocation,
@@ -109,7 +116,7 @@ export type {
   WarmupKind,
 } from './progressStore'
 
-export type { LevelDef, LevelStatus, PlayKind } from '../data/chapters'
+export type { LessonDef, LessonType, LevelDef, LevelStatus, PlayKind } from '../data/chapters'
 export {
   ANIMALS_CHAPTER_ID,
   CHAPTER_1,
@@ -125,6 +132,7 @@ export {
   chapterKidTitle,
   chapterUnlocksAfter,
   getChapter,
+  getLesson,
   getChapterNumber,
   getChapterOrDefault,
   getNextChapter,
@@ -134,8 +142,10 @@ export {
   getLevel,
   isAnimalsChapterId,
   listAllLevels,
+  listChapterLessons,
   listChapterLevels,
   listChapters,
+  listLessons,
   resolveLevelId,
 } from '../data/chapters'
 
@@ -190,22 +200,26 @@ export function useProgress() {
   })
 
   const nextLevel = computed(() => getNextLevel())
+  const lesson = computed(() => getLessonProgress())
   const chapter = computed(() => {
     const next = nextLevel.value
     if (next) return getChapterProgress(next.chapterId)
+    const frontier = lesson.value
+    if (frontier) return getChapterProgress(frontier.chapterId)
     return getChapterProgress(CHAPTERS[CHAPTERS.length - 1].id)
   })
-  const gatesDone = computed(() => chapter.value.clearedCount)
-  const gateTotal = computed(() => chapter.value.levelTotal)
-  const allDoneToday = computed(() => !nextLevel.value)
+  const gatesDone = computed(() => lesson.value?.clearedCount ?? 0)
+  const gateTotal = computed(() => lesson.value?.levelTotal ?? 0)
+  const allDoneToday = computed(() => !nextLevel.value && lesson.value?.status === 'cleared')
   const nextGate = computed(
     () => DAILY_CHAIN.find((step) => !isChainStepDone(step, persistState.gates)) ?? null,
   )
   const nextRoute = computed(() => locationForNextMainline())
   const startLabel = computed(() => {
-    if (chapter.value.complete) return '看章节奖励'
-    if (chapter.value.clearedCount > 0) return '继续冒险'
-    return '开始派对'
+    if (lesson.value?.status === 'soon') return '即将开放'
+    if (!nextLevel.value) return '看章节奖励'
+    if ((lesson.value?.clearedCount ?? 0) > 0) return '继续冒险'
+    return '开始第1课'
   })
   const warmupKind = computed(() => warmupKindForDate(persistState.dateKey))
 
@@ -215,6 +229,7 @@ export function useProgress() {
     today,
     lifetime,
     chapter,
+    lesson,
     nextLevel,
     state,
     gatesDone,
@@ -239,6 +254,7 @@ export function useProgress() {
     isLevelCleared,
     isChapterUnlocked,
     getChapterProgress,
+    getLessonProgress,
     getNextLevel,
     latestClearedChapterId,
     listClearedChapterIds,
@@ -253,6 +269,7 @@ export function useProgress() {
     hasDecoration,
     hasSticker,
     resetAllProgress,
+    setCurrentLesson,
     maxOutProgressFromConfig,
     gateRoutes: GATE_ROUTES,
   }

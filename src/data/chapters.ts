@@ -1,8 +1,4 @@
-import {
-  CHAPTER_1_STICKER_ID,
-  CHAPTER_2_STICKER_ID,
-  CHAPTER_3_STICKER_ID,
-} from './stickers'
+import { RISE_CHAPTER_STICKERS } from './stickers'
 
 export type PlayKind =
   | 'flashFlip'
@@ -14,7 +10,7 @@ export type PlayKind =
   | 'storyBook'
   | 'chapterFinale'
 
-/** Pre-8-level path (v3 saves): ids chN-1…chN-6 mapped by play, not by suffix. */
+/** Pre-8-level path (v3 saves). Kept so older readers still compile; v6 resets level ids. */
 export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
   'flashFlip',
   'whackWord',
@@ -24,10 +20,7 @@ export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
   'chapterFinale',
 ]
 
-/**
- * Persist v4 8-level path (sound-spell was 4, fish/echo/book were 5–7).
- * Current skeleton moved sound-spell to 7; remap v4 ids by play, not suffix.
- */
+/** Persist v4 8-level path. v6 does not remap these ids onto lessons. */
 export const V4_EIGHT_PLAY_ORDER: PlayKind[] = [
   'flashFlip',
   'whackWord',
@@ -43,11 +36,19 @@ export const INSERTED_PLAY_KINDS: PlayKind[] = ['soundSpell', 'storyBook']
 
 export type LevelStatus = 'locked' | 'unlocked' | 'cleared'
 
+/**
+ * Syllabus lesson kinds.
+ * letterSight = letter + sight word, story = reader,
+ * wordFamily = word builder / word family, math = number lesson, review = review or test.
+ */
+export type LessonType = 'letterSight' | 'story' | 'wordFamily' | 'math' | 'review'
+
 export const CHAPTER_1_ID = 'ch1'
 export const CHAPTER_2_ID = 'ch2'
 export const CHAPTER_3_ID = 'ch3'
 export const ANIMALS_CHAPTER_ID = CHAPTER_1_ID
 export const DEFAULT_CHAPTER_ID = CHAPTER_1_ID
+export const DEFAULT_LESSON_ID = 'ch1-k1'
 
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
@@ -60,9 +61,26 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
   chapterFinale: '/chapter-finale',
 }
 
+const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
+  flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
+  whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
+  dragSort: { titleEn: 'Drag Sort', titleZh: '拖一拖' },
+  soundSpell: { titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
+  wordFish: { titleEn: 'Word Fish', titleZh: '读词钓鱼' },
+  echo: { titleEn: 'Echo', titleZh: '回声跟读' },
+  storyBook: { titleEn: 'Story Book', titleZh: '小书点读' },
+  chapterFinale: { titleEn: 'Review', titleZh: '小小回顾' },
+}
+
+export type StoryBeat = {
+  word: string
+  line: string
+}
+
 export type LevelDef = {
   id: string
   chapterId: string
+  lessonId: string
   order: number
   play: PlayKind
   titleEn: string
@@ -72,8 +90,28 @@ export type LevelDef = {
   focusWord?: string
   words?: string[]
   appearWords?: string[]
+  storyPages?: StoryBeat[]
   firstClearStars: number
   chapterStickerId?: string
+}
+
+export type LessonDef = {
+  id: string
+  chapterId: string
+  /** 1–4 inside the chapter. */
+  order: number
+  /** 1–48 across the syllabus. L49-50 is 1. */
+  index: number
+  titleZh: string
+  titleEn: string
+  syllabusRange: string
+  type: LessonType
+  letter?: string
+  sightWords: string[]
+  sentence?: string
+  words: string[]
+  /** Empty until that课 has playable levels. */
+  levels: LevelDef[]
 }
 
 export type ChapterDef = {
@@ -81,196 +119,507 @@ export type ChapterDef = {
   islandId: 'animals'
   titleEn: string
   titleZh: string
+  kidTitle: string
   theme: string
-  familyId: string
+  emoji: string
   stickerId: string
+  syllabusRange: string
   words: string[]
-  levels: LevelDef[]
+  lessons: LessonDef[]
 }
 
-function level(
-  chapterId: string,
-  partial: Omit<LevelDef, 'chapterId' | 'route' | 'firstClearStars'> & {
-    firstClearStars?: number
-  },
-): LevelDef {
-  return {
-    ...partial,
-    chapterId,
-    route: PLAY_ROUTES[partial.play],
-    firstClearStars: partial.firstClearStars ?? 1,
-  }
-}
-
-const PLAY_SKELETON: Array<{
-  order: number
+export type LessonLevelSpec = {
   play: PlayKind
-  titleEn: string
+  notes: string
+  focusWord?: string
+  words?: string[]
+  appearWords?: string[]
+  storyPages?: StoryBeat[]
+  titleZh?: string
+  chapterStickerId?: string
+}
+
+function uniqueWords(list: Array<string | undefined>): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of list) {
+    const word = raw?.trim().toLowerCase()
+    if (!word || seen.has(word)) continue
+    seen.add(word)
+    out.push(word)
+  }
+  return out
+}
+
+export function buildLessonLevels(
+  chapterId: string,
+  lessonId: string,
+  specs: LessonLevelSpec[],
+): LevelDef[] {
+  return specs.map((spec, index) => {
+    const meta = PLAY_META[spec.play]
+    const order = index + 1
+    return {
+      id: `${lessonId}-${order}`,
+      chapterId,
+      lessonId,
+      order,
+      play: spec.play,
+      titleEn: meta.titleEn,
+      titleZh: spec.titleZh ?? meta.titleZh,
+      notes: spec.notes,
+      route: PLAY_ROUTES[spec.play],
+      focusWord: spec.focusWord,
+      words: spec.words,
+      appearWords: spec.appearWords,
+      storyPages: spec.storyPages,
+      firstClearStars: 1,
+      chapterStickerId: spec.chapterStickerId,
+    }
+  })
+}
+
+/** Letter + sight word: flash, whack, spell, story, short review. */
+export function buildLetterSightLevels(
+  chapterId: string,
+  lessonId: string,
+  input: {
+    flash: string[]
+    whack: string[]
+    spell: string[]
+    story: StoryBeat[]
+    review: string[]
+    chapterStickerId?: string
+  },
+): LevelDef[] {
+  const flash = uniqueWords(input.flash)
+  const story = input.story.filter((page) => page.word && page.line)
+  return buildLessonLevels(chapterId, lessonId, [
+    {
+      play: 'flashFlip',
+      notes: 'letter CVC flash',
+      focusWord: flash[0],
+      appearWords: flash.slice(1),
+      words: flash,
+    },
+    {
+      play: 'whackWord',
+      notes: 'hear and tap',
+      words: uniqueWords(input.whack),
+    },
+    {
+      play: 'soundSpell',
+      notes: 'hear and spell',
+      focusWord: input.spell[0],
+      words: uniqueWords(input.spell),
+    },
+    {
+      play: 'storyBook',
+      notes: 'short decodable book',
+      focusWord: story[0]?.word,
+      words: uniqueWords(story.map((page) => page.word)),
+      storyPages: story,
+    },
+    {
+      play: 'chapterFinale',
+      notes: input.chapterStickerId ? 'lesson review + chapter badge' : 'short mixed review',
+      words: uniqueWords(input.review),
+      chapterStickerId: input.chapterStickerId,
+    },
+  ])
+}
+
+/** Story课: book, fish, echo, spell, review. */
+export function buildStoryLevels(
+  chapterId: string,
+  lessonId: string,
+  input: {
+    story: StoryBeat[]
+    fish: string[]
+    echo: string[]
+    spell: string[]
+    review: string[]
+    chapterStickerId?: string
+  },
+): LevelDef[] {
+  const story = input.story.filter((page) => page.word && page.line)
+  return buildLessonLevels(chapterId, lessonId, [
+    {
+      play: 'storyBook',
+      notes: 'story book first',
+      focusWord: story[0]?.word,
+      words: uniqueWords(story.map((page) => page.word)),
+      storyPages: story,
+    },
+    { play: 'wordFish', notes: 'story words', words: uniqueWords(input.fish) },
+    { play: 'echo', notes: 'story sentences', words: uniqueWords(input.echo) },
+    {
+      play: 'soundSpell',
+      notes: 'spell story words',
+      focusWord: input.spell[0],
+      words: uniqueWords(input.spell),
+    },
+    {
+      play: 'chapterFinale',
+      notes: 'story review',
+      words: uniqueWords(input.review),
+      chapterStickerId: input.chapterStickerId,
+    },
+  ])
+}
+
+/** Word builder / family: sort, spell, fish, review. */
+export function buildWordFamilyLevels(
+  chapterId: string,
+  lessonId: string,
+  input: {
+    sort: string[]
+    spell: string[]
+    fish: string[]
+    review: string[]
+    chapterStickerId?: string
+  },
+): LevelDef[] {
+  return buildLessonLevels(chapterId, lessonId, [
+    { play: 'dragSort', notes: 'sort by family', words: uniqueWords(input.sort) },
+    {
+      play: 'soundSpell',
+      notes: 'spell family words',
+      focusWord: input.spell[0],
+      words: uniqueWords(input.spell),
+    },
+    { play: 'wordFish', notes: 'fish family words', words: uniqueWords(input.fish) },
+    {
+      play: 'chapterFinale',
+      notes: 'family review',
+      words: uniqueWords(input.review),
+      chapterStickerId: input.chapterStickerId,
+    },
+  ])
+}
+
+/** Review / test: mixed flash, whack, review. */
+export function buildReviewLevels(
+  chapterId: string,
+  lessonId: string,
+  input: {
+    flash: string[]
+    whack: string[]
+    review: string[]
+    chapterStickerId?: string
+  },
+): LevelDef[] {
+  const flash = uniqueWords(input.flash)
+  return buildLessonLevels(chapterId, lessonId, [
+    {
+      play: 'flashFlip',
+      notes: 'mixed flash',
+      focusWord: flash[0],
+      appearWords: flash.slice(1),
+      words: flash,
+    },
+    { play: 'whackWord', notes: 'mixed listen', words: uniqueWords(input.whack) },
+    {
+      play: 'chapterFinale',
+      notes: 'mixed review',
+      words: uniqueWords(input.review),
+      chapterStickerId: input.chapterStickerId,
+    },
+  ])
+}
+
+type SyllabusSeed = {
   titleZh: string
-}> = [
-  { order: 1, play: 'flashFlip', titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
-  { order: 2, play: 'whackWord', titleEn: 'Whack Word', titleZh: '地鼠词' },
-  { order: 3, play: 'dragSort', titleEn: 'Drag Sort', titleZh: '拖一拖' },
-  { order: 4, play: 'wordFish', titleEn: 'Word Fish', titleZh: '读词钓鱼' },
-  { order: 5, play: 'echo', titleEn: 'Echo', titleZh: '回声跟读' },
-  { order: 6, play: 'storyBook', titleEn: 'Story Book', titleZh: '小书点读' },
-  { order: 7, play: 'soundSpell', titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
-  { order: 8, play: 'chapterFinale', titleEn: 'Chapter Finale', titleZh: '章节回顾' },
+  titleEn: string
+  type: LessonType
+  letter?: string
+  sightWords?: string[]
+  sentence?: string
+}
+
+type ChapterSeed = {
+  kidTitle: string
+  titleEn: string
+  emoji: string
+  lessons: SyllabusSeed[]
+}
+
+/**
+ * RISE Mart P1 from L49. Each cell is one 课 (two school lessons).
+ * Ranges are computed: lesson 1 = L49-50 … lesson 48 = L143-144.
+ * Second line of a letter cell is the sight word.
+ */
+const SYLLABUS: ChapterSeed[] = [
+  {
+    kidTitle: '字母朋友',
+    titleEn: 'Letters O V L K',
+    emoji: '🔤',
+    lessons: [
+      { titleZh: '字母 O · I', titleEn: 'Letter O · I', type: 'letterSight', letter: 'O', sightWords: ['I'], sentence: 'I can hop.' },
+      { titleZh: '字母 V · my', titleEn: 'Letter V · my', type: 'letterSight', letter: 'V', sightWords: ['my'], sentence: 'My van.' },
+      { titleZh: '字母 L · good', titleEn: 'Letter L · good', type: 'letterSight', letter: 'L', sightWords: ['good'], sentence: 'It is good.' },
+      { titleZh: '字母 K · three', titleEn: 'Letter K · three', type: 'letterSight', letter: 'K', sightWords: ['three'], sentence: 'Three kids.' },
+    ],
+  },
+  {
+    kidTitle: '小豹来了',
+    titleEn: 'Leopard and Recycle',
+    emoji: '🐆',
+    lessons: [
+      { titleZh: '小豹子', titleEn: 'Leopard', type: 'story' },
+      { titleZh: '回收小书', titleEn: 'Recycle it', type: 'story' },
+      { titleZh: '词块工坊 · we', titleEn: 'Work builder · we', type: 'wordFamily', sightWords: ['we'] },
+      { titleZh: '我想吃', titleEn: 'I like to eat · for', type: 'story', sightWords: ['for'] },
+    ],
+  },
+  {
+    kidTitle: '词族和字母',
+    titleEn: 'Word Family, C and P',
+    emoji: '🖼️',
+    lessons: [
+      { titleZh: '词族肖像', titleEn: 'Word Family portrait', type: 'wordFamily' },
+      { titleZh: '字母 C · find', titleEn: 'Letter C · find', type: 'letterSight', letter: 'C', sightWords: ['find'] },
+      { titleZh: '字母 P · all out', titleEn: 'Letter P · all out', type: 'letterSight', letter: 'P', sightWords: ['all', 'out'] },
+      { titleZh: '好多好多', titleEn: 'A lot, A lot', type: 'story' },
+    ],
+  },
+  {
+    kidTitle: '六只母鸡',
+    titleEn: 'Six Hens',
+    emoji: '🐔',
+    lessons: [
+      { titleZh: '六只母鸡会跳', titleEn: 'Six Hens Can hop · one two', type: 'story', sightWords: ['one', 'two'] },
+      { titleZh: '字母 G', titleEn: 'Letter G', type: 'letterSight', letter: 'G' },
+      { titleZh: '大力一击', titleEn: 'A Big Hit', type: 'story' },
+      { titleZh: '大胡萝卜', titleEn: 'The big carrot · help', type: 'story', sightWords: ['help'] },
+    ],
+  },
+  {
+    kidTitle: '小屋和数字',
+    titleEn: 'Numbers and the Hut',
+    emoji: '🏡',
+    lessons: [
+      { titleZh: '数字 50–100', titleEn: 'Number 50-100', type: 'math' },
+      { titleZh: '字母 E · at', titleEn: 'Letter E · at', type: 'letterSight', letter: 'E', sightWords: ['at'] },
+      { titleZh: '谁住在小屋', titleEn: 'Who lives in the hut', type: 'story' },
+      { titleZh: '字母 W · look', titleEn: 'Letter W · look', type: 'letterSight', letter: 'W', sightWords: ['look'] },
+    ],
+  },
+  {
+    kidTitle: '丹和卡姆',
+    titleEn: 'Dan and Cam',
+    emoji: '👦',
+    lessons: [
+      { titleZh: '词块工坊', titleEn: 'Word Builder', type: 'wordFamily' },
+      { titleZh: '词族肖像', titleEn: 'Word Family Portrait', type: 'wordFamily' },
+      { titleZh: '字母 J · red', titleEn: 'Letter Jj · red', type: 'letterSight', letter: 'J', sightWords: ['red'] },
+      { titleZh: '丹和卡姆', titleEn: 'Dan and Cam · yellow', type: 'story', sightWords: ['yellow'] },
+    ],
+  },
+  {
+    kidTitle: '院子义卖',
+    titleEn: 'The Yard Sale',
+    emoji: '🏷️',
+    lessons: [
+      { titleZh: '字母 Y · get', titleEn: 'Letter Yy · get', type: 'letterSight', letter: 'Y', sightWords: ['get'] },
+      { titleZh: '多一个', titleEn: 'One more than', type: 'math' },
+      { titleZh: '院子义卖', titleEn: 'The Yard Sale', type: 'story' },
+      { titleZh: '字母 N · play', titleEn: 'Letter N · play', type: 'letterSight', letter: 'N', sightWords: ['play'] },
+    ],
+  },
+  {
+    kidTitle: '卡姆和帕特',
+    titleEn: 'Cam and Pat',
+    emoji: '👫',
+    lessons: [
+      { titleZh: '少一个', titleEn: 'One fewer than', type: 'math' },
+      { titleZh: '字母 F · see blue', titleEn: 'Letter F · see blue', type: 'letterSight', letter: 'F', sightWords: ['see', 'blue'] },
+      { titleZh: '卡姆和帕特', titleEn: 'Cam and Pat', type: 'story' },
+      { titleZh: '字母 Z · jump', titleEn: 'Letter z · jump run up', type: 'letterSight', letter: 'Z', sightWords: ['jump', 'run', 'up'] },
+    ],
+  },
+  {
+    kidTitle: '走进森林',
+    titleEn: 'In the Forest',
+    emoji: '🌲',
+    lessons: [
+      { titleZh: '词块和词族', titleEn: 'Word Builder/Family', type: 'wordFamily' },
+      { titleZh: '在森林里', titleEn: 'In the Forest', type: 'story' },
+      { titleZh: '字母 Q · she say', titleEn: 'Letter Q · she say', type: 'letterSight', letter: 'Q', sightWords: ['she', 'say'] },
+      { titleZh: '停下，小虫', titleEn: 'Quit it, Bug', type: 'story' },
+    ],
+  },
+  {
+    kidTitle: '爸爸做饭',
+    titleEn: 'Dad Cooks',
+    emoji: '🍳',
+    lessons: [
+      { titleZh: '字母 X', titleEn: 'Letter X', type: 'letterSight', letter: 'X' },
+      { titleZh: '爸爸爱做饭', titleEn: 'Dad Likes to cook', type: 'story' },
+      { titleZh: 'CVC 复习', titleEn: 'CVC Review', type: 'review' },
+      { titleZh: '五个五个数', titleEn: 'Skip counting by 5s', type: 'math' },
+    ],
+  },
+  {
+    kidTitle: '霍普的地图',
+    titleEn: "Hope's Map",
+    emoji: '🗺️',
+    lessons: [
+      { titleZh: '我是 E', titleEn: 'I am E', type: 'story' },
+      { titleZh: '找出带 e 的词', titleEn: 'Find e words', type: 'review' },
+      { titleZh: '霍普的地图', titleEn: "Hope's Map", type: 'story' },
+      { titleZh: '小测验', titleEn: 'Test', type: 'review' },
+    ],
+  },
+  {
+    kidTitle: '毕业小复习',
+    titleEn: 'Graduation',
+    emoji: '🎓',
+    lessons: [
+      { titleZh: '两个两个数', titleEn: 'Skip counting by 2s', type: 'math' },
+      { titleZh: '煎饼', titleEn: 'Pancakes', type: 'story' },
+      { titleZh: '毕业啦', titleEn: 'Graduation', type: 'story' },
+      { titleZh: '总复习', titleEn: 'Review', type: 'review' },
+    ],
+  },
 ]
 
-function chapterLevels(
-  chapterId: string,
-  specs: Array<{
-    notes: string
-    focusWord?: string
-    appearWords?: string[]
-    words: string[]
-    chapterStickerId?: string
-  }>,
-): LevelDef[] {
-  return PLAY_SKELETON.map((slot, index) =>
-    level(chapterId, {
-      id: `${chapterId}-${slot.order}`,
-      order: slot.order,
-      play: slot.play,
-      titleEn: slot.titleEn,
-      titleZh: slot.titleZh,
-      notes: specs[index].notes,
-      focusWord: specs[index].focusWord,
-      appearWords: specs[index].appearWords,
-      words: specs[index].words,
-      chapterStickerId: specs[index].chapterStickerId,
-    }),
-  )
+function chapterOneLevels(lessonId: string, lessonOrder: number): LevelDef[] {
+  const stickerId = RISE_CHAPTER_STICKERS[0]?.id
+  if (lessonOrder === 1) {
+    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
+      flash: ['hop', 'pot', 'top', 'mop', 'log'],
+      whack: ['hop', 'pot', 'top', 'mop', 'log'],
+      spell: ['hop', 'pot', 'top'],
+      story: [
+        { word: 'hop', line: 'I can hop.' },
+        { word: 'pot', line: 'I hop. Pot.' },
+        { word: 'top', line: 'Top. I can hop.' },
+        { word: 'mop', line: 'I can mop.' },
+      ],
+      review: ['hop', 'pot', 'top', 'mop', 'log'],
+    })
+  }
+  if (lessonOrder === 2) {
+    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
+      flash: ['van', 'vet', 'hop'],
+      whack: ['van', 'vet', 'hop', 'pot'],
+      spell: ['van', 'vet', 'hop'],
+      story: [
+        { word: 'van', line: 'My van.' },
+        { word: 'vet', line: 'Vet. My van.' },
+        { word: 'hop', line: 'I can hop. My van.' },
+      ],
+      review: ['van', 'vet', 'hop', 'pot'],
+    })
+  }
+  if (lessonOrder === 3) {
+    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
+      flash: ['lip', 'leg', 'lid', 'log'],
+      whack: ['lip', 'leg', 'lid', 'log'],
+      spell: ['lip', 'leg', 'lid'],
+      story: [
+        { word: 'leg', line: 'My leg is good.' },
+        { word: 'lip', line: 'My lip is good.' },
+        { word: 'lid', line: 'Lid is good.' },
+        { word: 'log', line: 'Log is good.' },
+      ],
+      review: ['lip', 'leg', 'lid', 'log'],
+    })
+  }
+  return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
+    flash: ['kid', 'kit', 'keg', 'kick'],
+    whack: ['kid', 'kit', 'keg', 'kick'],
+    spell: ['kid', 'kit', 'keg'],
+    story: [
+      { word: 'kid', line: 'Three kids.' },
+      { word: 'kit', line: 'My kit is good.' },
+      { word: 'kick', line: 'I can kick.' },
+      { word: 'keg', line: 'Keg. Three kids.' },
+    ],
+    review: ['kid', 'kit', 'keg', 'kick', 'van', 'lip'],
+    chapterStickerId: stickerId,
+  })
 }
 
-/** Animals Island Chapter 1 — 「-ap 派对」. Option A: levels unlock in order. */
-export const CHAPTER_1: ChapterDef = {
-  id: CHAPTER_1_ID,
-  islandId: 'animals',
-  titleEn: 'Animals Island · -ap Party',
-  titleZh: '动物岛「-ap 派对」',
-  theme: 'atParty',
-  familyId: '-ap',
-  stickerId: CHAPTER_1_STICKER_ID,
-  words: ['cap', 'map', 'nap', 'tap', 'lap'],
-  levels: chapterLevels(CHAPTER_1_ID, [
-    {
-      notes: 'cap focus, map/nap appear',
-      focusWord: 'cap',
-      appearWords: ['map', 'nap'],
-      words: ['cap', 'map', 'nap'],
-    },
-    { notes: 'cap/map/nap', words: ['cap', 'map', 'nap'] },
-    { notes: 'three words', words: ['cap', 'map', 'nap'] },
-    { notes: 'read to catch', words: ['cap', 'map', 'nap'] },
-    { notes: 'follow-read + short sentence', words: ['cap', 'map', 'nap'] },
-    {
-      notes: 'mini book, one short sentence per page, try-blend cap',
-      focusWord: 'cap',
-      words: ['cap', 'map', 'nap'],
-    },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'cap',
-      words: ['cap', 'map', 'nap'],
-    },
-    {
-      notes: 'short mixed recap + one -at review + chapter sticker on first clear',
-      words: ['cap', 'map', 'nap', 'tap', 'cat'],
-      chapterStickerId: CHAPTER_1_STICKER_ID,
-    },
-  ]),
+function lessonWords(levels: LevelDef[], sightWords: string[]): string[] {
+  return uniqueWords([
+    ...sightWords,
+    ...levels.flatMap((level) => [level.focusWord, ...(level.appearWords ?? []), ...(level.words ?? [])]),
+  ])
 }
 
-/** Animals Island Chapter 2 — 「听声找伙伴」. Unlocks only after Chapter 1 is fully cleared. */
-export const CHAPTER_2: ChapterDef = {
-  id: CHAPTER_2_ID,
-  islandId: 'animals',
-  titleEn: 'Animals Island · Listen for Friends',
-  titleZh: '动物岛「听声找伙伴」',
-  theme: 'listenFriends',
-  familyId: '-og',
-  stickerId: CHAPTER_2_STICKER_ID,
-  words: ['frog', 'log', 'fog', 'jog', 'hog'],
-  levels: chapterLevels(CHAPTER_2_ID, [
-    {
-      notes: 'frog focus, log/fog appear',
-      focusWord: 'frog',
-      appearWords: ['log', 'fog'],
-      words: ['frog', 'log', 'fog'],
-    },
-    { notes: 'frog/log/fog', words: ['frog', 'log', 'fog'] },
-    { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
-    { notes: 'frog/log/jog', words: ['frog', 'log', 'jog'] },
-    {
-      notes: 'frog→hog path through the five -og words + short sentence',
-      words: ['frog', 'log', 'fog', 'jog', 'hog'],
-    },
-    {
-      notes: 'mini book, one short sentence per page, try-blend frog',
-      focusWord: 'frog',
-      words: ['frog', 'log', 'fog'],
-    },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'frog',
-      words: ['frog', 'log', 'fog'],
-    },
-    {
-      notes: 'five-word recap + chapter sticker on first clear',
-      words: ['frog', 'log', 'fog', 'jog', 'hog'],
-      chapterStickerId: CHAPTER_2_STICKER_ID,
-    },
-  ]),
+function buildChapters(): ChapterDef[] {
+  let index = 0
+  return SYLLABUS.map((seed, chapterIndex) => {
+    const chapterNumber = chapterIndex + 1
+    const chapterId = `ch${chapterNumber}`
+    const stickerId = RISE_CHAPTER_STICKERS[chapterIndex]?.id ?? `rise${chapterNumber}`
+    const lessons = seed.lessons.map((raw, lessonIndex) => {
+      index += 1
+      const order = lessonIndex + 1
+      const id = `${chapterId}-k${order}`
+      const rangeStart = 49 + (index - 1) * 2
+      const levels = chapterId === CHAPTER_1_ID ? chapterOneLevels(id, order) : []
+      const sightWords = raw.sightWords ?? []
+      return {
+        id,
+        chapterId,
+        order,
+        index,
+        titleZh: raw.titleZh,
+        titleEn: raw.titleEn,
+        syllabusRange: `L${rangeStart}-${rangeStart + 1}`,
+        type: raw.type,
+        letter: raw.letter,
+        sightWords,
+        sentence: raw.sentence,
+        words: lessonWords(levels, []),
+        levels,
+      }
+    })
+    const first = lessons[0]
+    const last = lessons[lessons.length - 1]
+    const rangeStart = first ? 49 + (first.index - 1) * 2 : 0
+    const rangeEnd = last ? 49 + (last.index - 1) * 2 + 1 : 0
+    return {
+      id: chapterId,
+      islandId: 'animals' as const,
+      titleEn: seed.titleEn,
+      titleZh: `「${seed.kidTitle}」`,
+      kidTitle: seed.kidTitle,
+      theme: `rise${chapterNumber}`,
+      emoji: seed.emoji,
+      stickerId,
+      syllabusRange: first && last ? `L${rangeStart}-${rangeEnd}` : '',
+      words: uniqueWords(lessons.flatMap((lesson) => lesson.words)),
+      lessons,
+    }
+  })
 }
 
-/** Animals Island Chapter 3 — 「石头袜子」. Unlocks only after Chapter 2 is fully cleared. */
-export const CHAPTER_3: ChapterDef = {
-  id: CHAPTER_3_ID,
-  islandId: 'animals',
-  titleEn: 'Animals Island · Rocks and Socks',
-  titleZh: '动物岛「石头袜子」',
-  theme: 'treatsSky',
-  familyId: '-ck',
-  stickerId: CHAPTER_3_STICKER_ID,
-  words: ['duck', 'rock', 'sock', 'lock', 'pack'],
-  levels: chapterLevels(CHAPTER_3_ID, [
-    {
-      notes: 'duck focus, rock appear',
-      focusWord: 'duck',
-      appearWords: ['rock'],
-      words: ['duck', 'rock'],
-    },
-    { notes: 'duck/rock/sock', words: ['duck', 'rock', 'sock'] },
-    { notes: 'rock/sock/lock', words: ['rock', 'sock', 'lock'] },
-    { notes: 'duck/rock/lock', words: ['duck', 'rock', 'lock'] },
-    { notes: 'duck/rock/sock + short sentence', words: ['duck', 'rock', 'sock'] },
-    {
-      notes: 'mini book, one short sentence per page, try-blend duck',
-      focusWord: 'duck',
-      words: ['duck', 'rock', 'sock'],
-    },
-    {
-      notes: 'hear CVC, assemble with letter tiles',
-      focusWord: 'duck',
-      words: ['duck', 'sock'],
-    },
-    {
-      notes: 'ck mix + one -ap review + chapter sticker on first clear',
-      words: ['duck', 'rock', 'sock', 'lock', 'pack', 'cap'],
-      chapterStickerId: CHAPTER_3_STICKER_ID,
-    },
-  ]),
-}
-
-export const CHAPTERS: ChapterDef[] = [CHAPTER_1, CHAPTER_2, CHAPTER_3]
+export const CHAPTERS: ChapterDef[] = buildChapters()
 
 const chapterById = new Map(CHAPTERS.map((chapter) => [chapter.id, chapter]))
-const levelById = new Map(CHAPTERS.flatMap((chapter) => chapter.levels.map((item) => [item.id, item])))
+const lessonById = new Map(CHAPTERS.flatMap((chapter) => chapter.lessons.map((lesson) => [lesson.id, lesson])))
+const levelById = new Map(
+  CHAPTERS.flatMap((chapter) => chapter.lessons.flatMap((lesson) => lesson.levels.map((level) => [level.id, level]))),
+)
+
+export const CHAPTER_1 = CHAPTERS[0]
+export const CHAPTER_2 = CHAPTERS[1]
+export const CHAPTER_3 = CHAPTERS[2]
 
 export function listChapters(): ChapterDef[] {
   return CHAPTERS
+}
+
+export function listLessons(): LessonDef[] {
+  return CHAPTERS.flatMap((chapter) => chapter.lessons)
+}
+
+export function listChapterLessons(chapterId: string = DEFAULT_CHAPTER_ID): LessonDef[] {
+  return getChapter(chapterId)?.lessons ?? []
 }
 
 export function getChapter(id: string = DEFAULT_CHAPTER_ID): ChapterDef | undefined {
@@ -281,21 +630,44 @@ export function getChapterOrDefault(id?: string): ChapterDef {
   return getChapter(id) ?? CHAPTER_1
 }
 
+export function getLesson(id?: string | null): LessonDef | undefined {
+  if (!id) return undefined
+  return lessonById.get(id)
+}
+
+export function getFirstLesson(chapterId: string = DEFAULT_CHAPTER_ID): LessonDef {
+  return listChapterLessons(chapterId)[0] ?? listLessons()[0]
+}
+
+export function isKnownLessonId(id: string): boolean {
+  return lessonById.has(id)
+}
+
 export function listChapterLevels(chapterId: string = DEFAULT_CHAPTER_ID): LevelDef[] {
-  return getChapterOrDefault(chapterId).levels
+  return listChapterLessons(chapterId).flatMap((lesson) => lesson.levels)
 }
 
-/** Config-driven chapter length. Never hardcode 6 / 8 at call sites. */
+export function listLessonLevels(lessonId: string): LevelDef[] {
+  return getLesson(lessonId)?.levels ?? []
+}
+
+/** Config-driven count. Empty chapters return 0 so callers can show 即将开放. */
 export function chapterLevelTotal(chapterId: string = DEFAULT_CHAPTER_ID): number {
-  return Math.max(1, listChapterLevels(chapterId).length)
+  return listChapterLevels(chapterId).length
 }
 
-export function levelIdForPlay(play: PlayKind, chapterId: string = DEFAULT_CHAPTER_ID): string | undefined {
-  return listChapterLevels(chapterId).find((item) => item.play === play)?.id
+export function lessonLevelTotal(lessonId: string): number {
+  return listLessonLevels(lessonId).length
+}
+
+export function levelIdForPlay(play: PlayKind, scopeId: string = DEFAULT_CHAPTER_ID): string | undefined {
+  const lesson = getLesson(scopeId)
+  if (lesson) return lesson.levels.find((item) => item.play === play)?.id
+  return listChapterLevels(scopeId).find((item) => item.play === play)?.id
 }
 
 export function listAllLevels(): LevelDef[] {
-  return CHAPTERS.flatMap((chapter) => chapter.levels)
+  return listLessons().flatMap((lesson) => lesson.levels)
 }
 
 export function getLevel(id: string): LevelDef | undefined {
@@ -307,7 +679,7 @@ export function isKnownLevelId(id: string): boolean {
 }
 
 export function getFirstLevel(chapterId: string = DEFAULT_CHAPTER_ID): LevelDef {
-  return listChapterLevels(chapterId)[0]
+  return listChapterLevels(chapterId)[0] ?? listAllLevels()[0]
 }
 
 export function getChapterIndex(chapterId: string): number {
@@ -319,23 +691,21 @@ export function getChapterNumber(chapterId: string): number {
   return index >= 0 ? index + 1 : 1
 }
 
-/** Kid-facing short title: 「-ap 派对」 / 「听声找伙伴」 / 「石头袜子」. */
 export function chapterKidTitle(chapterId: string): string {
-  const chapter = getChapter(chapterId)
-  if (!chapter) return ''
-  const match = chapter.titleZh.match(/「(.+)」/)
-  return match?.[1] ?? chapter.titleZh
+  return getChapter(chapterId)?.kidTitle ?? ''
+}
+
+export function lessonKidTitle(lessonId?: string | null): string {
+  return getLesson(lessonId)?.titleZh ?? ''
 }
 
 export function isAnimalsChapterId(id: string): boolean {
   return chapterById.has(id)
 }
 
-export const CHAPTER_LOBBY_EMOJI: Record<string, string> = {
-  [CHAPTER_1_ID]: '🎉',
-  [CHAPTER_2_ID]: '👂',
-  [CHAPTER_3_ID]: '🧁',
-}
+export const CHAPTER_LOBBY_EMOJI: Record<string, string> = Object.fromEntries(
+  CHAPTERS.map((chapter) => [chapter.id, chapter.emoji]),
+)
 
 export function getPriorChapter(chapterId: string): ChapterDef | null {
   const index = getChapterIndex(chapterId)
@@ -347,7 +717,19 @@ export function getNextChapter(chapterId: string): ChapterDef | null {
   return index >= 0 && index < CHAPTERS.length - 1 ? CHAPTERS[index + 1] : null
 }
 
-/** Prior chapter id that must be fully cleared, or null if this is the first chapter. */
+export function getPriorLesson(lessonId: string): LessonDef | null {
+  const lesson = getLesson(lessonId)
+  if (!lesson || lesson.index <= 1) return null
+  return listLessons()[lesson.index - 2] ?? null
+}
+
+export function getNextLesson(lessonId: string): LessonDef | null {
+  const lesson = getLesson(lessonId)
+  if (!lesson) return null
+  return listLessons()[lesson.index] ?? null
+}
+
+/** Prior chapter id that must be fully cleared, or null for the first chapter. */
 export function chapterUnlocksAfter(chapterId: string): string | null {
   return getPriorChapter(chapterId)?.id ?? null
 }
@@ -355,17 +737,22 @@ export function chapterUnlocksAfter(chapterId: string): string | null {
 export function getNextLevelDef(levelId: string): LevelDef | null {
   const current = getLevel(levelId)
   if (!current) return null
-  const levels = listChapterLevels(current.chapterId)
+  const levels = listLessonLevels(current.lessonId)
   return levels.find((item) => item.order === current.order + 1) ?? null
 }
 
-/** Same-chapter next level, or the first level of the following chapter. */
+/** Next level in this课, or the first level of the following课 that has content. */
 export function getNextMainlineLevelDef(levelId: string): LevelDef | null {
   const intra = getNextLevelDef(levelId)
   if (intra) return intra
   const current = getLevel(levelId)
   if (!current) return null
-  return getNextChapter(current.chapterId)?.levels[0] ?? null
+  let cursor: LessonDef | null = getNextLesson(current.lessonId)
+  while (cursor) {
+    if (cursor.levels.length) return cursor.levels[0]
+    cursor = getNextLesson(cursor.id)
+  }
+  return null
 }
 
 export function playKindToGate(play: PlayKind): string | null {
@@ -377,27 +764,26 @@ export function playKindToGate(play: PlayKind): string | null {
   return null
 }
 
-const defaultLevelByPlay = new Map<PlayKind, string>(
-  CHAPTER_1.levels.map((item) => [item.play, item.id]),
-)
-
 export function defaultLevelIdForPlay(play: PlayKind): string {
-  return defaultLevelByPlay.get(play) ?? getFirstLevel().id
+  return listAllLevels().find((item) => item.play === play)?.id ?? getFirstLevel().id
 }
 
 /**
  * Query `?level=` wins when it matches this play.
- * Stale suffixes (v4 sound-spell at chN-4, etc.) remap by chapter + play.
- * Otherwise the Chapter 1 default.
+ * A known level of another play remaps inside that same课.
  */
 export function resolveLevelId(play: PlayKind, raw?: string | null): string {
   if (raw) {
     const def = getLevel(raw)
     if (def && def.play === play) return def.id
     if (def) {
-      const remapped = levelIdForPlay(play, def.chapterId)
+      const remapped = levelIdForPlay(play, def.lessonId)
       if (remapped) return remapped
     }
   }
   return defaultLevelIdForPlay(play)
+}
+
+export function lessonHasContent(lessonId: string): boolean {
+  return listLessonLevels(lessonId).length > 0
 }

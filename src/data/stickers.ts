@@ -13,18 +13,40 @@ export const PLACEHOLDER_STICKERS: StickerDef[] = [
   { id: 'sun', label: '暖太阳', emoji: '☀️' },
 ]
 
-/** Chapter first-clear badges. Not in the daily rotating pool. */
+/** Old island badges. Kept so earlier saves still have a name in the album. */
 export const CHAPTER_1_STICKER_ID = 'atParty'
 export const CHAPTER_2_STICKER_ID = 'pawPrint'
 export const CHAPTER_3_STICKER_ID = 'littleStar'
 
-export const CHAPTER_STICKERS: StickerDef[] = [
+export const LEGACY_CHAPTER_STICKERS: StickerDef[] = [
   { id: CHAPTER_1_STICKER_ID, label: '-ap 派对徽章', emoji: '🎉' },
   { id: CHAPTER_2_STICKER_ID, label: '爪印徽章', emoji: '🐾' },
   { id: CHAPTER_3_STICKER_ID, label: '小星星徽章', emoji: '⭐' },
 ]
 
-export const ALBUM_STICKERS: StickerDef[] = [...PLACEHOLDER_STICKERS, ...CHAPTER_STICKERS]
+/** One badge per syllabus chapter. Ids stay stable so album saves keep matching. */
+export const RISE_CHAPTER_STICKERS: StickerDef[] = [
+  { id: 'rise1', label: '字母朋友徽章', emoji: '🔤' },
+  { id: 'rise2', label: '小豹徽章', emoji: '🐆' },
+  { id: 'rise3', label: '词族徽章', emoji: '🖼️' },
+  { id: 'rise4', label: '母鸡徽章', emoji: '🐔' },
+  { id: 'rise5', label: '小屋徽章', emoji: '🏡' },
+  { id: 'rise6', label: '丹和卡姆徽章', emoji: '👦' },
+  { id: 'rise7', label: '义卖徽章', emoji: '🏷️' },
+  { id: 'rise8', label: '好朋友徽章', emoji: '👫' },
+  { id: 'rise9', label: '森林徽章', emoji: '🌲' },
+  { id: 'rise10', label: '做饭徽章', emoji: '🍳' },
+  { id: 'rise11', label: '地图徽章', emoji: '🗺️' },
+  { id: 'rise12', label: '毕业徽章', emoji: '🎓' },
+]
+
+export const CHAPTER_STICKERS: StickerDef[] = [...RISE_CHAPTER_STICKERS]
+
+export const ALBUM_STICKERS: StickerDef[] = [
+  ...PLACEHOLDER_STICKERS,
+  ...LEGACY_CHAPTER_STICKERS,
+  ...RISE_CHAPTER_STICKERS,
+]
 
 export const PLACEHOLDER_STICKER_IDS = PLACEHOLDER_STICKERS.map((item) => item.id)
 

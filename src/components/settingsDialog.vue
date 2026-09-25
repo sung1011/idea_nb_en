@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { listChapters } from '../data/chapters'
 import { playPop } from '../composables/useSfx'
-import { maxOutProgressFromConfig, resetAllProgress } from '../composables/useProgress'
+import { getFrontierLesson, maxOutProgressFromConfig, resetAllProgress, setCurrentLesson } from '../composables/useProgress'
 import bigButton from './bigButton.vue'
 
 const open = defineModel<boolean>({ default: false })
-const step = ref<'main' | 'confirmWipe' | 'confirmMax'>('main')
+const step = ref<'main' | 'confirmWipe' | 'confirmMax' | 'pickLesson' | 'confirmLesson'>('main')
+const pickedLessonId = ref(getFrontierLesson().id)
 const router = useRouter()
+const chapters = listChapters()
+const pickedLesson = computed(() => {
+  for (const chapter of chapters) {
+    const lesson = chapter.lessons.find((item) => item.id === pickedLessonId.value)
+    if (lesson) return { chapter, lesson }
+  }
+  return null
+})
 
 function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape' && open.value) close()
@@ -50,6 +60,18 @@ function askMaxConfirm() {
   step.value = 'confirmMax'
 }
 
+function askLesson() {
+  playPop()
+  pickedLessonId.value = getFrontierLesson().id
+  step.value = 'pickLesson'
+}
+
+function askLessonConfirm() {
+  playPop()
+  if (!pickedLesson.value) return
+  step.value = 'confirmLesson'
+}
+
 function wipeAll() {
   playPop()
   resetAllProgress()
@@ -62,6 +84,14 @@ function maxAll() {
   maxOutProgressFromConfig()
   close()
   refreshRoute()
+}
+
+function applyLesson() {
+  playPop()
+  if (!pickedLesson.value) return
+  setCurrentLesson(pickedLesson.value.lesson.id)
+  close()
+  void router.replace('/')
 }
 </script>
 
@@ -82,12 +112,42 @@ function maxAll() {
           <p class="eyebrow">Settings</p>
           <h2 id="settings-title" class="title">设置</h2>
           <p class="warn">
-            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、章节关卡。词卡图片还在，不会删。
-            「完全化」会按配置一键打满：所有章节关卡、星星、徽章贴纸、图鉴词、岛日展示。
+            「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
+            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡。词卡图片还在，不会删。
+            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示。
           </p>
+          <big-button variant="primary" @click="askLesson">设置当前课</big-button>
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
-          <big-button variant="primary" @click="askMaxConfirm">完全化</big-button>
+          <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>
           <big-button variant="soft" @click="close">先不了</big-button>
+        </template>
+        <template v-else-if="step === 'pickLesson'">
+          <p class="eyebrow">Lesson</p>
+          <h2 id="settings-title" class="title">设置当前课</h2>
+          <p class="warn">选学校现在上到的那一课。更早的课会记成已过。</p>
+          <label class="pick-label" for="lesson-pick">当前课</label>
+          <select id="lesson-pick" v-model="pickedLessonId" class="lesson-pick">
+            <optgroup v-for="chapter in chapters" :key="chapter.id" :label="`第${chapters.indexOf(chapter) + 1}章 ${chapter.kidTitle}`">
+              <option v-for="lesson in chapter.lessons" :key="lesson.id" :value="lesson.id">
+                第{{ lesson.order }}课 {{ lesson.titleZh }} {{ lesson.syllabusRange }}
+              </option>
+            </optgroup>
+          </select>
+          <big-button variant="primary" @click="askLessonConfirm">就设成这课</big-button>
+          <big-button variant="soft" @click="step = 'main'">返回</big-button>
+        </template>
+        <template v-else-if="step === 'confirmLesson'">
+          <p class="eyebrow">Lesson</p>
+          <h2 id="settings-title" class="title">设成这一课？</h2>
+          <p class="warn">
+            {{
+              pickedLesson
+                ? `第${chapters.indexOf(pickedLesson.chapter) + 1}章 · 第${pickedLesson.lesson.order}课 ${pickedLesson.lesson.titleZh}（${pickedLesson.lesson.syllabusRange}）。前面的课会记成已过，星星和章节徽章一起补上。`
+                : '请先选一课。'
+            }}
+          </p>
+          <big-button variant="primary" @click="applyLesson">确认</big-button>
+          <big-button variant="soft" @click="step = 'pickLesson'">再选选</big-button>
         </template>
         <template v-else-if="step === 'confirmWipe'">
           <p class="eyebrow">Reset</p>
@@ -148,6 +208,28 @@ function maxAll() {
   font-weight: 650;
   line-height: 1.4;
   color: var(--ink);
+}
+
+.pick-label {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.lesson-pick {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  border: 2px solid #d5e2ea;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-card {
+  max-height: min(86dvh, 640px);
+  overflow-y: auto;
 }
 
 </style>

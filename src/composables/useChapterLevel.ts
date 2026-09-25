@@ -4,7 +4,9 @@ import {
   ANIMALS_CHAPTER_ID,
   chapterKidTitle,
   getChapterNumber,
+  getLesson,
   getLevel,
+  lessonKidTitle,
   resolveLevelId,
   type PlayKind,
 } from '../data/chapters'
@@ -44,9 +46,10 @@ export function useChapterLevel(play: PlayKind) {
       resolvedLevel: level.value,
     }),
   )
-  const themeHint = computed(() =>
-    useLevelWords.value ? chapterKidTitle(level.value?.chapterId ?? '') : '',
-  )
+  const themeHint = computed(() => {
+    if (!useLevelWords.value) return ''
+    return lessonKidTitle(level.value?.lessonId) || chapterKidTitle(level.value?.chapterId ?? '')
+  })
 
   function takeRunWords(count: number): string[] {
     return sampleGateWords({
@@ -74,11 +77,13 @@ export function useChapterLevel(play: PlayKind) {
   const gateTag = computed(() => {
     const title = level.value?.titleZh ?? ''
     const order = level.value?.order
+    const lessonNo = getLesson(level.value?.lessonId)?.order
+    const where = lessonNo ? `第${lessonNo}课 · 第${order}关` : `第${order}关`
     if (isDemo.value) return `试玩 · ${title}`
     if (isReview.value) return `复习 · ${title}`
-    if (isChapterPractice.value) return `再玩 · 第${order}关 · ${title}`
-    if (isReplay.value) return `再玩 · 第${order}关 · ${title}`
-    return `第${order}关 · ${title}`
+    if (isChapterPractice.value) return `再玩 · ${where} · ${title}`
+    if (isReplay.value) return `再玩 · ${where} · ${title}`
+    return `${where} · ${title}`
   })
 
   function finishLevel(extras?: { sticker?: string }): CompleteLevelResult {
@@ -90,6 +95,8 @@ export function useChapterLevel(play: PlayKind) {
         stickerGranted: false,
         stickerId: null,
         chapterId: level.value?.chapterId ?? null,
+        lessonId: level.value?.lessonId ?? null,
+        chapterFinished: false,
         nextLevelId: null,
         nextRoute: isDemo.value ? '/play-gallery' : '/letter-workshop',
       }

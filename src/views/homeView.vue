@@ -9,17 +9,17 @@ import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { getChapterNumber } from '../data/chapters'
-import { getCurrentFamily } from '../data/phonicsFamily'
-import { chapterProgressCopy } from '../data/todayTasks'
+import { lessonProgressCopy } from '../data/todayTasks'
 
 const router = useRouter()
-const family = getCurrentFamily()
-const { chapter } = useProgress()
-const chapterNo = computed(() => getChapterNumber(chapter.value.chapterId))
+const { lesson } = useProgress()
 const chipText = computed(() =>
-  chapterProgressCopy(chapter.value.clearedCount, chapter.value.levelTotal, chapterNo.value).replace(
-    ' 关',
-    '',
+  lessonProgressCopy(
+    getChapterNumber(lesson.value?.chapterId ?? ''),
+    lesson.value?.order ?? 1,
+    lesson.value?.clearedCount ?? 0,
+    lesson.value?.levelTotal ?? 0,
+    { soon: lesson.value?.status === 'soon', clearedLesson: lesson.value?.status === 'cleared' },
   ),
 )
 const heroEl = ref<HTMLElement | null>(null)
@@ -60,10 +60,10 @@ function goAlbum() {
     </header>
 
     <div ref="heroEl" class="hero center">
-      <p class="eyebrow">主题岛 · 动物岛三章</p>
+      <p class="eyebrow">主题岛 · 学校课表</p>
       <h1 class="title-xl">Star Words</h1>
       <p class="zh-title">星词岛</p>
-      <p class="sub">先去动物岛，帮小猫办 {{ family.family }} 派对</p>
+      <p class="sub">从第 1 课开始，跟着学校一课一课玩</p>
     </div>
 
     <today-goal-bar class="home-goal" />
@@ -73,7 +73,7 @@ function goAlbum() {
         <span class="host floaty" aria-hidden="true">🐱</span>
         <div>
           <p class="island-name">动物岛</p>
-          <p class="island-goal">三章小派对：-ap 派对、听声找伙伴、石头袜子</p>
+          <p class="island-goal">十二章课表，先玩第 1 章「字母朋友」</p>
         </div>
       </div>
       <chapter-level-lights class="home-level-lights" embedded :show-label="false" />

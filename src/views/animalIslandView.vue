@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
+import chapterLessonList from '../components/chapterLessonList.vue'
 import chapterLevelList from '../components/chapterLevelList.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
@@ -14,12 +15,13 @@ import {
   chapterKidTitle,
   getChapter,
   getChapterNumber,
+  getLesson,
   isAnimalsChapterId,
   listChapters,
 } from '../data/chapters'
-import { getCurrentFamily } from '../data/phonicsFamily'
 import {
   chapterLockHint,
+  comingSoonCopy,
   nextLevelCtaCopy,
 } from '../data/todayTasks'
 
@@ -27,9 +29,9 @@ const CHAPTER_LOCK_HINT = chapterLockHint()
 
 const router = useRouter()
 const route = useRoute()
-const family = getCurrentFamily()
 const {
   nextLevel,
+  lesson,
   nextRoute,
   isChapterUnlocked,
   getChapterProgress,
@@ -43,10 +45,25 @@ const selectedChapterId = computed(() => {
   return value
 })
 
+const selectedLessonId = computed(() => {
+  if (!selectedChapterId.value) return ''
+  const raw = route.query.lesson
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string') return ''
+  const meta = getLesson(value)
+  if (!meta || meta.chapterId !== selectedChapterId.value) return ''
+  const progress = getChapterProgress(selectedChapterId.value).lessons.find((item) => item.id === meta.id)
+  if (!progress || progress.status === 'locked' || progress.status === 'soon') return ''
+  return meta.id
+})
+
 const selectedChapter = computed(() => (selectedChapterId.value ? getChapter(selectedChapterId.value) : undefined))
-const selectedKidTitle = computed(() =>
-  selectedChapterId.value ? chapterKidTitle(selectedChapterId.value) : '',
-)
+const selectedLesson = computed(() => (selectedLessonId.value ? getLesson(selectedLessonId.value) : undefined))
+const selectedKidTitle = computed(() => {
+  if (selectedLesson.value) return selectedLesson.value.titleZh
+  if (selectedChapterId.value) return chapterKidTitle(selectedChapterId.value)
+  return ''
+})
 
 const chapterRows = computed(() => {
   const nextId = nextLevel.value?.chapterId
@@ -61,19 +78,23 @@ const chapterRows = computed(() => {
       emoji: CHAPTER_LOBBY_EMOJI[item.id] ?? '🏝️',
       unlocked,
       complete: progress.complete,
-      clearedCount: progress.clearedCount,
-      levelTotal: progress.levelTotal,
-      isNext: unlocked && item.id === nextId,
+      clearedLessons: progress.clearedLessons,
+      lessonTotal: progress.lessonTotal,
+      syllabusRange: item.syllabusRange,
+      isNext: unlocked && (item.id === nextId || (!nextId && lesson.value?.chapterId === item.id && lesson.value.status === 'soon')),
     }
   })
 })
 
 const startLabel = computed(() => {
+  if (lesson.value?.status === 'soon') return comingSoonCopy()
   if (!nextLevel.value) return '看章节奖励'
+  const meta = getLesson(nextLevel.value.lessonId)
   return nextLevelCtaCopy(
     nextLevel.value.order,
     nextLevel.value.titleZh,
     getChapterNumber(nextLevel.value.chapterId),
+    meta?.order,
   )
 })
 
@@ -104,6 +125,10 @@ function bindNextRow(el: Element | null, isNext: boolean) {
 
 function goChapters() {
   playTap()
+  if (selectedLessonId.value && selectedChapterId.value) {
+    void router.replace({ path: '/animal-island', query: { chapter: selectedChapterId.value } })
+    return
+  }
   void router.replace({ path: '/animal-island' })
 }
 
@@ -144,7 +169,7 @@ onBeforeUnmount(() => {
         data-back-chapters
         @click="goChapters"
       >
-        章节
+        {{ selectedLessonId ? '课' : '章节' }}
       </button>
       <button v-else class="ghost-btn" type="button" @click="router.push('/')">首页</button>
       <div class="top-tools">
@@ -158,9 +183,11 @@ onBeforeUnmount(() => {
       <h1 class="title-xl">{{ selectedKidTitle || '动物岛' }}</h1>
       <p class="sub">
         {{
-          selectedChapter
-            ? `第${getChapterNumber(selectedChapter.id)}章 · 帮小猫把朋友请来`
-            : `三章小派对，先帮小猫办 ${family.family} 派对`
+          selectedLesson
+            ? `第${getChapterNumber(selectedLesson.chapterId)}章 · 第${selectedLesson.order}课 · ${selectedLesson.syllabusRange}`
+            : selectedChapter
+              ? `第${getChapterNumber(selectedChapter.id)}章 · ${selectedChapter.syllabusRange}`
+              : '十二章课表，从 L49 的第 1 课开始'
         }}
       </p>
     </div>
@@ -180,12 +207,16 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="host-line center">
-      {{ selectedKidTitle ? `现在玩「${selectedKidTitle}」` : '小猫是派对主人 · 一章一章来玩' }}
+      {{ selectedLesson ? `现在玩「${selectedKidTitle}」` : selectedChapter ? `选一课 · ${selectedKidTitle}` : '先选一章，再选一课' }}
     </p>
 
-    <template v-if="selectedChapterId">
-      <chapter-level-lights class="island-level-lights" :chapter-id="selectedChapterId" />
-      <chapter-level-list :chapter-id="selectedChapterId" />
+    <template v-if="selectedLessonId">
+      <chapter-level-lights class="island-level-lights" :lesson-id="selectedLessonId" />
+      <chapter-level-list :chapter-id="selectedChapterId" :lesson-id="selectedLessonId" />
+    </template>
+
+    <template v-else-if="selectedChapterId">
+      <chapter-lesson-list :chapter-id="selectedChapterId" />
     </template>
 
     <template v-else>
@@ -207,7 +238,7 @@ onBeforeUnmount(() => {
             :data-chapter-entry="row.id"
             :data-chapter-unlocked="row.unlocked ? '1' : '0'"
             :data-next-chapter="row.isNext ? '1' : '0'"
-            :aria-label="`${row.kidTitle}，${row.unlocked ? `${row.clearedCount}/${row.levelTotal} 关` : CHAPTER_LOCK_HINT}`"
+            :aria-label="`${row.kidTitle}，${row.unlocked ? `${row.syllabusRange} ${row.clearedLessons}/${row.lessonTotal} 课` : CHAPTER_LOCK_HINT}`"
             @click="openChapter(row, $event)"
           >
             <span class="chapter-emoji" aria-hidden="true">{{ row.unlocked ? row.emoji : '🔒' }}</span>
@@ -216,7 +247,7 @@ onBeforeUnmount(() => {
               <small>
                 {{
                   row.unlocked
-                    ? `${row.clearedCount}/${row.levelTotal} 关`
+                    ? `${row.syllabusRange} · ${row.clearedLessons}/${row.lessonTotal} 课`
                     : CHAPTER_LOCK_HINT
                 }}
               </small>
@@ -229,7 +260,7 @@ onBeforeUnmount(() => {
         <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
           {{ lockHint || '　' }}
         </p>
-        <p class="parent-line">通关一章，下一章就会打开。</p>
+        <p class="parent-line">通关一章里的四课，下一章就会打开。</p>
       </div>
 
       <big-button class="start-btn" data-next-level-cta @click="goNext">{{ startLabel }}</big-button>
@@ -246,6 +277,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .island-lobby {
   gap: 10px;
+  max-height: 100dvh;
+  overflow-y: auto;
 }
 
 .top-tools {

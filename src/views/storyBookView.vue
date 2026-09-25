@@ -8,7 +8,7 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, tweenPulse, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playPop, playSuccess, speak, speakZh, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
-import { CHAPTER_LOBBY_EMOJI, chapterKidTitle } from '../data/chapters'
+import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, lessonKidTitle } from '../data/chapters'
 import { levelWordList } from '../data/gateWords'
 import { preloadWordCards } from '../data/phonicsFamily'
 import { sentenceForWord } from '../data/shortSentences'
@@ -50,13 +50,19 @@ const {
   takeRunWords,
 } = useChapterLevel('storyBook')
 
+const script = (level.value?.storyPages ?? []).filter((page) => page.word && page.line)
 const words = (
-  useLevelWords.value ? levelWordList(level.value) : takeRunWords(BOOK_PAGE_MAX)
+  script.length
+    ? script.map((page) => page.word.toLowerCase())
+    : useLevelWords.value
+      ? levelWordList(level.value)
+      : takeRunWords(BOOK_PAGE_MAX)
 ).slice(0, BOOK_PAGE_MAX)
-const focus = computed(() => (level.value?.focusWord || words[0] || 'cap').toLowerCase())
-const bookTitle = computed(() =>
-  useLevelWords.value ? chapterKidTitle(level.value?.chapterId ?? '') || '小小书' : '小小书',
-)
+const focus = computed(() => (level.value?.focusWord || words[0] || 'hop').toLowerCase())
+const bookTitle = computed(() => {
+  if (!useLevelWords.value) return '小小书'
+  return lessonKidTitle(level.value?.lessonId) || chapterKidTitle(level.value?.chapterId ?? '') || '小小书'
+})
 const bookSub = computed(() => gateBookSub(themeHint.value))
 const coverEmoji = computed(() => CHAPTER_LOBBY_EMOJI[chapterId.value] ?? '📖')
 const page = ref(0)
@@ -74,10 +80,10 @@ let alive = true
 let enterToken = 0
 
 const pages = computed<BookPage[]>(() => {
-  const story: StoryPage[] = words.map((word) => ({
+  const story: StoryPage[] = words.map((word, index) => ({
     kind: 'page',
     word,
-    line: sentenceForWord(word),
+    line: script[index]?.line || sentenceForWord(word),
   }))
   return [{ kind: 'cover' }, ...story]
 })
