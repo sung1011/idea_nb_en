@@ -32,7 +32,7 @@ export const shortSentences: Record<string, string> = {
   star: 'I see a star.',
   can: 'I can hop.',
   man: 'A man can jog.',
-  pan: 'A pan is hot.',
+  pan: 'We play with a pan.',
   hop: 'I can hop.',
   pot: 'I can mop the pot.',
   top: 'I can spin the top.',
@@ -110,6 +110,17 @@ export const shortSentences: Record<string, string> = {
   glad: 'Dan and Cam are glad.',
   hot: 'Dan and Cam are hot in the yellow sun.',
   wet: 'Dan and Cam are wet.',
+  yak: 'Get the yak.',
+  yam: 'Get the yam.',
+  'yo-yo': 'Get the yo-yo.',
+  yes: 'Yes! I get it!',
+  doll: 'I got a doll.',
+  bell: 'I got a bell.',
+  belt: 'I got a belt.',
+  drum: 'I got a drum.',
+  net: 'We play with a net.',
+  nut: 'We play with a nut.',
+  fan: 'We play with a fan.',
 }
 
 export function sentenceForWord(word: string): string {

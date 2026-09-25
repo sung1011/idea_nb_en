@@ -418,6 +418,10 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #d9f0ff 0%, #fffdf3 76%);
 }
 
+.page.cover.ch7 {
+  background: linear-gradient(180deg, #e4f7d4 0%, #fffdf3 76%);
+}
+
 .page.revealed {
   background: linear-gradient(180deg, #fffdf6 0%, #fff8e4 100%);
 }

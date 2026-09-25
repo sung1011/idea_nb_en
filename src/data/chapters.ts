@@ -487,10 +487,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'The Yard Sale',
     emoji: '🏷️',
     lessons: [
-      { titleZh: '字母 Y · get', titleEn: 'Letter Yy · get', type: 'letterSight', letter: 'Y', sightWords: ['get'] },
-      { titleZh: '多一个', titleEn: 'One more than', type: 'math' },
-      { titleZh: '院子义卖', titleEn: 'The Yard Sale', type: 'story' },
-      { titleZh: '字母 N · play', titleEn: 'Letter N · play', type: 'letterSight', letter: 'N', sightWords: ['play'] },
+      { titleZh: '字母 Y · get', titleEn: 'Letter Yy · get', type: 'letterSight', letter: 'Y', sightWords: ['get'], sentence: 'Get the yak.' },
+      { titleZh: '多一个', titleEn: 'One more than', type: 'math', sentence: 'Five and one more is six.' },
+      { titleZh: '院子义卖', titleEn: 'The Yard Sale', type: 'story', sentence: 'I got a doll.' },
+      { titleZh: '字母 N · play', titleEn: 'Letter N · play', type: 'letterSight', letter: 'N', sightWords: ['play'], sentence: 'We play with a net.' },
     ],
   },
   {
@@ -804,12 +804,45 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch7: [
+    {
+      words: ['yak', 'yam', 'yo-yo', 'yes'],
+      spell: ['yak', 'yam', 'yo-yo'],
+      pages: [
+        { word: 'yak', line: 'Get the yak.' },
+        { word: 'yam', line: 'Get the yam.' },
+        { word: 'yo-yo', line: 'Get the yo-yo.' },
+        { word: 'yes', line: 'Yes! I get it!' },
+      ],
+    },
+    null,
+    {
+      words: ['doll', 'bell', 'belt', 'drum'],
+      spell: ['doll', 'bell', 'belt'],
+      pages: [
+        { word: 'doll', line: 'I got a doll.' },
+        { word: 'bell', line: 'I got a bell.' },
+        { word: 'belt', line: 'I got a belt.' },
+        { word: 'drum', line: 'I got a drum.' },
+      ],
+    },
+    {
+      words: ['net', 'nut', 'pan', 'fan'],
+      spell: ['net', 'nut', 'pan'],
+      pages: [
+        { word: 'net', line: 'We play with a net.' },
+        { word: 'nut', line: 'We play with a nut.' },
+        { word: 'pan', line: 'We play with a pan.' },
+        { word: 'fan', line: 'We play with a fan.' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
   const chapterIndex = Number(chapterId.slice(2)) - 1
   const lessonBadge =
-    chapterId === 'ch4' || chapterId === 'ch5' || chapterId === 'ch6'
+    chapterId === 'ch4' || chapterId === 'ch5' || chapterId === 'ch6' || chapterId === 'ch7'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
