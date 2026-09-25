@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
 import todayStarBar from '../components/todayStarBar.vue'
-import { useProgress } from '../composables/useProgress'
+import { hatchMeadowEgg, persistState, useProgress } from '../composables/useProgress'
+import hatchOverlay from '../meadow/hatchOverlay.vue'
+import { animalByChapter } from '../meadow/meadowConfig'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
 import { pickPraise, playSuccess, speak } from '../composables/useSpeech'
 import { CHAPTER_1_ID, chapterKidTitle, getChapterNumber } from '../data/chapters'
@@ -29,6 +31,12 @@ const badgeName = computed(() => (claim.stickerId ? stickerLabel(claim.stickerId
 
 const burstEl = ref<HTMLElement | null>(null)
 const stickerEl = ref<HTMLElement | null>(null)
+const showHatch = ref(false)
+const hatchAnimal =
+  persistState.meadow.ceremonyChapterId === claim.chapterId
+    ? animalByChapter(claim.chapterId)
+    : null
+let hatchTimer = 0
 
 const titleZh = computed(() => {
   if (!claim.ready) return `${kidTitle.value || '这一章'}还没结束`
@@ -63,7 +71,20 @@ onMounted(() => {
   void tweenCelebrate(burstEl.value)
   if (stickerEl.value) void tweenPopUp(stickerEl.value)
   void speak(pickPraise('finish'))
+  if (hatchAnimal) hatchTimer = window.setTimeout(() => {
+    showHatch.value = true
+  }, 700)
 })
+
+onUnmounted(() => {
+  window.clearTimeout(hatchTimer)
+})
+
+function enterMeadow() {
+  if (!hatchAnimal) return
+  hatchMeadowEgg(hatchAnimal.chapterId)
+  void router.push({ path: '/star-meadow', query: { welcome: '1' } })
+}
 </script>
 
 <template>
@@ -115,6 +136,7 @@ onMounted(() => {
 
     <big-button @click="router.push('/')">回家</big-button>
     <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
+    <hatch-overlay v-if="showHatch && hatchAnimal" :animal="hatchAnimal" @done="enterMeadow" />
   </section>
 </template>
 

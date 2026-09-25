@@ -7,9 +7,10 @@ import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import todayGoalBar from '../components/todayGoalBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
-import { useProgress } from '../composables/useProgress'
+import { dateKey, persistState, useProgress } from '../composables/useProgress'
 import { getChapterNumber } from '../data/chapters'
 import { lessonProgressCopy } from '../data/todayTasks'
+import { meadowIsOpen } from '../meadow/meadowConfig'
 
 const router = useRouter()
 const { lesson } = useProgress()
@@ -23,6 +24,7 @@ const chipText = computed(() =>
   ),
 )
 const heroEl = ref<HTMLElement | null>(null)
+const meadowLocked = computed(() => !meadowIsOpen(persistState.meadow, dateKey()))
 
 onMounted(() => {
   void tweenCelebrate(heroEl.value)
@@ -42,6 +44,10 @@ function goAtlas() {
 
 function goAlbum() {
   void router.push('/sticker-album')
+}
+
+function goMeadow() {
+  void router.push('/star-meadow')
 }
 </script>
 
@@ -77,6 +83,11 @@ function goAlbum() {
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
     <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
+    <button class="meadow-btn" type="button" @click="goMeadow">
+      <span aria-hidden="true">🌿</span>
+      星星草地
+      <span v-if="meadowLocked" class="lock-badge" aria-label="还没开门">🔒</span>
+    </button>
     <button class="album-btn" type="button" @click="goAlbum">
       <span aria-hidden="true">📒</span>
       贴纸相册
@@ -89,7 +100,11 @@ function goAlbum() {
 
 <style scoped>
 .home {
-  gap: 10px;
+  gap: 4px;
+  max-height: 100dvh;
+  overflow: auto;
+  padding-top: 10px;
+  padding-bottom: 8px;
 }
 
 .top-tools {
@@ -110,23 +125,54 @@ function goAlbum() {
 }
 
 .eyebrow {
-  margin: 8px 0 0;
-  font-size: 15px;
+  margin: 2px 0 0;
+  font-size: 14px;
   color: var(--muted);
 }
 
+.home :deep(.title-xl) {
+  margin-top: 0;
+  font-size: 32px;
+}
+
 .zh-title {
-  margin: 2px 0 0;
-  font-size: 22px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 650;
 }
 
+.sub {
+  margin-top: 2px;
+  font-size: 14px;
+}
+
 .home-goal {
-  margin-top: 14px;
+  margin-top: 0;
+}
+
+.home :deep(.goal-bar) {
+  padding: 8px 12px;
+}
+
+.home-goal :deep(.goal-cta) {
+  min-height: 44px;
+}
+
+.home :deep(.today-stars.compact) {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 2px;
+}
+
+.home :deep(.today-stars.compact .slot) {
+  height: 28px;
+  font-size: 18px;
 }
 
 .island-card {
-  margin-top: 12px;
+  margin-top: 0;
+  padding: 10px 12px;
 }
 
 .island-preview {
@@ -137,8 +183,15 @@ function goAlbum() {
 }
 
 .host {
-  font-size: 48px;
+  font-size: 40px;
   line-height: 1;
+}
+
+.home :deep(.cell) {
+  min-height: 0;
+  height: 32px;
+  aspect-ratio: auto;
+  font-size: 13px;
 }
 
 .island-name {
@@ -154,21 +207,24 @@ function goAlbum() {
 }
 
 .home-level-lights {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
-.start-btn {
-  margin-top: auto;
-}
-
+.start-btn,
 .gallery-btn {
-  margin-top: 10px;
+  margin-top: 0;
+}
+
+.home :deep(.big-btn) {
+  min-height: 56px;
+  padding: 8px 16px;
+  font-size: 22px;
 }
 
 .album-btn {
   width: 100%;
-  margin-top: 10px;
-  min-height: 56px;
+  margin-top: 0;
+  min-height: 52px;
   padding: 0 18px;
   border-radius: 999px;
   background: #fff7d6;
@@ -186,16 +242,66 @@ function goAlbum() {
   transform: translateY(2px);
 }
 
+.meadow-btn {
+  position: relative;
+  width: 100%;
+  margin-top: 0;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #e7f8e4;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 750;
+  box-shadow: 0 6px 0 rgba(70, 150, 80, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.meadow-btn:active {
+  transform: translateY(2px);
+}
+
+.lock-badge {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 0 rgba(45, 58, 74, 0.12);
+}
+
 .weak-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px 16px;
-  margin-top: 8px;
+  margin-top: 0;
+}
+
+@media (max-height: 700px) {
+  .eyebrow,
+  .sub {
+    display: none;
+  }
+
+  .home :deep(.big-btn),
+  .meadow-btn,
+  .album-btn {
+    min-height: 48px;
+  }
 }
 
 .weak-link {
-  min-height: 48px;
+  min-height: 44px;
   background: transparent;
   color: var(--muted);
   font-size: 15px;

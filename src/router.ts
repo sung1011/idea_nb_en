@@ -15,6 +15,7 @@ import stickerAlbumView from './views/stickerAlbumView.vue'
 import storyBookView from './views/storyBookView.vue'
 import whackWordView from './views/whackWordView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
+import meadowView from './meadow/meadowView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -35,6 +36,7 @@ export const router = createRouter({
     { path: '/sing-along', name: 'singAlong', component: singAlongView },
     { path: '/find-scene', name: 'findScene', component: findSceneView },
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },
+    { path: '/star-meadow', name: 'starMeadow', component: meadowView },
     { path: '/chapter-finale', name: 'chapterFinale', component: chapterFinaleView },
   ],
 })

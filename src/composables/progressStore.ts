@@ -27,6 +27,16 @@ import {
 import { families, getCurrentFamily, listAllFamilyWords } from '../data/phonicsFamily'
 import { ALBUM_STICKERS } from '../data/stickers'
 import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
+import {
+  emptyMeadow,
+  grantAllMeadowAnimals,
+  hatchEgg,
+  normalizeMeadow,
+  noteClearOn,
+  queueEggsForCleared,
+  type MeadowAnimalId,
+  type MeadowSave,
+} from '../meadow/meadowConfig'
 
 export const PROGRESS_STORAGE_KEY = 'starWords.v2'
 const LEGACY_PROGRESS_KEY = 'starWords.v1'
@@ -165,6 +175,7 @@ type PersistShape = {
   decorations: string[]
   lastIslandDate: string | null
   chapter: ChapterSave
+  meadow: MeadowSave
 }
 
 type LegacyProgress = {
@@ -519,6 +530,7 @@ function emptyPersist(day = dateKey()): PersistShape {
     decorations: [],
     lastIslandDate: null,
     chapter: emptyChapterSave(),
+    meadow: emptyMeadow(),
   }
 }
 
@@ -692,6 +704,7 @@ function syncRewardsFromClearedLessons(data: PersistShape) {
     if (chapter.stickerId && !data.lifetime.stickers.includes(chapter.stickerId)) {
       data.lifetime.stickers.push(chapter.stickerId)
     }
+    queueEggsForCleared(data.meadow, [chapter.id])
   }
 }
 
@@ -960,6 +973,7 @@ function normalizePersist(raw: unknown): PersistShape | null {
       decorations: asStringArray(parsed.decorations),
       lastIslandDate: typeof parsed.lastIslandDate === 'string' ? parsed.lastIslandDate : null,
       chapter: emptyChapterSave(),
+      meadow: normalizeMeadow((parsed as { meadow?: unknown }).meadow),
     }
     next.chapter = normalizeChapterSave(parsed.chapter, parsed.version)
     return next
@@ -1032,6 +1046,19 @@ function writeChapter(target: ChapterSave, source: ChapterSave) {
   target.celebratedChapters.splice(0, target.celebratedChapters.length, ...source.celebratedChapters)
 }
 
+function writeMeadow(target: MeadowSave, source: MeadowSave) {
+  target.openAnytime = source.openAnytime
+  target.clearsDate = source.clearsDate
+  target.clearsToday = source.clearsToday
+  target.ceremonyChapterId = source.ceremonyChapterId
+  target.pendingEggs.splice(0, target.pendingEggs.length, ...source.pendingEggs)
+  target.owned.splice(
+    0,
+    target.owned.length,
+    ...source.owned.map((item) => ({ id: item.id, x: item.x, y: item.y, hearts: item.hearts })),
+  )
+}
+
 function applyDayRollover(data: PersistShape): PersistShape {
   const today = dateKey()
   const familyId = getCurrentFamily().id
@@ -1098,6 +1125,7 @@ function hydratePersist(fresh: PersistShape) {
   persistState.decorations.splice(0, persistState.decorations.length, ...fresh.decorations)
   persistState.lastIslandDate = fresh.lastIslandDate
   writeChapter(persistState.chapter, fresh.chapter)
+  writeMeadow(persistState.meadow, fresh.meadow)
   persist()
 }
 
@@ -1186,6 +1214,11 @@ function maxedChapterSave(day: string): ChapterSave {
 
 function maxedPersistFromConfig(day = dateKey()): PersistShape {
   const next = emptyPersist(day)
+  next.meadow.openAnytime = persistState.meadow.openAnytime
+  next.meadow.clearsDate = persistState.meadow.clearsDate
+  next.meadow.clearsToday = persistState.meadow.clearsToday
+  next.meadow.owned = persistState.meadow.owned.map((item) => ({ ...item }))
+  grantAllMeadowAnimals(next.meadow)
   next.chapter = maxedChapterSave(day)
   next.lifetime.totalStars = listAllLevels().reduce(
     (sum, level) => sum + Math.max(0, level.firstClearStars),
@@ -1217,6 +1250,27 @@ export function resetAllProgress(): void {
  */
 export function maxOutProgressFromConfig(): void {
   hydratePersist(maxedPersistFromConfig())
+}
+
+export function setMeadowOpenAnytime(open: boolean): void {
+  persistState.meadow.openAnytime = open
+  persist()
+}
+
+export function saveMeadowLayout(spots: { id: MeadowAnimalId; x: number; y: number }[]): void {
+  for (const spot of spots) {
+    const row = persistState.meadow.owned.find((item) => item.id === spot.id)
+    if (!row) continue
+    row.x = spot.x
+    row.y = spot.y
+  }
+  persist()
+}
+
+export function hatchMeadowEgg(chapterId: string) {
+  const saved = hatchEgg(persistState.meadow, chapterId)
+  persist()
+  return saved
 }
 
 export function ensureToday() {
@@ -1407,6 +1461,8 @@ export function completeLevel(id: string): CompleteLevelResult {
 
   const already = isLevelCleared(id)
   if (already) {
+    noteClearOn(persistState.meadow, persistState.dateKey)
+    persist()
     const chapterFinished = isChapterCleared(def.chapterId)
     const next = chapterFinished ? null : getNextLevel(def.chapterId)
     return {
@@ -1427,6 +1483,7 @@ export function completeLevel(id: string): CompleteLevelResult {
   }
 
   const hadSticker = persistState.lifetime.stickers.includes(getChapter(def.chapterId)?.stickerId ?? '')
+  const wasChapterComplete = isChapterCleared(def.chapterId)
   persistState.chapter.levels[id] = 'cleared'
   const alreadyAwarded = persistState.chapter.firstClearStars.includes(id)
   if (!alreadyAwarded) persistState.chapter.firstClearStars.push(id)
@@ -1443,6 +1500,8 @@ export function completeLevel(id: string): CompleteLevelResult {
     )
     persistState.chapter.celebrated = persistState.chapter.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
   }
+  if (chapterFinished && !wasChapterComplete) persistState.meadow.ceremonyChapterId = def.chapterId
+  noteClearOn(persistState.meadow, persistState.dateKey)
   const stickerId = chapterFinished ? (getChapter(def.chapterId)?.stickerId ?? null) : null
   const stickerGranted = Boolean(stickerId && !hadSticker && persistState.lifetime.stickers.includes(stickerId))
   const next = chapterFinished ? null : getNextLevel()

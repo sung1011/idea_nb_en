@@ -3,7 +3,14 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listChapters } from '../data/chapters'
 import { playPop } from '../composables/useSfx'
-import { getFrontierLesson, maxOutProgressFromConfig, resetAllProgress, setCurrentLesson } from '../composables/useProgress'
+import {
+  getFrontierLesson,
+  maxOutProgressFromConfig,
+  persistState,
+  resetAllProgress,
+  setCurrentLesson,
+  setMeadowOpenAnytime,
+} from '../composables/useProgress'
 import appSelect from './appSelect.vue'
 import bigButton from './bigButton.vue'
 
@@ -63,6 +70,11 @@ function refreshRoute() {
     query: { ...current.query },
     hash: current.hash,
   })
+}
+
+function toggleMeadow() {
+  playPop()
+  setMeadowOpenAnytime(!persistState.meadow.openAnytime)
 }
 
 function askWipeConfirm() {
@@ -128,9 +140,15 @@ function applyLesson() {
           <h2 id="settings-title" class="title">设置</h2>
           <p class="warn">
             「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
-            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡。词卡图片还在，不会删。
-            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示。
+            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡，以及星星草地。词卡图片还在，不会删。
+            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋）。
           </p>
+          <button class="meadow-toggle" type="button" @click="toggleMeadow">
+            <span>随时进星星草地</span>
+            <span class="toggle" :class="{ on: persistState.meadow.openAnytime }">
+              {{ persistState.meadow.openAnytime ? '开' : '关' }}
+            </span>
+          </button>
           <big-button variant="primary" @click="askLesson">设置当前课</big-button>
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
           <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>
@@ -167,14 +185,14 @@ function applyLesson() {
         <template v-else-if="step === 'confirmWipe'">
           <p class="eyebrow">Reset</p>
           <h2 id="settings-title" class="title">真的清空吗？</h2>
-          <p class="warn">清空后不能找回，会回到第一次打开的样子。</p>
+          <p class="warn">清空后不能找回，会回到第一次打开的样子，星星草地也一起清空。</p>
           <big-button variant="danger" @click="wipeAll">真的清空</big-button>
           <big-button variant="soft" @click="close">再想想</big-button>
         </template>
         <template v-else>
           <p class="eyebrow">Max</p>
           <h2 id="settings-title" class="title">一键打满所有进度？</h2>
-          <p class="warn">会按当前配置解锁全部关卡、贴纸和图鉴，方便调试。</p>
+          <p class="warn">会按当前配置解锁全部关卡、贴纸和图鉴，并把 12 只小动物直接放到星星草地，方便调试。</p>
           <big-button variant="primary" @click="maxAll">打满</big-button>
           <big-button variant="soft" @click="close">再想想</big-button>
         </template>
@@ -223,6 +241,38 @@ function applyLesson() {
   font-weight: 650;
   line-height: 1.4;
   color: var(--ink);
+}
+
+.meadow-toggle {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border-radius: 18px;
+  background: #e7f8e4;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 750;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle {
+  min-width: 48px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 3px 0 rgba(45, 58, 74, 0.1);
+}
+
+.toggle.on {
+  background: #2f9e44;
+  color: #fff;
 }
 
 .pick-label {
