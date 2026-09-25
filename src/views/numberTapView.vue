@@ -33,7 +33,7 @@ const round = ref(0)
 const choices = ref<MathItem[]>([])
 const locked = ref(true)
 const celebrating = ref(false)
-const shaking = ref(0)
+const shaking = ref<number | null>(null)
 const prompt = ref('Listen!')
 const titleEl = ref<HTMLElement | null>(null)
 
@@ -51,7 +51,7 @@ async function ask() {
   if (!alive || !item) return
   locked.value = true
   celebrating.value = false
-  shaking.value = 0
+  shaking.value = null
   layoutChoices()
   prompt.value = item.word
   await speak(item.word)
@@ -107,7 +107,7 @@ async function onTap(item: MathItem, event: Event) {
   shaking.value = item.value
   playNudge()
   await tweenShake(node)
-  if (shaking.value === item.value) shaking.value = 0
+  if (shaking.value === item.value) shaking.value = null
   await speak(goal.word)
 }
 

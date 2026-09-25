@@ -498,10 +498,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Cam and Pat',
     emoji: '👫',
     lessons: [
-      { titleZh: '少一个', titleEn: 'One fewer than', type: 'math' },
-      { titleZh: '字母 F · see blue', titleEn: 'Letter F · see blue', type: 'letterSight', letter: 'F', sightWords: ['see', 'blue'] },
-      { titleZh: '卡姆和帕特', titleEn: 'Cam and Pat', type: 'story' },
-      { titleZh: '字母 Z · jump', titleEn: 'Letter z · jump run up', type: 'letterSight', letter: 'Z', sightWords: ['jump', 'run', 'up'] },
+      { titleZh: '少一个', titleEn: 'One fewer than', type: 'math', sentence: 'One fewer than one is zero.' },
+      { titleZh: '字母 F · see blue', titleEn: 'Letter F · see blue', type: 'letterSight', letter: 'F', sightWords: ['see', 'blue'], sentence: 'I see a blue fin.' },
+      { titleZh: '卡姆和帕特', titleEn: 'Cam and Pat', type: 'story', sentence: 'Pat sat on the mat.' },
+      { titleZh: '字母 Z · jump', titleEn: 'Letter z · jump run up', type: 'letterSight', letter: 'Z', sightWords: ['jump', 'run', 'up'], sentence: 'Jump up and zip!' },
     ],
   },
   {
@@ -837,12 +837,49 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch8: [
+    null,
+    {
+      words: ['fin', 'fog', 'flag', 'frog'],
+      spell: ['fin', 'fog', 'flag'],
+      pages: [
+        { word: 'fin', line: 'I see a blue fin.' },
+        { word: 'fog', line: 'I see blue fog.' },
+        { word: 'flag', line: 'I see a blue flag.' },
+        { word: 'frog', line: 'I see a blue frog.' },
+      ],
+    },
+    {
+      words: ['mat', 'sack', 'hill', 'bus'],
+      spell: ['mat', 'sack', 'hill'],
+      pages: [
+        { word: 'mat', line: 'Pat sat on the mat.' },
+        { word: 'sack', line: 'Pat sat on the sack.' },
+        { word: 'hill', line: 'Pat sat on the hill.' },
+        { word: 'bus', line: 'Cam sat on the bus.' },
+      ],
+    },
+    {
+      words: ['zip', 'zap', 'buzz', 'zigzag'],
+      spell: ['zip', 'zap', 'buzz'],
+      pages: [
+        { word: 'zip', line: 'Jump up and zip!' },
+        { word: 'zap', line: 'Jump up and zap!' },
+        { word: 'buzz', line: 'Jump up and buzz!' },
+        { word: 'zigzag', line: 'Run up and zigzag!' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
   const chapterIndex = Number(chapterId.slice(2)) - 1
   const lessonBadge =
-    chapterId === 'ch4' || chapterId === 'ch5' || chapterId === 'ch6' || chapterId === 'ch7'
+    chapterId === 'ch4' ||
+    chapterId === 'ch5' ||
+    chapterId === 'ch6' ||
+    chapterId === 'ch7' ||
+    chapterId === 'ch8'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)

@@ -121,6 +121,15 @@ export const shortSentences: Record<string, string> = {
   net: 'We play with a net.',
   nut: 'We play with a nut.',
   fan: 'We play with a fan.',
+  fin: 'I see a blue fin.',
+  flag: 'I see a blue flag.',
+  sack: 'Pat sat on the sack.',
+  hill: 'Pat sat on the hill.',
+  bus: 'Cam sat on the bus.',
+  zip: 'Jump up and zip!',
+  zap: 'Jump up and zap!',
+  buzz: 'Jump up and buzz!',
+  zigzag: 'Run up and zigzag!',
 }
 
 export function sentenceForWord(word: string): string {

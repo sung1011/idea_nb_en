@@ -32,7 +32,7 @@ const round = ref(0)
 const choices = ref<MathItem[]>([])
 const locked = ref(true)
 const celebrating = ref(false)
-const shaking = ref(0)
+const shaking = ref<number | null>(null)
 const prompt = ref('Count!')
 const titleEl = ref<HTMLElement | null>(null)
 
@@ -51,7 +51,7 @@ async function ask() {
   if (!alive || !target.value) return
   locked.value = true
   celebrating.value = false
-  shaking.value = 0
+  shaking.value = null
   layoutChoices()
   prompt.value = 'Count!'
   await speak('Count!')
@@ -75,6 +75,12 @@ async function hearPiece(piece: CountPiece) {
   if (celebrating.value) return
   playPop()
   await speak(piece.speak)
+}
+
+async function hearZero() {
+  if (celebrating.value) return
+  playPop()
+  await speak('zero')
 }
 
 async function finish() {
@@ -113,7 +119,7 @@ async function onTap(item: MathItem, event: Event) {
   shaking.value = item.value
   playNudge()
   await tweenShake(node)
-  if (shaking.value === item.value) shaking.value = 0
+  if (shaking.value === item.value) shaking.value = null
   await speak('Count!')
 }
 
@@ -139,6 +145,16 @@ onUnmounted(() => {
     </div>
 
     <div class="piles" aria-label="数一数">
+      <button
+        v-if="target?.value === 0"
+        type="button"
+        class="empty-plate"
+        aria-label="zero"
+        @click="hearZero"
+      >
+        <span aria-hidden="true">🍽️</span>
+        <span>空盘子</span>
+      </button>
       <button
         v-for="piece in piles.tens"
         :key="`ten-${piece.index}`"
@@ -239,6 +255,20 @@ onUnmounted(() => {
 .pip {
   font-size: 14px;
   line-height: 1;
+}
+
+.empty-plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 72px;
+  border-radius: 22px;
+  border: 3px dashed #f0c36a;
+  background: #fffef8;
+  color: #c2410c;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .ones {
