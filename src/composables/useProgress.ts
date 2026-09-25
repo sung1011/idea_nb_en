@@ -88,6 +88,8 @@ export {
   progressStore,
   resetAllProgress,
   hatchMeadowEgg,
+  saveMeadowAccessory,
+  saveMeadowHearts,
   saveMeadowLayout,
   setMeadowOpenAnytime,
   routeAfterGate,

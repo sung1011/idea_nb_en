@@ -141,7 +141,7 @@ function applyLesson() {
           <p class="warn">
             「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
             「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡，以及星星草地。词卡图片还在，不会删。
-            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋）。
+            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。
           </p>
           <button class="meadow-toggle" type="button" @click="toggleMeadow">
             <span>随时进星星草地</span>
@@ -192,7 +192,7 @@ function applyLesson() {
         <template v-else>
           <p class="eyebrow">Max</p>
           <h2 id="settings-title" class="title">一键打满所有进度？</h2>
-          <p class="warn">会按当前配置解锁全部关卡、贴纸和图鉴，并把 12 只小动物直接放到星星草地，方便调试。</p>
+          <p class="warn">会按当前配置解锁全部关卡、贴纸和图鉴，并把 12 只小动物直接放到星星草地，每只爱心都是满的，方便调试。</p>
           <big-button variant="primary" @click="maxAll">打满</big-button>
           <big-button variant="soft" @click="close">再想想</big-button>
         </template>

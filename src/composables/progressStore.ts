@@ -34,6 +34,7 @@ import {
   normalizeMeadow,
   noteClearOn,
   queueEggsForCleared,
+  type MeadowAccessoryId,
   type MeadowAnimalId,
   type MeadowSave,
 } from '../meadow/meadowConfig'
@@ -1055,7 +1056,13 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
   target.owned.splice(
     0,
     target.owned.length,
-    ...source.owned.map((item) => ({ id: item.id, x: item.x, y: item.y, hearts: item.hearts })),
+    ...source.owned.map((item) => ({
+      id: item.id,
+      x: item.x,
+      y: item.y,
+      hearts: item.hearts,
+      accessory: item.accessory,
+    })),
   )
 }
 
@@ -1264,6 +1271,20 @@ export function saveMeadowLayout(spots: { id: MeadowAnimalId; x: number; y: numb
     row.x = spot.x
     row.y = spot.y
   }
+  persist()
+}
+
+export function saveMeadowHearts(id: MeadowAnimalId, hearts: number): void {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row) return
+  row.hearts = hearts
+  persist()
+}
+
+export function saveMeadowAccessory(id: MeadowAnimalId, accessory: MeadowAccessoryId): void {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row || row.hearts < 3) return
+  row.accessory = accessory
   persist()
 }
 

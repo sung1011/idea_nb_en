@@ -2,17 +2,33 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import { dateKey, hatchMeadowEgg, locationForNextMainline, persistState, saveMeadowLayout } from '../composables/useProgress'
+import {
+  dateKey,
+  hatchMeadowEgg,
+  locationForNextMainline,
+  persistState,
+  saveMeadowAccessory,
+  saveMeadowHearts,
+  saveMeadowLayout,
+} from '../composables/useProgress'
 import { speak } from '../composables/useSpeech'
 import hatchOverlay from './hatchOverlay.vue'
 import { playBoing } from './meadowAudio'
 import {
+  accessoryBanner,
+  addHearts,
   animalByChapter,
   animalById,
+  HEART_GAIN_FAVORITE,
+  HEART_GAIN_FEED,
+  heartFillPercent,
+  MEADOW_ACCESSORIES,
   MEADOW_FOODS,
   meadowIsOpen,
   meadowRoster,
   meadowSrc,
+  trickBanner,
+  type MeadowAccessoryId,
   type MeadowAnimalId,
   type MeadowFoodId,
 } from './meadowConfig'
@@ -23,6 +39,10 @@ const route = useRoute()
 const roster = meadowRoster()
 const fieldEl = ref<HTMLElement | null>(null)
 const hatchId = ref<string | null>(null)
+const cardId = ref<MeadowAnimalId | null>(null)
+const bannerText = ref('')
+const bannerQueue: string[] = []
+let bannerTimer = 0
 const foods = MEADOW_FOODS
 let stage: MeadowStage | null = null
 let hatchTimer = 0
@@ -51,8 +71,34 @@ const showEmpty = computed(
 function seeds() {
   return persistState.meadow.owned.flatMap((row) => {
     const def = animalById(row.id)
-    return def ? [{ id: row.id, name: def.name, x: row.x, y: row.y }] : []
+    return def ? [{ id: row.id, name: def.name, x: row.x, y: row.y, hearts: row.hearts, accessory: row.accessory }] : []
   })
+}
+
+function showBanner(text: string) {
+  bannerQueue.push(text)
+  if (bannerText.value) return
+  const next = bannerQueue.shift()
+  if (!next) return
+  bannerText.value = next
+  bannerTimer = window.setTimeout(advanceBanner, 2200)
+}
+
+function advanceBanner() {
+  const next = bannerQueue.shift()
+  bannerText.value = next ?? ''
+  if (next) bannerTimer = window.setTimeout(advanceBanner, 2200)
+}
+
+function awardHearts(id: MeadowAnimalId, gain: number) {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row) return
+  const bump = addHearts(row.hearts, gain)
+  if (bump.value === row.hearts) return
+  saveMeadowHearts(id, bump.value)
+  stage?.noteHearts(id, bump.value, true, bump.crossedWhole)
+  if (bump.unlockedAccessory) showBanner(accessoryBanner(id))
+  if (bump.unlockedTrick) showBanner(trickBanner(id))
 }
 
 function mountStage() {
@@ -62,6 +108,7 @@ function mountStage() {
     animals: seeds(),
     onSpeak: (line) => say(line),
     onSave: (spots) => saveMeadowLayout(spots),
+    onHeartGain: (id, gain) => awardHearts(id, gain),
   })
 }
 
@@ -97,6 +144,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.clearTimeout(hatchTimer)
+  window.clearTimeout(bannerTimer)
   stage?.destroy()
   stage = null
   foodDrag = null
@@ -190,6 +238,7 @@ function onFoodUp(event: PointerEvent) {
   const dropped = stage?.dropFood(drag.id, event.clientX, event.clientY) ?? { result: 'miss' as const }
   if (dropped.result === 'eaten') {
     flyGhost(drag.ghost, dropped.mouth.x, dropped.mouth.y, 0.15, false)
+    awardHearts(dropped.animalId, dropped.favorite ? HEART_GAIN_FAVORITE : HEART_GAIN_FEED)
     return
   }
   if (dropped.result === 'miss') playBoing()
@@ -205,9 +254,31 @@ function goLesson() {
   void router.push(locationForNextMainline())
 }
 
+const card = computed(() => {
+  if (!cardId.value) return null
+  const row = persistState.meadow.owned.find((item) => item.id === cardId.value)
+  const def = animalById(cardId.value)
+  if (!row || !def) return null
+  return { id: row.id, zh: def.zh, hearts: row.hearts, accessory: row.accessory }
+})
+
 function onDock(id: MeadowAnimalId) {
   if (!ownedIds.value.has(id)) return
+  cardId.value = cardId.value === id ? null : id
   stage?.callToCenter(id)
+}
+
+function closeCard() {
+  cardId.value = null
+}
+
+function wear(accessory: MeadowAccessoryId) {
+  const id = cardId.value
+  if (!id) return
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row || row.hearts < 3 || row.accessory === accessory) return
+  saveMeadowAccessory(id, accessory)
+  stage?.setAccessory(id, accessory)
 }
 
 function onHatched() {
@@ -217,7 +288,9 @@ function onHatched() {
   hatchMeadowEgg(chapterId)
   hatchId.value = null
   const row = def ? persistState.meadow.owned.find((item) => item.id === def.id) : undefined
-  if (stage && row && def) stage.upsert({ id: row.id, name: def.name, x: row.x, y: row.y })
+  if (stage && row && def) {
+    stage.upsert({ id: row.id, name: def.name, x: row.x, y: row.y, hearts: row.hearts, accessory: row.accessory })
+  }
   else mountStage()
   if (persistState.meadow.pendingEggs.length) {
     stage?.setPaused(true)
@@ -232,6 +305,7 @@ function onHatched() {
   <Teleport to="body">
     <div class="meadow-root">
       <button class="back" type="button" @click="goHome">首页</button>
+      <p v-if="bannerText" class="banner">{{ bannerText }}</p>
 
       <div v-if="!meadowOpen" class="gate">
         <div class="sils" aria-hidden="true">
@@ -275,6 +349,31 @@ function onHatched() {
             <img :src="meadowSrc(food.file)" alt="" draggable="false" />
           </button>
         </div>
+        <div v-if="card" class="info-card">
+          <div class="info-top">
+            <p class="info-name">{{ card.zh }}</p>
+            <button class="info-close" type="button" @click="closeCard">关闭</button>
+          </div>
+          <div class="info-hearts" aria-label="爱心">
+            <span v-for="n in 5" :key="n" class="bit">
+              ♥
+              <i :style="{ width: `${heartFillPercent(card.hearts, n - 1)}%` }">♥</i>
+            </span>
+          </div>
+          <p v-if="card.hearts >= 5" class="trick">会跳舞啦！</p>
+          <div v-if="card.hearts >= 3" class="acc-row">
+            <button type="button" :class="{ on: card.accessory === 'none' }" @click="wear('none')">无</button>
+            <button
+              v-for="item in MEADOW_ACCESSORIES"
+              :key="item.id"
+              type="button"
+              :class="{ on: card.accessory === item.id }"
+              @click="wear(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+        </div>
         <div class="dock">
           <button
             v-for="animal in roster"
@@ -316,6 +415,24 @@ function onHatched() {
   top: 0;
   height: 20%;
   background: linear-gradient(180deg, #b9e6ff 0%, #e7f7ff 72%, rgba(198, 236, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.banner {
+  position: absolute;
+  z-index: 9;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 50%;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #fff7e8;
+  color: #9a3d55;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 6px 0 rgba(214, 120, 90, 0.28);
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -461,6 +578,94 @@ function onHatched() {
   pointer-events: none;
 }
 
+.info-card {
+  position: relative;
+  z-index: 7;
+  margin: 0 10px 4px;
+  padding: 10px 12px 12px;
+  border-radius: 22px;
+  background: rgba(255, 253, 246, 0.96);
+  box-shadow: 0 6px 0 rgba(45, 58, 74, 0.1);
+}
+
+.info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.info-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.info-close {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.info-hearts {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.info-hearts .bit {
+  position: relative;
+  font-size: 22px;
+  line-height: 1;
+  color: #ffd0dc;
+}
+
+.info-hearts .bit i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  height: 100%;
+  color: #ff4d7a;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.trick {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #c45c7a;
+}
+
+.acc-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.acc-row button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 750;
+  box-shadow: 0 3px 0 rgba(45, 58, 74, 0.08);
+}
+
+.acc-row button.on {
+  background: #ffe3ee;
+  box-shadow: 0 3px 0 #f2a3bf;
+}
+
 .dock {
   position: relative;
   z-index: 5;
@@ -567,6 +772,173 @@ function onHatched() {
   -webkit-user-drag: none;
 }
 
+.meadow-acc {
+  position: absolute;
+  z-index: 2;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.meadow-acc img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+}
+
+.meadow-acc img.is-pop {
+  animation: meadow-acc-pop 0.35s ease-out;
+}
+
+.meadow-actor.is-hidden .meadow-sprite,
+.meadow-actor.is-hidden .meadow-acc,
+.meadow-actor.is-hidden .meadow-zzz,
+.meadow-actor.is-hidden .meadow-shadow {
+  visibility: hidden;
+}
+
+.meadow-meter {
+  position: absolute;
+  z-index: 130;
+  display: flex;
+  gap: 2px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.meadow-meter .bit {
+  position: relative;
+  font-size: 14px;
+  line-height: 1;
+  color: #ffd0dc;
+}
+
+.meadow-meter .bit i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  height: 100%;
+  color: #ff4d7a;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.meadow-note {
+  position: absolute;
+  z-index: 130;
+  font-size: 22px;
+  font-weight: 800;
+  color: #7c5cbf;
+  pointer-events: none;
+  animation: meadow-note 0.9s ease-out forwards;
+}
+
+.meadow-cloud {
+  position: absolute;
+  z-index: 120;
+  width: calc(var(--sprite, 96px) * 1.9);
+  height: calc(var(--sprite, 96px) * 1.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: meadow-roll 0.7s ease-in-out infinite;
+}
+
+.meadow-cloud .puff {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #fff 0%, #f6f0e4 64%, rgba(246, 240, 228, 0.15) 78%, transparent 80%);
+}
+
+.meadow-cloud .p1 {
+  width: 64%;
+  height: 68%;
+  left: 4%;
+  top: 16%;
+}
+
+.meadow-cloud .p2 {
+  width: 56%;
+  height: 58%;
+  right: 2%;
+  top: 6%;
+}
+
+.meadow-cloud .p3 {
+  width: 50%;
+  height: 52%;
+  left: 26%;
+  bottom: 0;
+}
+
+.meadow-cloud .peek {
+  position: absolute;
+  z-index: 2;
+  width: 48%;
+  height: 48%;
+  object-fit: cover;
+  object-position: center 38%;
+  border-radius: 46%;
+  animation: meadow-peek 0.42s ease-in-out infinite alternate;
+}
+
+.meadow-cloud .peek-a {
+  left: 10%;
+  top: 22%;
+}
+
+.meadow-cloud .peek-b {
+  right: 8%;
+  bottom: 12%;
+  animation-delay: -0.2s;
+}
+
+.meadow-cloud .swirl {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid transparent;
+  border-top-color: #f0b429;
+  border-right-color: #f0b429;
+  border-radius: 50%;
+  animation: meadow-swirl 0.55s linear infinite;
+}
+
+.meadow-cloud .s1 {
+  left: 18%;
+  top: 8%;
+}
+
+.meadow-cloud .s2 {
+  right: 14%;
+  bottom: 18%;
+  animation-direction: reverse;
+}
+
+.meadow-cloud .star {
+  position: absolute;
+  color: #ffd166;
+  font-size: 16px;
+  animation: meadow-star 0.6s ease-in-out infinite;
+}
+
+.meadow-cloud .t1 {
+  left: 8%;
+  bottom: 20%;
+}
+
+.meadow-cloud .t2 {
+  right: 10%;
+  top: 12%;
+  animation-delay: -0.2s;
+}
+
+.meadow-cloud .t3 {
+  left: 46%;
+  top: 0;
+  animation-delay: -0.35s;
+}
+
 .meadow-shadow {
   position: absolute;
   left: 16%;
@@ -656,6 +1028,58 @@ function onHatched() {
   to {
     transform: translate(var(--dx), var(--dy)) scale(0.35);
     opacity: 0;
+  }
+}
+
+@keyframes meadow-acc-pop {
+  0% {
+    transform: scale(0.2);
+  }
+  70% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes meadow-note {
+  from {
+    transform: translate(-50%, 0) rotate(-10deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -56px) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-roll {
+  50% {
+    transform: translate(-50%, -50%) rotate(7deg) scale(1.05);
+  }
+}
+
+@keyframes meadow-peek {
+  from {
+    transform: translate(8px, 10px) rotate(-18deg) scale(0.78);
+    opacity: 0.72;
+  }
+  to {
+    transform: translate(-6px, -14px) rotate(16deg) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes meadow-swirl {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes meadow-star {
+  50% {
+    transform: scale(1.25);
   }
 }
 

@@ -75,6 +75,25 @@ export function playSleepySigh(): void {
   osc.stop(start + 0.34)
 }
 
+/** Short giggle chirps while two animals tumble. */
+export function playGiggle(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  const notes = [880, 1040, 920, 1180, 990, 1240]
+  notes.forEach((freq, index) => tone(context, start + index * 0.09, freq, 0.07, 0.04))
+}
+
+/** Bright little arpeggio when a whole heart fills. */
+export function playHeartChime(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  tone(context, start, 660, 0.12, 0.05)
+  tone(context, start + 0.1, 880, 0.14, 0.05)
+  tone(context, start + 0.2, 1320, 0.22, 0.04)
+}
+
 /** Soft boing when a treat flies home. */
 export function playBoing(): void {
   const context = audio()

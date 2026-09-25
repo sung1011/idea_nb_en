@@ -1,19 +1,29 @@
 import {
+  accessoryAnchor,
+  accessoryFile,
+  HEART_GAIN_PET,
+  HEART_GAIN_PLAY,
+  heartFillPercent,
   introLine,
   isFavoriteFood,
   meadowSrc,
+  nextPlayLine,
   onFeed,
+  onPlayTogether,
   yumLine,
+  type MeadowAccessoryId,
   type MeadowAnimalId,
   type MeadowFoodId,
 } from './meadowConfig'
-import { playChomp, playPetChirp, playSleepySigh } from './meadowAudio'
+import { playChomp, playGiggle, playHeartChime, playPetChirp, playSleepySigh } from './meadowAudio'
 
 export type MeadowActorSeed = {
   id: MeadowAnimalId
   name: string
   x: number
   y: number
+  hearts: number
+  accessory: MeadowAccessoryId
 }
 
 export type MeadowSpot = {
@@ -22,7 +32,7 @@ export type MeadowSpot = {
   y: number
 }
 
-type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag' | 'eat'
+type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag' | 'eat' | 'play' | 'dance'
 
 type Actor = {
   id: MeadowAnimalId
@@ -53,6 +63,13 @@ type Actor = {
   favoriteBite: boolean
   wiggleUntil: number
   pendingFull: boolean
+  hearts: number
+  accessory: MeadowAccessoryId
+  acc: HTMLSpanElement | null
+  lastHeartGainAt: number
+  lastTapAt: number
+  popUntil: number
+  meter: HTMLElement | null
 }
 
 type Session = {
@@ -84,6 +101,8 @@ export type MeadowStage = {
   hoverFood: (clientX: number, clientY: number) => void
   clearFoodHover: () => void
   dropFood: (foodId: MeadowFoodId, clientX: number, clientY: number) => FeedDrop
+  noteHearts: (id: string, hearts: number, meter: boolean, chime: boolean) => void
+  setAccessory: (id: string, accessory: MeadowAccessoryId) => void
 }
 
 const HOLD_MS = 350
@@ -95,13 +114,14 @@ function clamp(n: number, min: number, max: number) {
 
 /**
  * One animation frame drives every animal.
- * Phase 2 can call `onFeed` from a treat drop; phase 3 replaces the beside-drop with `onPlayTogether`.
+ * A treat drop calls `onFeed`. Dropping one animal onto another calls `onPlayTogether`.
  */
 export function createMeadowStage(options: {
   field: HTMLElement
   animals: MeadowActorSeed[]
   onSpeak: (line: string) => void
   onSave: (spots: MeadowSpot[]) => void
+  onHeartGain?: (id: MeadowAnimalId, gain: number) => void
 }): MeadowStage {
   const { field, onSpeak, onSave } = options
   const actors = new Map<string, Actor>()
@@ -116,6 +136,16 @@ export function createMeadowStage(options: {
   let raf = 0
   let lastFrame = performance.now()
   let foodHover: { x: number; y: number } | null = null
+  const timers = new Set<number>()
+
+  function later(fn: () => void, ms: number) {
+    const id = window.setTimeout(() => {
+      timers.delete(id)
+      fn()
+    }, ms)
+    timers.add(id)
+    return id
+  }
 
   const resize = new ResizeObserver(() => measure())
 
@@ -207,6 +237,19 @@ export function createMeadowStage(options: {
       rot = Math.sin(now / 220) * 4
     } else if (actor.mode === 'walk') {
       bob = Math.sin(now / 140) * 5
+    } else if (actor.mode === 'dance') {
+      const span = Math.max(1, actor.poseUntil - actor.hopStart)
+      const p = clamp((now - actor.hopStart) / span, 0, 1)
+      rot = p * 720
+      lift = Math.sin(p * Math.PI * 2) * 12
+      sx = 1.06
+      sy = 1.06
+    }
+    if (now < actor.popUntil) {
+      const k = 1 - (actor.popUntil - now) / 420
+      const s = 1 + Math.sin(Math.min(1, Math.max(0, k)) * Math.PI) * 0.18
+      sx *= s
+      sy *= s
     }
     if (actor.mode === 'hop' || (actor.mode === 'walk' && now < actor.hopUntil)) {
       const span = Math.max(1, actor.hopUntil - actor.hopStart)
@@ -231,6 +274,9 @@ export function createMeadowStage(options: {
     actor.shadow.style.transform = `scale(${shadow}, ${shadow * 0.9})`
     actor.shadow.style.opacity = String(shadowOpacity)
     actor.el.classList.toggle('is-nap', actor.mode === 'nap')
+    actor.el.classList.toggle('is-play', actor.mode === 'play')
+    actor.el.classList.toggle('is-dance', actor.mode === 'dance')
+    actor.el.classList.toggle('is-hidden', actor.mode === 'play')
     layout(actor)
   }
 
@@ -274,18 +320,203 @@ export function createMeadowStage(options: {
     actor.hopUntil = now + ms
   }
 
-  function nearest(actor: Actor): Actor | null {
+  function overlapTarget(actor: Actor): Actor | null {
+    const ra = actor.el.getBoundingClientRect()
     let best: Actor | null = null
-    let bestD = 78
+    let bestArea = 0
     for (const other of actors.values()) {
-      if (other === actor) continue
-      const d = Math.hypot(other.px - actor.px, other.py - actor.py)
-      if (d < bestD) {
+      if (other === actor || other.mode === 'play' || other.mode === 'drag') continue
+      const rb = other.el.getBoundingClientRect()
+      const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left)
+      const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
+      if (w <= 0 || h <= 0) continue
+      const area = w * h
+      if (area > bestArea) {
         best = other
-        bestD = d
+        bestArea = area
       }
     }
     return best
+  }
+
+  function wakeJoin(actor: Actor, now: number) {
+    actor.fullUntil = 0
+    actor.pendingFull = false
+    actor.wiggleUntil = 0
+    actor.eatUntil = 0
+    actor.favoriteBite = false
+    lastUserAt = now
+  }
+
+  function buildCloud(a: Actor, b: Actor) {
+    const cloud = document.createElement('div')
+    cloud.className = 'meadow-cloud'
+    cloud.style.left = `${(a.px + b.px) / 2}px`
+    cloud.style.top = `${(a.py + b.py) / 2 - sprite * 0.42}px`
+    const puffs = ['p1', 'p2', 'p3']
+    for (const name of puffs) {
+      const puff = document.createElement('i')
+      puff.className = `puff ${name}`
+      cloud.appendChild(puff)
+    }
+    for (const [actor, peekClass] of [
+      [a, 'peek-a'],
+      [b, 'peek-b'],
+    ] as const) {
+      const img = document.createElement('img')
+      img.className = `peek ${peekClass}`
+      img.alt = ''
+      img.draggable = false
+      img.src = meadowSrc(actor.id)
+      cloud.appendChild(img)
+    }
+    for (const name of ['s1', 's2']) {
+      const swirl = document.createElement('span')
+      swirl.className = `swirl ${name}`
+      cloud.appendChild(swirl)
+    }
+    for (const [name, glyph] of [
+      ['t1', '✦'],
+      ['t2', '★'],
+      ['t3', '✦'],
+    ] as const) {
+      const star = document.createElement('span')
+      star.className = `star ${name}`
+      star.textContent = glyph
+      cloud.appendChild(star)
+    }
+    field.appendChild(cloud)
+    return cloud
+  }
+
+  function finishScuffle(a: Actor, b: Actor, cloud: HTMLElement) {
+    cloud.remove()
+    if (!a.el.isConnected || !b.el.isConnected) return
+    const now = performance.now()
+    const midX = (a.px + b.px) / 2
+    const midY = (a.py + b.py) / 2
+    setFeet(a, midX - sprite * 0.46, midY)
+    setFeet(b, midX + sprite * 0.46, midY)
+    if (a.px <= b.px) {
+      a.face = -1
+      b.face = 1
+    } else {
+      a.face = 1
+      b.face = -1
+    }
+    for (const actor of [a, b]) {
+      actor.mode = 'sit'
+      actor.poseUntil = now + 1800
+      actor.popUntil = now + 420
+      spawnHeart(actor)
+      paint(actor, now)
+    }
+    onSpeak(nextPlayLine())
+    flush()
+  }
+
+  function startScuffle(a: Actor, b: Actor, now: number) {
+    wakeJoin(a, now)
+    wakeJoin(b, now)
+    a.mode = 'play'
+    b.mode = 'play'
+    a.poseUntil = now + 2500
+    b.poseUntil = now + 2500
+    const cloud = buildCloud(a, b)
+    paint(a, now)
+    paint(b, now)
+    playGiggle()
+    later(() => playGiggle(), 900)
+    onPlayTogether(a.id, b.id)
+    options.onHeartGain?.(a.id, HEART_GAIN_PLAY)
+    options.onHeartGain?.(b.id, HEART_GAIN_PLAY)
+    later(() => finishScuffle(a, b, cloud), 2500)
+  }
+
+  function maybePetHeart(actor: Actor, now: number) {
+    if (now - actor.lastHeartGainAt < 3000) return
+    actor.lastHeartGainAt = now
+    options.onHeartGain?.(actor.id, HEART_GAIN_PET)
+  }
+
+  function dance(actor: Actor, now: number) {
+    actor.mode = 'dance'
+    actor.face = 1
+    actor.hopStart = now
+    actor.poseUntil = now + 1100
+    lastUserAt = now
+    const glyphs = ['♪', '♫', '♩', '♫', '♪']
+    glyphs.forEach((glyph, index) => {
+      const note = document.createElement('span')
+      note.className = 'meadow-note'
+      note.textContent = glyph
+      note.style.left = `${actor.px + (index - 2) * 16}px`
+      note.style.top = `${actor.py - sprite * 0.82}px`
+      note.style.animationDelay = `${index * 0.08}s`
+      field.appendChild(note)
+      note.addEventListener('animationend', () => note.remove())
+    })
+  }
+
+  function showMeter(actor: Actor) {
+    actor.meter?.remove()
+    const row = document.createElement('div')
+    row.className = 'meadow-meter'
+    row.style.left = `${actor.px}px`
+    row.style.top = `${actor.py - sprite - 6}px`
+    for (let index = 0; index < 5; index += 1) {
+      const bit = document.createElement('span')
+      bit.className = 'bit'
+      bit.textContent = '♥'
+      const fill = document.createElement('i')
+      fill.style.width = `${heartFillPercent(actor.hearts, index)}%`
+      fill.textContent = '♥'
+      bit.appendChild(fill)
+      row.appendChild(bit)
+    }
+    field.appendChild(row)
+    actor.meter = row
+    later(() => {
+      if (actor.meter === row) {
+        row.remove()
+        actor.meter = null
+      }
+    }, 2000)
+  }
+
+  function syncAccessory(actor: Actor, pop: boolean) {
+    if (actor.accessory === 'none' || actor.hearts < 3) {
+      actor.el.dataset.accessory = 'none'
+      actor.acc?.remove()
+      actor.acc = null
+      return
+    }
+    const kind = actor.accessory
+    actor.el.dataset.accessory = kind
+    const anchor = accessoryAnchor(actor.id, kind)
+    const file = accessoryFile(actor.accessory)
+    if (!file) return
+    if (!actor.acc) {
+      const wrap = document.createElement('span')
+      wrap.className = 'meadow-acc'
+      const img = document.createElement('img')
+      img.alt = ''
+      img.draggable = false
+      wrap.appendChild(img)
+      actor.body.appendChild(wrap)
+      actor.acc = wrap
+    }
+    const img = actor.acc.querySelector('img')
+    if (img) img.src = meadowSrc(file)
+    actor.acc.style.left = `${anchor.x}%`
+    actor.acc.style.top = `${anchor.y}%`
+    actor.acc.style.width = `${anchor.scale * 100}%`
+    actor.acc.style.transform = `translate(-50%, -50%) rotate(${anchor.rot}deg)`
+    if (pop && img) {
+      img.classList.remove('is-pop')
+      void img.offsetWidth
+      img.classList.add('is-pop')
+    }
   }
 
   function spawnHeart(actor: Actor) {
@@ -300,6 +531,12 @@ export function createMeadowStage(options: {
   }
 
   function tap(actor: Actor, now: number) {
+    if (actor.hearts >= 5 && actor.lastTapAt > 0 && now - actor.lastTapAt < 450) {
+      actor.lastTapAt = 0
+      dance(actor, now)
+      return
+    }
+    actor.lastTapAt = now
     wake(actor, now)
     hop(actor, now, 450)
     const line = actor.introNext ? introLine(actor.name) : actor.name
@@ -316,6 +553,7 @@ export function createMeadowStage(options: {
     spawnHeart(session.actor)
     session.lastHeart = now
     playPetChirp()
+    maybePetHeart(session.actor, now)
   }
 
   function beginDrag(now: number) {
@@ -341,23 +579,19 @@ export function createMeadowStage(options: {
       actor.mode = 'idle'
       schedule(actor, now)
     } else if (session.mode === 'drag') {
-      const other = nearest(actor)
-      if (other) {
-        // Phase 3: onPlayTogether(actor.id, other.id). For now, set it down beside them.
-        let nx = other.x + 16
-        if (nx > 88) nx = other.x - 16
-        pin(actor, nx, other.y)
-        dirty = true
+      const other = overlapTarget(actor)
+      if (other) startScuffle(actor, other, now)
+      else {
+        hop(actor, now, 320)
+        flush()
       }
-      hop(actor, now, 320)
-      flush()
     }
     if (actor.el.hasPointerCapture(ev.pointerId)) actor.el.releasePointerCapture(ev.pointerId)
     session = null
   }
 
   function onPointerDown(actor: Actor, ev: PointerEvent) {
-    if (session || ev.button !== 0) return
+    if (session || ev.button !== 0 || actor.mode === 'play') return
     ev.preventDefault()
     actor.el.setPointerCapture(ev.pointerId)
     const now = performance.now()
@@ -390,6 +624,7 @@ export function createMeadowStage(options: {
       session.lastY = ev.clientY
       if (step > 2) {
         playPetChirp()
+        maybePetHeart(actor, now)
         if (now - session.lastHeart > 280) {
           spawnHeart(actor)
           session.lastHeart = now
@@ -449,7 +684,16 @@ export function createMeadowStage(options: {
       favoriteBite: false,
       wiggleUntil: 0,
       pendingFull: false,
+      hearts: seed.hearts,
+      accessory: seed.accessory,
+      acc: null,
+      lastHeartGainAt: Number.NEGATIVE_INFINITY,
+      lastTapAt: 0,
+      popUntil: 0,
+      meter: null,
     }
+    actor.el.dataset.hearts = String(seed.hearts)
+    syncAccessory(actor, false)
     pin(actor, seed.x, seed.y)
     el.addEventListener('pointerdown', (ev) => onPointerDown(actor, ev))
     el.addEventListener('pointermove', onPointerMove)
@@ -465,7 +709,16 @@ export function createMeadowStage(options: {
 
   function settleFull(actor: Actor, now: number) {
     if (now >= actor.fullUntil) return
-    if (actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'hop' || actor.mode === 'eat') return
+    if (
+      actor.mode === 'pet' ||
+      actor.mode === 'drag' ||
+      actor.mode === 'hop' ||
+      actor.mode === 'eat' ||
+      actor.mode === 'play' ||
+      actor.mode === 'dance'
+    ) {
+      return
+    }
     actor.mode = 'nap'
     actor.poseUntil = actor.fullUntil
   }
@@ -490,7 +743,13 @@ export function createMeadowStage(options: {
 
   function tick(actor: Actor, dt: number, now: number) {
     settleFull(actor, now)
-    const busy = actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'hop' || actor.mode === 'eat'
+    const busy =
+      actor.mode === 'pet' ||
+      actor.mode === 'drag' ||
+      actor.mode === 'hop' ||
+      actor.mode === 'eat' ||
+      actor.mode === 'play' ||
+      actor.mode === 'dance'
     if (actor.mode === 'eat' && now >= actor.eatUntil) finishEat(actor, now)
     if (!busy && !paused) {
       if (actor.mode === 'walk') {
@@ -519,6 +778,9 @@ export function createMeadowStage(options: {
     } else if (actor.mode === 'hop' && now >= actor.hopUntil) {
       actor.mode = 'idle'
       schedule(actor, now)
+    } else if (actor.mode === 'dance' && now >= actor.poseUntil) {
+      actor.mode = 'idle'
+      schedule(actor, now)
     }
     paint(actor, now)
   }
@@ -529,7 +791,16 @@ export function createMeadowStage(options: {
     let bestD = 170
     for (const actor of actors.values()) {
       if (resting(actor, now)) continue
-      if (actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'eat' || actor.mode === 'hop') continue
+      if (
+        actor.mode === 'pet' ||
+        actor.mode === 'drag' ||
+        actor.mode === 'eat' ||
+        actor.mode === 'hop' ||
+        actor.mode === 'play' ||
+        actor.mode === 'dance'
+      ) {
+        continue
+      }
       const d = Math.hypot(actor.px - foodHover.x, actor.py - foodHover.y)
       if (d < bestD && d > 40) {
         best = actor
@@ -573,7 +844,9 @@ export function createMeadowStage(options: {
 
   function callToCenter(id: string) {
     const actor = actors.get(id)
-    if (!actor || actor.mode === 'drag' || actor.mode === 'pet' || actor.mode === 'eat') return
+    if (!actor || actor.mode === 'drag' || actor.mode === 'pet' || actor.mode === 'eat' || actor.mode === 'play' || actor.mode === 'dance') {
+      return
+    }
     if (performance.now() < actor.fullUntil) return
     const now = performance.now()
     wake(actor, now)
@@ -593,10 +866,12 @@ export function createMeadowStage(options: {
     cancelAnimationFrame(raf)
     resize.disconnect()
     if (session) window.clearTimeout(session.timer)
+    for (const id of timers) window.clearTimeout(id)
+    timers.clear()
     flush()
     for (const actor of actors.values()) actor.el.remove()
     actors.clear()
-    field.querySelectorAll('.meadow-heart, .meadow-crumb').forEach((node) => node.remove())
+    field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note').forEach((node) => node.remove())
   }
 
   function hitActor(clientX: number, clientY: number): Actor | null {
@@ -663,7 +938,7 @@ export function createMeadowStage(options: {
     if (!actor) return { result: 'miss' }
     const now = performance.now()
     const mouth = mouthOf(actor)
-    if (actor.mode === 'eat') return { result: 'miss' }
+    if (actor.mode === 'eat' || actor.mode === 'play' || actor.mode === 'dance') return { result: 'miss' }
     if (resting(actor, now)) {
       actor.wiggleUntil = now + 700
       if (actor.mode !== 'pet' && actor.mode !== 'drag' && actor.mode !== 'hop') {
@@ -698,5 +973,28 @@ export function createMeadowStage(options: {
   resize.observe(field)
   raf = requestAnimationFrame(frame)
 
-  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood }
+  function noteHearts(id: string, hearts: number, meter: boolean, chime: boolean) {
+    const actor = actors.get(id)
+    if (!actor) return
+    actor.hearts = hearts
+    actor.el.dataset.hearts = String(hearts)
+    if (hearts < 3 && actor.accessory !== 'none') {
+      actor.accessory = 'none'
+      syncAccessory(actor, false)
+    }
+    if (meter) showMeter(actor)
+    if (chime) {
+      playHeartChime()
+      for (let i = 0; i < 6; i += 1) later(() => spawnHeart(actor), i * 70)
+    }
+  }
+
+  function setAccessory(id: string, accessory: MeadowAccessoryId) {
+    const actor = actors.get(id)
+    if (!actor || actor.hearts < 3) return
+    actor.accessory = accessory
+    syncAccessory(actor, true)
+  }
+
+  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood, noteHearts, setAccessory }
 }
