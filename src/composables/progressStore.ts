@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import {
   CHAPTERS,
   DEFAULT_CHAPTER_ID,
+  DEFAULT_COMPLETED_CHAPTERS,
   DEFAULT_LESSON_ID,
   defaultLevelIdForPlay,
   getChapter,
@@ -31,6 +32,7 @@ import {
   decorDropSpot,
   emptyMeadow,
   grantAllMeadowAnimals,
+  grantOpenedMeadowAnimals,
   hatchEgg,
   meadowClockMark,
   meadowDecoration,
@@ -548,6 +550,46 @@ function emptyPersist(day = dateKey()): PersistShape {
   }
 }
 
+/** New players, and 初始化, begin after the configured opening chapters. */
+function freshPersist(day = dateKey()): PersistShape {
+  const next = emptyPersist(day)
+  seedOpeningChapters(next, DEFAULT_COMPLETED_CHAPTERS)
+  return next
+}
+
+/**
+ * Mark the first `count` chapters cleared and pay the same first-clear rewards
+ * a normal play-through would. Does not touch saves that already exist.
+ */
+function seedOpeningChapters(data: PersistShape, completedChapters: number) {
+  const count = Math.max(0, Math.min(CHAPTERS.length, Math.floor(completedChapters)))
+  if (count <= 0) return
+  const done = CHAPTERS.slice(0, count)
+  const doneIds = new Set(done.map((chapter) => chapter.id))
+  const save = data.chapter
+  const cleared: string[] = []
+  for (const lesson of listLessons()) {
+    if (!doneIds.has(lesson.chapterId)) break
+    cleared.push(lesson.id)
+    for (const level of lesson.levels) save.levels[level.id] = 'cleared'
+  }
+  save.clearedLessonIds = cleared
+  for (const chapter of done) pushUnique(save.celebratedChapters, chapter.id)
+  save.celebrated = save.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
+  data.chapter = repairChapterInvariants(save)
+  grantOpenedMeadowAnimals(
+    data.meadow,
+    done.map((chapter) => chapter.id),
+  )
+  syncRewardsFromClearedLessons(data)
+  data.meadow.pendingEggs = data.meadow.pendingEggs.filter((id) => !doneIds.has(id))
+  if (data.meadow.ceremonyChapterId && doneIds.has(data.meadow.ceremonyChapterId)) {
+    data.meadow.ceremonyChapterId = null
+  }
+  data.meadow.spentStars = 0
+  syncTodayAndGatesFromChapter(data)
+}
+
 function asFiniteNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
@@ -1025,7 +1067,7 @@ function loadPersist(): PersistShape {
     return fresh
   }
 
-  return emptyPersist()
+  return freshPersist()
 }
 
 function writeToday(target: TodayProgress, source: TodayProgress) {
@@ -1292,7 +1334,7 @@ function maxedPersistFromConfig(day = dateKey()): PersistShape {
 /** Wipe player progress only. Word-card images stay. */
 export function resetAllProgress(): void {
   removeProgressKeys()
-  hydratePersist(emptyPersist())
+  hydratePersist(freshPersist())
 }
 
 /**

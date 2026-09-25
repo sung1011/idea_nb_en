@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { listChapters } from '../data/chapters'
+import { listChapters, DEFAULT_COMPLETED_CHAPTERS } from '../data/chapters'
 import { playPop } from '../composables/useSfx'
 import { decorHitZonesVisible, setDecorHitZonesVisible } from '../meadow/meadowConfig'
 import {
@@ -24,6 +24,7 @@ const lessonMenuOpen = ref(false)
 const pickedLessonId = ref(getFrontierLesson().id)
 const router = useRouter()
 const chapters = listChapters()
+const openingChapters = DEFAULT_COMPLETED_CHAPTERS
 const lessonGroups = computed(() =>
   chapters.map((chapter, index) => ({
     label: `第${index + 1}章 ${chapter.kidTitle}`,
@@ -160,7 +161,7 @@ function applyLesson() {
           <h2 id="settings-title" class="title">设置</h2>
           <p class="warn">
             「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
-            「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡，以及星星草地。词卡图片还在，不会删。
+            「初始化」会回到新玩家的起点：前 {{ openingChapters }} 章算已经玩过，星星、徽章、图鉴和草地上的小动物一起恢复，后面的进度会清掉。词卡图片还在，不会删。
             「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。不会送小商店里的装饰。
             「草地时间 +12小时」只给调试用，把草地上每只动物的饥饿时间往前拨 12 小时。
             「星星 +50」只给调试用，加的是一辈子的星星，不会把小商店里的装饰送掉。
@@ -216,7 +217,7 @@ function applyLesson() {
         <template v-else-if="step === 'confirmWipe'">
           <p class="eyebrow">Reset</p>
           <h2 id="settings-title" class="title">真的清空吗？</h2>
-          <p class="warn">清空后不能找回，会回到第一次打开的样子，星星草地也一起清空。</p>
+          <p class="warn">清空后不能找回，会回到新玩家的起点。</p>
           <big-button variant="danger" @click="wipeAll">真的清空</big-button>
           <big-button variant="soft" @click="close">再想想</big-button>
         </template>

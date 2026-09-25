@@ -504,6 +504,27 @@ export function grantAllMeadowAnimals(meadow: MeadowSave): void {
   })
 }
 
+/** Animals for chapters a new save already finished. Hatched, full, no egg and no ceremony. */
+export function grantOpenedMeadowAnimals(meadow: MeadowSave, chapterIds: readonly string[]): void {
+  const skip = new Set(chapterIds)
+  meadow.pendingEggs = meadow.pendingEggs.filter((id) => !skip.has(id))
+  if (meadow.ceremonyChapterId && skip.has(meadow.ceremonyChapterId)) meadow.ceremonyChapterId = null
+  const now = meadowEffectiveNow(meadow)
+  chapterIds.forEach((chapterId, index) => {
+    const animal = animalByChapter(chapterId)
+    if (!animal || meadow.owned.some((item) => item.id === animal.id)) return
+    const spot = spreadSpot(index)
+    meadow.owned.push({
+      id: animal.id,
+      x: spot.x,
+      y: spot.y,
+      hearts: 0,
+      accessory: 'none',
+      lastFedAt: now,
+    })
+  })
+}
+
 export function hatchEgg(meadow: MeadowSave, chapterId: string): MeadowAnimalSave | null {
   const animal = animalByChapter(chapterId)
   if (!animal) return null

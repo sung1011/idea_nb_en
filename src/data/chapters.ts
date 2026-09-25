@@ -54,6 +54,12 @@ export const ANIMALS_CHAPTER_ID = CHAPTER_1_ID
 export const DEFAULT_CHAPTER_ID = CHAPTER_1_ID
 export const DEFAULT_LESSON_ID = 'ch1-k1'
 
+/**
+ * Brand-new saves, and 初始化, start with this many chapters already cleared.
+ * Existing saves are left alone. Change this number to move the start point.
+ */
+export const DEFAULT_COMPLETED_CHAPTERS = 2
+
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
   whackWord: '/whack-word',
