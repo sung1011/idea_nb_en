@@ -26,7 +26,7 @@ import {
 export function useChapterLevel(play: PlayKind) {
   const route = useRoute()
   const router = useRouter()
-  const { isPractice, isDemo, isReview, isChapterPractice, afterLevel } = usePlayMode()
+  const { isPractice, isDemo, isChapterPractice, afterLevel } = usePlayMode()
 
   const rawLevelQuery = computed(() => route.query.level)
   const hasExplicitLevel = computed(() => Boolean(matchingLevel(play, rawLevelQuery.value)))
@@ -42,7 +42,6 @@ export function useChapterLevel(play: PlayKind) {
       play,
       rawLevel: rawLevelQuery.value,
       isDemo: isDemo.value,
-      isReview: isReview.value,
       resolvedLevel: level.value,
     }),
   )
@@ -80,7 +79,6 @@ export function useChapterLevel(play: PlayKind) {
     const lessonNo = getLesson(level.value?.lessonId)?.order
     const where = lessonNo ? `第${lessonNo}课 · 第${order}关` : `第${order}关`
     if (isDemo.value) return `试玩 · ${title}`
-    if (isReview.value) return `复习 · ${title}`
     if (isChapterPractice.value) return `再玩 · ${where} · ${title}`
     if (isReplay.value) return `再玩 · ${where} · ${title}`
     return `${where} · ${title}`
@@ -98,7 +96,7 @@ export function useChapterLevel(play: PlayKind) {
         lessonId: level.value?.lessonId ?? null,
         chapterFinished: false,
         nextLevelId: null,
-        nextRoute: isDemo.value ? '/play-gallery' : '/letter-workshop',
+        nextRoute: '/play-gallery',
       }
     }
     const result = completeLevel(levelId.value)
@@ -165,7 +163,6 @@ export function useChapterLevel(play: PlayKind) {
     canPlay,
     isPractice,
     isDemo,
-    isReview,
     isChapterPractice,
     chapterComplete,
     chapterId: computed(() => level.value?.chapterId ?? ANIMALS_CHAPTER_ID),

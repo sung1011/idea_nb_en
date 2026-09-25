@@ -7,7 +7,6 @@ import echoCaveView from './views/echoCaveView.vue'
 import findSceneView from './views/findSceneView.vue'
 import flashFlipView from './views/flashFlipView.vue'
 import homeView from './views/homeView.vue'
-import letterWorkshopView from './views/letterWorkshopView.vue'
 import playGalleryView from './views/playGalleryView.vue'
 import singAlongView from './views/singAlongView.vue'
 import soundFishView from './views/soundFishView.vue'
@@ -22,7 +21,7 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: homeView },
     { path: '/animal-island', name: 'animalIsland', component: animalIslandView },
-    { path: '/letter-workshop', name: 'letterWorkshop', component: letterWorkshopView },
+    { path: '/letter-workshop', redirect: '/' },
     { path: '/word-atlas', name: 'wordAtlas', component: wordAtlasView },
     { path: '/sticker-album', name: 'stickerAlbum', component: stickerAlbumView },
     { path: '/play-gallery', name: 'playGallery', component: playGalleryView },
@@ -38,4 +37,8 @@ export const router = createRouter({
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },
     { path: '/chapter-finale', name: 'chapterFinale', component: chapterFinaleView },
   ],
+})
+
+router.beforeEach((to) => {
+  if (to.query.review === '1') return { path: '/' }
 })

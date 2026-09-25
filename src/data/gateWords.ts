@@ -19,17 +19,16 @@ export function matchingLevel(play: PlayKind, raw: unknown): LevelDef | undefine
 
 /**
  * Mainline / practice with a chapter level use that level's list.
- * Demo / review / gallery without `?level=` keep the 15-word family sample.
+ * Demo / gallery without `?level=` keep the 15-word family sample.
  */
 export function shouldUseLevelWords(opts: {
   play: PlayKind
   rawLevel: unknown
   isDemo: boolean
-  isReview: boolean
   resolvedLevel?: LevelDef | null
 }): boolean {
   if (matchingLevel(opts.play, opts.rawLevel)) return true
-  if (opts.isDemo || opts.isReview) return false
+  if (opts.isDemo) return false
   return Boolean(opts.resolvedLevel)
 }
 

@@ -36,10 +36,6 @@ function goGallery() {
   void router.push('/play-gallery')
 }
 
-function goWorkshop() {
-  void router.push('/letter-workshop')
-}
-
 function goAtlas() {
   void router.push('/word-atlas')
 }
@@ -86,8 +82,7 @@ function goAlbum() {
       贴纸相册
     </button>
     <div class="weak-links">
-      <button class="workshop-link" type="button" @click="goWorkshop">字母工坊 / 复习音族</button>
-      <button class="workshop-link" type="button" @click="goAtlas">单词图鉴</button>
+      <button class="weak-link" type="button" @click="goAtlas">单词图鉴</button>
     </div>
   </section>
 </template>
@@ -199,7 +194,7 @@ function goAlbum() {
   margin-top: 8px;
 }
 
-.workshop-link {
+.weak-link {
   min-height: 48px;
   background: transparent;
   color: var(--muted);

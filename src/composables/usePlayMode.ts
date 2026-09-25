@@ -21,12 +21,11 @@ function asPath(raw: RouteLocationRaw): string {
   return '/'
 }
 
-/** Daily island awards first-clear rewards; workshop/gallery practice does not. */
+/** Daily island awards first-clear rewards; gallery practice does not. */
 export function usePlayMode() {
   const route = useRoute()
-  const isReview = computed(() => route.query.review === '1')
   const isDemo = computed(() => route.query.demo === '1')
-  const isPractice = computed(() => isReview.value || isDemo.value)
+  const isPractice = computed(() => isDemo.value)
   const isChapterPractice = computed(() => route.query.practice === '1')
   const chapterFilter = computed(() => {
     const raw = route.query.chapter
@@ -42,7 +41,6 @@ export function usePlayMode() {
   function extraQuery(): Record<string, string> {
     const query: Record<string, string> = {}
     if (isDemo.value) query.demo = '1'
-    if (isReview.value) query.review = '1'
     if (isChapterPractice.value) query.practice = '1'
     if (chapterFilter.value) query.chapter = chapterFilter.value
     return query
@@ -62,7 +60,6 @@ export function usePlayMode() {
   function afterGate(dailyNext: string) {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isChapterPractice.value) return practiceGalleryPath()
-    if (isReview.value && dailyNext === '/day-complete') return '/letter-workshop'
     return playPath(dailyNext)
   }
 
@@ -71,17 +68,11 @@ export function usePlayMode() {
   ): RouteLocationRaw {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
     if (isChapterPractice.value) return practiceGalleryPath()
-    if (isReview.value) {
-      const next = locationAfterClear(result)
-      if (asPath(next) === '/day-complete') return '/letter-workshop'
-      return playLocation(next)
-    }
     return locationAfterClear(result)
   }
 
   const backPath = computed(() => {
     if (isDemo.value) return chapterFilter.value ? practiceGalleryPath() : '/play-gallery'
-    if (isReview.value) return '/letter-workshop'
     if (isChapterPractice.value) return practiceGalleryPath()
     const raw = route.query.level
     const value = Array.isArray(raw) ? raw[0] : raw
@@ -90,13 +81,11 @@ export function usePlayMode() {
   })
   const backLabel = computed(() => {
     if (isDemo.value) return '回一览'
-    if (isReview.value) return '回工坊'
     if (isChapterPractice.value) return '回岛'
     return '回岛'
   })
 
   return {
-    isReview,
     isDemo,
     isPractice,
     isChapterPractice,
