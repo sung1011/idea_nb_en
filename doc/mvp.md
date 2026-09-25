@@ -25,7 +25,7 @@
 
 找一找 / 唱一唱只在玩法一览，不进主线。未开的章轻提示「先通关上一章吧」。课内未开关轻提示「先过上一关吧」。已过关写「再玩一次」，不加首次通关星星。产品 UI 不再挂「练一练」。
 
-**星星草地**是首页入口（玩法一览和贴纸相册之间的绿色按钮）。**单词图鉴**是弱入口（首页，在贴纸相册下面），不走每日强制路径。字母工坊 / 复习音族已移除；旧地址 `/letter-workshop` 和带 `?review=1` 的链接会回到首页，不改进度。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + `rise-1` / `rise-2` / `rise-3` / `rise-4` / `rise-5`）。已解锁：词卡图（或 emoji 回退）+ 英文单词，英文下方显示 `WordArt.zh`（约为英文 60% 字号、灰棕色 `#8a7564`，与闪卡释义同一套；没有释义就不占位）。未解锁仍是剪影 + 问号，中文一并隐藏。点已解锁词仍只用英文 TTS 朗读，并有 Howler pop / GSAP pulse；图鉴不放「🔊中」、也不调用 zh-CN。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章到第 4 章各 16 个词已有 Style-5 词卡（`fish` 沿用已有词卡；第 3 章的 pig / cat / cup / hat 沿用已有词卡；第 4 章的 `leg` / `bat` 沿用已有词卡，`bat` 的中文是「球棒」；hen / bed / pet / gum / tag / gift / rag / hit / mitt / win / dad / mom / sis / tug 是新图）。第 5 章单词课 12 个词也有词卡：desk / tent / deck / well / hut / fox / ant / web / wok / wag / wink 是新图，`rat` 沿用已有词卡（中文「老鼠」）。数字课的 fifty / seventy / ninety / one hundred 不进图鉴。其余还没有 webp 的词用 emoji。
+**星星草地**是首页入口（去动物岛下面、贴纸相册上面的绿色按钮）。**玩法一览**和**单词图鉴**是页底并排的两个弱入口，样式和大小一样，都在贴纸相册下面，不走每日强制路径。字母工坊 / 复习音族已移除；旧地址 `/letter-workshop` 和带 `?review=1` 的链接会回到首页，不改进度。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + `rise-1` / `rise-2` / `rise-3` / `rise-4` / `rise-5`）。已解锁：词卡图（或 emoji 回退）+ 英文单词，英文下方显示 `WordArt.zh`（约为英文 60% 字号、灰棕色 `#8a7564`，与闪卡释义同一套；没有释义就不占位）。未解锁仍是剪影 + 问号，中文一并隐藏。点已解锁词仍只用英文 TTS 朗读，并有 Howler pop / GSAP pulse；图鉴不放「🔊中」、也不调用 zh-CN。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章到第 4 章各 16 个词已有 Style-5 词卡（`fish` 沿用已有词卡；第 3 章的 pig / cat / cup / hat 沿用已有词卡；第 4 章的 `leg` / `bat` 沿用已有词卡，`bat` 的中文是「球棒」；hen / bed / pet / gum / tag / gift / rag / hit / mitt / win / dad / mom / sis / tug 是新图）。第 5 章单词课 12 个词也有词卡：desk / tent / deck / well / hut / fox / ant / web / wok / wag / wink 是新图，`rat` 沿用已有词卡（中文「老鼠」）。数字课的 fifty / seventy / ninety / one hundred 不进图鉴。其余还没有 webp 的词用 emoji。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
@@ -127,7 +127,7 @@ src/composables/useRecognition.ts 跟读识别
 src/data/playGallery.ts        玩法一览条目（按章画廊路由仍在，主路径不链）
 src/components/levelClearSheet.vue 重玩通关后的选择层（回岛主按钮 / 再玩一次次按钮 / 可选去下一关）
 src/meadow/                    星星草地（名册、存档、舞台、孵化、喂食、一起玩、爱心、饰品、跳舞）
-src/views/homeView.vue         首页（跨章目标条 + 当前章亮格 + 去动物岛 + 玩法一览 + 星星草地 + 贴纸相册 + 弱图鉴 + 设置）
+src/views/homeView.vue         首页（跨章目标条 + 当前章亮格 + 去动物岛 + 星星草地 + 贴纸相册 + 页底并排的玩法一览 / 单词图鉴 + 设置）
 src/views/animalIslandView.vue 动物岛大厅（三章入口；点开后该章关卡列表 + 已过关「再玩一次」）
 src/views/soundSpellView.vue   听音拼一拼（听词、点/拖字母、软失败、喇叭重听）
 src/views/storyBookView.vue    小书点读（封面听书名 + 3–5 页短句点读，先高亮 CVC 再听整句）

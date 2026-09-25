@@ -82,7 +82,6 @@ function goMeadow() {
     </div>
 
     <big-button class="start-btn" @click="goIsland">去动物岛</big-button>
-    <big-button class="gallery-btn" variant="soft" @click="goGallery">玩法一览</big-button>
     <button class="meadow-btn" type="button" @click="goMeadow">
       <span aria-hidden="true">🌿</span>
       星星草地
@@ -93,6 +92,7 @@ function goMeadow() {
       贴纸相册
     </button>
     <div class="weak-links">
+      <button class="weak-link" type="button" @click="goGallery">玩法一览</button>
       <button class="weak-link" type="button" @click="goAtlas">单词图鉴</button>
     </div>
   </section>
@@ -210,8 +210,7 @@ function goMeadow() {
   margin-top: 8px;
 }
 
-.start-btn,
-.gallery-btn {
+.start-btn {
   margin-top: 0;
 }
 
