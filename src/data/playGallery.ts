@@ -30,6 +30,9 @@ export const PLAY_KIND_EMOJI: Record<PlayKind, string> = {
   echo: '🎤',
   storyBook: '📖',
   chapterFinale: '🎉',
+  numberFlash: '🔢',
+  numberTap: '👆',
+  numberCount: '⭐',
 }
 
 export const playItems: PlayItem[] = [

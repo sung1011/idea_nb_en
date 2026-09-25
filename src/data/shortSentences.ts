@@ -20,7 +20,7 @@ export const shortSentences: Record<string, string> = {
   hat: 'A lot of hats!',
   mat: 'A cat on a mat.',
   bat: 'A big bat!',
-  rat: 'A rat on a mat.',
+  rat: 'A rat lives in the hut.',
   cup: 'Find the cup.',
   dog: 'A dog can jog.',
   pig: 'Is it a pig?',
@@ -86,6 +86,17 @@ export const shortSentences: Record<string, string> = {
   mom: 'Mom can help.',
   sis: 'Sis can help.',
   tug: 'We tug and tug!',
+  desk: 'Ben is at the desk.',
+  tent: 'Ben is at the tent.',
+  deck: 'Ben is at the deck.',
+  well: 'Ben is at the well.',
+  hut: 'Who lives in the hut?',
+  fox: 'A fox lives in the hut.',
+  ant: 'An ant lives in the hut.',
+  web: 'Look at the web.',
+  wok: 'Look at the wok.',
+  wag: 'Look at the dog wag.',
+  wink: 'Look at me wink!',
 }
 
 export function sentenceForWord(word: string): string {

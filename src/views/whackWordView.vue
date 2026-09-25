@@ -7,6 +7,7 @@ import { flyStarFrom, tweenCelebrate, tweenPopDown, tweenPopUp, tweenShake, wait
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
+import numberClay from '../components/numberClay.vue'
 import wordPic from '../components/wordPic.vue'
 import { shuffle } from '../data/playGallery'
 import { gateWhackSub } from '../data/todayTasks'
@@ -19,6 +20,7 @@ type Mole = {
 const NEED_CORRECT = 4
 
 const {
+  level,
   isReplay,
   gateTag,
   finishLevel,
@@ -37,6 +39,15 @@ const {
 } = useChapterLevel('whackWord')
 
 const words = takeRunWords(5)
+const numberByWord = computed(() => {
+  const map = new Map<string, number>()
+  for (const item of level.value?.numbers ?? []) map.set(item.word.toLowerCase(), item.value)
+  return map
+})
+function numeralFor(word: string | undefined): number | undefined {
+  if (!word) return undefined
+  return numberByWord.value.get(word.toLowerCase())
+}
 const extra = takeOtherWords(words, 1)
 const whackSub = computed(() => gateWhackSub(themeHint.value))
 const holes = [0, 1, 2, 3]
@@ -123,7 +134,7 @@ async function onTap(mole: Mole, event: MouseEvent) {
   if (mole.word === targetWord.value) {
     locked.value = true
     playPop()
-    unlockWord(mole.word)
+    if (!numberByWord.value.size) unlockWord(mole.word)
     if (!caught.value.includes(mole.word)) {
       caught.value = [...caught.value, mole.word]
     }
@@ -187,8 +198,15 @@ onUnmounted(() => {
           :aria-label="moleByHole[hole]?.word"
           @click="onTap(moleByHole[hole] as Mole, $event)"
         >
-          <word-pic :word="moleByHole[hole]?.word ?? ''" :size="64" />
-          <small>{{ moleByHole[hole]?.word }}</small>
+          <number-clay
+            v-if="numeralFor(moleByHole[hole]?.word) != null"
+            :value="numeralFor(moleByHole[hole]?.word) ?? 0"
+            size="sm"
+          />
+          <template v-else>
+            <word-pic :word="moleByHole[hole]?.word ?? ''" :size="64" />
+            <small>{{ moleByHole[hole]?.word }}</small>
+          </template>
         </button>
       </div>
     </div>

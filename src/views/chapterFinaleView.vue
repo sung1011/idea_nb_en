@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import bigButton from '../components/bigButton.vue'
 import gateTopBar from '../components/gateTopBar.vue'
 import levelClearSheet from '../components/levelClearSheet.vue'
+import numberClay from '../components/numberClay.vue'
 import wordPic from '../components/wordPic.vue'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, waitAfterStar } from '../composables/useMotion'
@@ -29,7 +30,10 @@ const {
   continueAfterClear,
   goLobby,
 } = useChapterLevel('chapterFinale')
+const numbers = computed(() => level.value?.numbers ?? [])
+const useNumbers = computed(() => numbers.value.length > 0)
 const words = computed(() => {
+  if (useNumbers.value) return numbers.value.map((item) => item.word)
   const list = levelWordList(level.value)
   return list.length ? list : ['hop', 'pot', 'top']
 })
@@ -40,12 +44,17 @@ const isChapterBadge = computed(
 )
 const titleZh = computed(() => (isChapterBadge.value ? (chapter.value?.kidTitle ?? '章节回顾') : (level.value?.titleZh ?? '小小回顾')))
 const badgeName = computed(() => stickerLabel(level.value?.chapterStickerId || chapter.value?.stickerId || ''))
-const recapLine = computed(() => `短回顾：再看一看 ${words.value.join(' / ')}`)
+const recapLine = computed(() =>
+  useNumbers.value
+    ? `短回顾：再看一看 ${numbers.value.map((item) => item.value).join(' / ')}`
+    : `短回顾：再看一看 ${words.value.join(' / ')}`,
+)
 const celebrating = ref(false)
 const locked = ref(false)
 const cardEl = ref<HTMLElement | null>(null)
 
 onMounted(() => {
+  if (useNumbers.value) return
   preloadWordCards(words.value)
   for (const word of words.value) unlockWord(word)
 })
@@ -74,10 +83,19 @@ async function finish() {
     </div>
 
     <div ref="cardEl" class="card words" :class="{ pop: celebrating }">
-      <div v-for="word in words" :key="word" class="word">
-        <word-pic :word="word" :size="72" />
-        <b>{{ word }}</b>
-      </div>
+      <template v-if="useNumbers">
+        <div v-for="item in numbers" :key="item.value" class="word">
+          <number-clay :value="item.value" size="md" />
+          <b>{{ item.word }}</b>
+          <span v-if="item.zh" class="zh">{{ item.zh }}</span>
+        </div>
+      </template>
+      <template v-else>
+        <div v-for="word in words" :key="word" class="word">
+          <word-pic :word="word" :size="72" />
+          <b>{{ word }}</b>
+        </div>
+      </template>
     </div>
 
     <p class="hint center">
@@ -134,6 +152,12 @@ async function finish() {
 
 .word b {
   font-size: 20px;
+}
+
+.zh {
+  font-size: 14px;
+  font-weight: 650;
+  color: #8a7564;
 }
 
 .hint {

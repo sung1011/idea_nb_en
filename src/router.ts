@@ -16,6 +16,9 @@ import storyBookView from './views/storyBookView.vue'
 import whackWordView from './views/whackWordView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
 import meadowView from './meadow/meadowView.vue'
+import numberCountView from './views/numberCountView.vue'
+import numberFlashView from './views/numberFlashView.vue'
+import numberTapView from './views/numberTapView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -38,6 +41,9 @@ export const router = createRouter({
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },
     { path: '/star-meadow', name: 'starMeadow', component: meadowView },
     { path: '/chapter-finale', name: 'chapterFinale', component: chapterFinaleView },
+    { path: '/number-flash', name: 'numberFlash', component: numberFlashView },
+    { path: '/number-tap', name: 'numberTap', component: numberTapView },
+    { path: '/number-count', name: 'numberCount', component: numberCountView },
   ],
 })
 

@@ -19,13 +19,13 @@
 
 每日主路径 = **主题岛**（第一座：动物岛），内容按学校 **RISE Mart P1** 课表，从 **L49** 起。配置在 `src/data/chapters.ts`：两节学校课 = 一课（L49-50 是第 1 课，L143-144 是第 48 课），每 4 课 = 一章，共 **12 章**。课的 `type` 为 `letterSight` / `story` / `wordFamily` / `math` / `review`。关卡数读该课的 `levels.length`，不要写死。
 
-解锁：课内关卡严格按顺序；上一课全通才开下一课；一章 4 课都通才开下一章。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析。没有 `levels` 的课显示「即将开放」，点了不会进游戏、也不会被当成已通关。当前第 1 章到第 4 章各四课有内容（每课 5 关：闪卡、地鼠、听音拼一拼、小书点读、小小回顾）。一章最后一课的回顾关带该章徽章（`rise1` / `rise2` / `rise3`「词族和字母徽章」/ `rise4`「母鸡徽章」）。第 4 章四课的回顾关另外各发一枚课徽章（`rise13`「母鸡会跳徽章」/ `rise14`「字母 G 徽章」/ `rise15`「大力一击徽章」/ `rise16`「大胡萝卜徽章」）。第 5–12 章仍是「即将开放」。数学课只标记 `type: 'math'`，这一期不做数字关。
+解锁：课内关卡严格按顺序；上一课全通才开下一课；一章 4 课都通才开下一章。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析。没有 `levels` 的课显示「即将开放」，点了不会进游戏、也不会被当成已通关。当前第 1 章到第 5 章各四课有内容。第 1–4 章和第五章的单词课每课 5 关：闪卡、地鼠、听音拼一拼、小书点读、小小回顾。第 5 章第 1 课（课17）是数字课，五关为数字闪卡、听音点数字、数一数、打地鼠数字、小小回顾。一章最后一课的回顾关带该章徽章（`rise1` / `rise2` / `rise3`「词族和字母徽章」/ `rise4`「母鸡徽章」/ `rise5`「小屋徽章」）。第 4 章四课的回顾关另外各发一枚课徽章（`rise13`「母鸡会跳徽章」/ `rise14`「字母 G 徽章」/ `rise15`「大力一击徽章」/ `rise16`「大胡萝卜徽章」）。第 5 章四课回顾各发 `rise17`「数字徽章」/ `rise18`「书桌帐篷徽章」/ `rise19`「小屋朋友徽章」/ `rise20`「看一看徽章」。第 6–12 章仍是「即将开放」。课26、课29、课40、课45 仍是 `type: 'math'` 且没有关卡，要做时往 `MATH_LESSONS` 加一组四个数字即可。
 
 首页 → 动物岛（12 章）→ 点开一章看 4 课（小字课表范围，如 L49-50）→ 点开一课看关卡。进度文案是「第1章·第2课 3/5」。
 
 找一找 / 唱一唱只在玩法一览，不进主线。未开的章轻提示「先通关上一章吧」。课内未开关轻提示「先过上一关吧」。已过关写「再玩一次」，不加首次通关星星。产品 UI 不再挂「练一练」。
 
-**星星草地**是首页入口（玩法一览和贴纸相册之间的绿色按钮）。**单词图鉴**是弱入口（首页，在贴纸相册下面），不走每日强制路径。字母工坊 / 复习音族已移除；旧地址 `/letter-workshop` 和带 `?review=1` 的链接会回到首页，不改进度。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + `rise-1` / `rise-2` / `rise-3` / `rise-4`）。已解锁：词卡图（或 emoji 回退）+ 英文单词，英文下方显示 `WordArt.zh`（约为英文 60% 字号、灰棕色 `#8a7564`，与闪卡释义同一套；没有释义就不占位）。未解锁仍是剪影 + 问号，中文一并隐藏。点已解锁词仍只用英文 TTS 朗读，并有 Howler pop / GSAP pulse；图鉴不放「🔊中」、也不调用 zh-CN。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章到第 4 章各 16 个词已有 Style-5 词卡（`fish` 沿用已有词卡；第 3 章的 pig / cat / cup / hat 沿用已有词卡；第 4 章的 `leg` / `bat` 沿用已有词卡，`bat` 的中文是「球棒」；hen / bed / pet / gum / tag / gift / rag / hit / mitt / win / dad / mom / sis / tug 是新图）。其余还没有 webp 的词用 emoji。
+**星星草地**是首页入口（玩法一览和贴纸相册之间的绿色按钮）。**单词图鉴**是弱入口（首页，在贴纸相册下面），不走每日强制路径。字母工坊 / 复习音族已移除；旧地址 `/letter-workshop` 和带 `?review=1` 的链接会回到首页，不改进度。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + `rise-1` / `rise-2` / `rise-3` / `rise-4` / `rise-5`）。已解锁：词卡图（或 emoji 回退）+ 英文单词，英文下方显示 `WordArt.zh`（约为英文 60% 字号、灰棕色 `#8a7564`，与闪卡释义同一套；没有释义就不占位）。未解锁仍是剪影 + 问号，中文一并隐藏。点已解锁词仍只用英文 TTS 朗读，并有 Howler pop / GSAP pulse；图鉴不放「🔊中」、也不调用 zh-CN。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章到第 4 章各 16 个词已有 Style-5 词卡（`fish` 沿用已有词卡；第 3 章的 pig / cat / cup / hat 沿用已有词卡；第 4 章的 `leg` / `bat` 沿用已有词卡，`bat` 的中文是「球棒」；hen / bed / pet / gum / tag / gift / rag / hit / mitt / win / dad / mom / sis / tug 是新图）。第 5 章单词课 12 个词也有词卡：desk / tent / deck / well / hut / fox / ant / web / wok / wag / wink 是新图，`rat` 沿用已有词卡（中文「老鼠」）。数字课的 fifty / seventy / ninety / one hundred 不进图鉴。其余还没有 webp 的词用 emoji。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
@@ -33,7 +33,17 @@
 
 **Flash Flip（闪卡翻翻）**是词汇热身：有 `?level=`（或主线回落到该玩法关卡）时用该关 `focusWord` / `appearWords` / `words`（如 ch1-1 的 cap + map/nap，ch2-1 的 frog + log/fog，ch3-1 的 duck + rock）；试玩且没有关卡 id 时仍从 15 词库抽 4 个。学习阶段一次只出一张卡（词卡图 + 英文 + 英文下方的中文释义 `WordArt.zh`，没有释义就不占位、也不出现按钮）。自动朗读和「再听一遍」仍只读英文。释义旁有一颗较小的绿色圆钮「🔊中」（约 40px），点了才用 `zh-CN` 朗读该释义（语速约 0.9，有中文语音就用），不会翻卡、不会作答、不会自动播放，进度按本关实际词数显示 `1/3`、`2/3`、`3/3`（一词则 `1/1`）。孩子用「下一张」/「上一张」自己翻，没有全局「我看完了」，也不能跳过没看的卡。翻到最后一张点「开始找一找」后，才进入听词点对图卡。点错轻晃再问，没有红叉。副文案可轻提章节主题（「-ap 派对」/「听声找伙伴」/「石头袜子」）。通关调用 `completeLevel`，立刻解锁并跳下一关。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
 
-**Whack Word（地鼠词）**是约 45–60 秒的点选关：有关卡 id 时用地鼠关词表（ch1-2 cap/map/nap，ch2-2 frog/log/fog，ch3-2 duck/rock/sock），干扰词也只从该表抽；试玩且没有关卡 id 时仍从 15 词库抽 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波最多 3 只（目标 + 同表干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。通关后立刻解锁并跳到拖一拖。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。
+**Whack Word（地鼠词）**是约 45–60 秒的点选关：有关卡 id 时用地鼠关词表（ch1-2 cap/map/nap，ch2-2 frog/log/fog，ch3-2 duck/rock/sock），干扰词也只从该表抽；试玩且没有关卡 id 时仍从 15 词库抽 5 个。草地点洞弹出带词卡图的单词地鼠，系统读目标词，孩子点对的那只。每波最多 3 只（目标 + 同表干扰），点对 4 次过关；点错轻晃再读，没有倒计时卡死。通关后立刻解锁并跳到拖一拖。试玩走 `?demo=1`，不加首次通关星星、不推进章节；点对解锁单词图鉴。数字课复用这一关时，地鼠上是软陶数字，TTS 仍读英文数词，不解锁图鉴。
+
+**数字课（math）**由 `src/data/mathLessons.ts` 配置，一课正好 4 个数字（`value` / 英文 / `zh` / 句子）。现在只有课17（`ch5-k1`：50 fifty 五十、70 seventy 七十、90 ninety 九十、100 one hundred 一百，句子都是 “Count to ….”）。关卡不出现这一课以外的数字，也没有词卡图，数字用 `numberClay` 画成描边软陶。五关：
+
+1. **数字闪卡**（`/number-flash`）：手动「上一张 / 下一张」，翻开后是大数字 + 英文 + 中文，TTS 读整句；「🔊中」才读中文。最后一张是「我看完了」，不过听音点选。
+2. **听音点数字**（`/number-tap`）：TTS 读英文数词，四个数字里点对的那个。点错轻晃再读，没有红叉。点对 4 次过关。
+3. **数一数**（`/number-count`）：≤20 用一颗颗星星或苹果；更大的数用十条一组（50 是 5 根、100 是 10 根，不能整除时再补个位数）。点每一根或每一颗会读出累计的英文（ten / twenty / … / one hundred）。再从这一课的四个数字里点对的。
+4. **打地鼠数字**：地鼠关，洞里是数字。
+5. **小小回顾**：四个数字和课徽章，句式与单词课回顾相同。
+
+只给好反馈。课26 / 29 / 40 / 45 还没填 `MATH_LESSONS`，仍显示「即将开放」。
 
 **Drag Sort（拖一拖）**是认词关，不是分类关：有关卡 id 时用该关词表（ch1-3 三词，ch2-3 frog/log/jog，ch3-3 rock/sock/lock）；试玩且没有关卡 id 时仍从 15 词库抽 3 个。篮子只放词卡图（无图时回退 emoji / CSS 篮子），芯片只放英文单词。孩子读出单词后拖到对应图片。开场只用英语 TTS，没有中文操作说明。拖拽用 `@vueuse/gesture`，靠近篮子会磁吸，松手吸附进篮；拖错轻晃并再读单词、点亮正确篮子，不出现红叉。通关后立刻解锁并跳到读词钓鱼。试玩仍走 `?demo=1`。拖对解锁单词图鉴。
 
@@ -47,17 +57,17 @@
 
 **回声跟读（Echo）**听后跟读：有关卡 id 时用该关词表（ch1-5 三词，ch2-5 走完 frog→hog 五词，ch3-5 duck/rock/sock）；试玩且没有关卡 id 时仍从 15 词库抽 3 个。每轮先听单词再听一句短句（`shortSentences`，如 “A cap on a map.”），孩子跟读句子或单词；永远可点「我说好了」。标题按章轻提（听句子说一说 / 听声喊伙伴 / 石头和袜子）。
 
-**小小回顾（Finale）**读 `?level=` 的词表。课内回顾：第 1–3 章只有章末那课带章徽章（`rise1` / `rise2`「小豹来了徽章」/ `rise3`「词族和字母徽章」）。第 4 章四课回顾各带课徽章 `rise13`–`rise16`，章通关庆祝页仍发章徽章 `rise4`「母鸡徽章」。词卡没有图时回退 emoji。
+**小小回顾（Finale）**读 `?level=` 的词表。课内回顾：第 1–3 章只有章末那课带章徽章（`rise1` / `rise2`「小豹来了徽章」/ `rise3`「词族和字母徽章」）。第 4 章四课回顾各带课徽章 `rise13`–`rise16`，章通关庆祝页仍发章徽章 `rise4`「母鸡徽章」。第 5 章四课回顾各带课徽章 `rise17`–`rise20`，章通关庆祝页仍发章徽章 `rise5`「小屋徽章」。数字课回顾画四个软陶数字，不预载词卡、不写入图鉴。词卡没有图时回退 emoji。
 
 章节关卡进度跨日保留，跨午夜不会把孩子锁回「等明天」。同一关首次通关才加星；重玩、`?practice=1`、`?demo=1`、`?review=1`、找一找 / 唱一唱不加星。找一找 / 唱一唱仍只从玩法一览进入。
 
 ## 音族配置
 
-`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`，第 2 章在 `rise-2`（cub / spot / den / nap，box / bag / tin / tub，bug / mug / rug / hug，ham / bun / egg / fish），第 3 章在 `rise-3`（pig / fig / twig / wig，cat / cab / cot / cup，pup / pen / pin / pad，dot / hat / sock / rock），第 4 章在 `rise-4`（hen / bed / pet / leg，gum / tag / gift / rag，hit / bat / mitt / win，dad / mom / sis / tug）。词卡在 `public/word-cards/{word}.webp`。`log` 也在 `-og`，`lock` / `rock` / `sock` 也在 `-ck`，`nap` 也在 `-ap`，`fish` / `pig` / `cat` / `cup` / `hat` 也在 `-at`，先命中的家族同样带上 `wordArt.image` 和 `zh`。可玩关写在 `PLAYABLE_LESSONS`，后面的章加一组配置即可。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。回音按词轮流读这些短句。
+`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`，第 2 章在 `rise-2`（cub / spot / den / nap，box / bag / tin / tub，bug / mug / rug / hug，ham / bun / egg / fish），第 3 章在 `rise-3`（pig / fig / twig / wig，cat / cab / cot / cup，pup / pen / pin / pad，dot / hat / sock / rock），第 4 章在 `rise-4`（hen / bed / pet / leg，gum / tag / gift / rag，hit / bat / mitt / win，dad / mom / sis / tug），第 5 章单词在 `rise-5`（desk / tent / deck / well，hut / fox / rat / ant，web / wok / wag / wink；`rat` 与 `-at` 重复，图鉴只留先命中的那条，中文仍是「老鼠」）。数字不进音族。词卡在 `public/word-cards/{word}.webp`。`log` 也在 `-og`，`lock` / `rock` / `sock` 也在 `-ck`，`nap` 也在 `-ap`，`fish` / `pig` / `cat` / `cup` / `hat` 也在 `-at`，先命中的家族同样带上 `wordArt.image` 和 `zh`。可玩关写在 `PLAYABLE_LESSONS`，后面的章加一组配置即可。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。回音按词轮流读这些短句。
 
 主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 听音拼一拼 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位。试玩 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 听音拼一拼 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部音族 `targets`。已有卡的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
 
-叙事：第 1 章是字母 O / V / L / K 和对应的 sight word（I / my / good / three）。每课正好 4 个词，闪卡、地鼠（干扰词只从这 4 个里抽）、听音拼一拼、小书、回顾都不串其他课的词。四课句式各不相同：I can … / My … is in the van. / It is a good … / Here are three …。听音拼一拼第 1 课 hop pot top，第 2 课 van vet vat，第 3 课 log lid lamp（lamp 四字母），第 4 课 kid kit keg。关卡里的干扰字母只从该课 4 个词来。第 3 章同样每课 4 词、5 关，句式各不相同：Is it a …? / Find the …. / The … is out.（最后一句 All the pads are out.）/ A lot of …!。听音拼一拼依次是 pig fig twig（twig 四字母）、cat cab cot、pup pen pin、dot hat sock。第 3 章通关后才开第 4 章；第 5–12 章仍即将开放。第 4 章同样每课 4 词、5 关，句式各不相同：One …, two …s. / A dog with …. / A big …! / … can help.（最后一句 We tug and tug!）。听音拼一拼依次是 hen bed pet、gum tag gift、hit bat mitt、dad mom sis。进度存档仍是版本 6。第 4 章通关后星星草地孵 hen。
+叙事：第 1 章是字母 O / V / L / K 和对应的 sight word（I / my / good / three）。每课正好 4 个词，闪卡、地鼠（干扰词只从这 4 个里抽）、听音拼一拼、小书、回顾都不串其他课的词。四课句式各不相同：I can … / My … is in the van. / It is a good … / Here are three …。听音拼一拼第 1 课 hop pot top，第 2 课 van vet vat，第 3 课 log lid lamp（lamp 四字母），第 4 课 kid kit keg。关卡里的干扰字母只从该课 4 个词来。第 3 章同样每课 4 词、5 关，句式各不相同：Is it a …? / Find the …. / The … is out.（最后一句 All the pads are out.）/ A lot of …!。听音拼一拼依次是 pig fig twig（twig 四字母）、cat cab cot、pup pen pin、dot hat sock。第 3 章通关后才开第 4 章。第 4 章同样每课 4 词、5 关，句式各不相同：One …, two …s. / A dog with …. / A big …! / … can help.（最后一句 We tug and tug!）。听音拼一拼依次是 hen bed pet、gum tag gift、hit bat mitt、dad mom sis。第 4 章通关后才开第 5 章；第 6–12 章仍即将开放。第 5 章第 1 课是数字 50 / 70 / 90 / 100，句式 Count to …。后三课各 4 词、5 关，句式各不相同：Ben is at the …. / Who lives in the hut? 然后 A fox / A rat / An ant lives in the hut. / Look at the ….（wag 一句是 Look at the dog wag.，wink 一句是 Look at me wink!）。听音拼一拼依次是 desk tent deck、hut fox rat、web wok wag。进度存档仍是版本 6。第 4 章通关后星星草地孵 hen。第 5 章通关后星星草地孵 fox。
 
 同文件已写好 `-ap` / `-og` / `-ck` / `-an`。试玩抽样切换：改 `currentFamilyId`。`warmupPhonemes` 仍留在配置里，本关不再走音素试次。
 
@@ -241,7 +251,7 @@ src/views/*.vue                主线玩法 + 唱一唱 / 找一找 + Day Comple
 `/star-meadow` 全屏草地（Teleport 到 `body`，不受 430px 壳限制）。名册在 `src/meadow/meadowConfig.ts`，按章：bunny、leopard、pig、hen、fox、bear、yak、frog、duck、ox、bird、panda。图在 `public/meadow/`（另有 `egg.webp`）。小动物只给好反馈，不会饿、不会难过、也不会离开。
 
 - **进门**：当天（`dateKey`）至少过关 1 次才开，含「再玩一次」。没开时首页按钮有小锁，进去是剪影和「今天先玩 1 关，小动物在草地等你哦」，按钮去当前课。家长开关「随时进星星草地」打开后跳过这道门。一只都没有时草地仍可进，12 个剪影加「完成第1章，就能孵出第一只小动物！」
-- **孵化**：章通关（与章徽章同一判断）把该章动物排进 `pendingEggs`。第 4 章通关孵母鸡 hen。已经通关、这次才装上的章，下次进草地逐个孵。设置「设置当前课」跳过的章也排队，但不在庆祝页立刻孵
+- **孵化**：章通关（与章徽章同一判断）把该章动物排进 `pendingEggs`。第 4 章通关孵母鸡 hen，第 5 章通关孵狐狸 fox。已经通关、这次才装上的章，下次进草地逐个孵。设置「设置当前课」跳过的章也排队，但不在庆祝页立刻孵
 - **草地**：纯 CSS 天空和草地。底部 12 格，已有的点一下会跳出小卡片（爱心，满 3 颗还能选饰品），并跳向中间；没有的是剪影加「第N章」。动物大约是短边的 25%，按脚的位置排前后，自己走走、坐下、看看，大约 20 秒没人碰会打盹。点一下跳并轮流说 “Hi! I am a …” 和名字；抚摸会靠过来、飘小心心，并用 WebAudio 轻轻叫；按住约 350ms 可以拎起来再放下。连点两下、而且爱心已经满 5 颗时，会转圈跳舞，旁边冒出音符
 - **一起玩**：把一只动物拎起来，松手时和另一只的图重叠，两只就打闹约 2.5 秒。两张图藏进一团打滚的尘云里，头和手脚探进探出，还有小星星和旋线，WebAudio 发出笑声一样的短音。然后并排坐下、面对面，各自头顶一颗心，英文轮流说 “Let's play!” 和 “So fun!”。没有受伤、哭泣或输赢。正在打盹的也会高兴地醒来一起玩。开始打闹时调用 `onPlayTogether(a, b)`
 - **爱心**：每只 0–5 颗，只增不减，记在 `hearts` 里（可以是小数）。抚摸 +0.2（同一只最多每 3 秒一次），喂一口 +0.3，最喜欢的食物 +0.6，一起玩两只各 +0.5。加到新的整颗心时有一声轻响，并炸开一小团心。刚加上的 2 秒内，动物头顶亮出 5 颗心（不满的会半颗）。点底部头像的小卡片里一直能看到这 5 颗心。旧档没有 `hearts` 时当作 0

@@ -1,3 +1,4 @@
+import { MATH_LESSONS, type MathItem } from './mathLessons'
 import { RISE_CHAPTER_STICKERS } from './stickers'
 
 export type PlayKind =
@@ -9,6 +10,9 @@ export type PlayKind =
   | 'echo'
   | 'storyBook'
   | 'chapterFinale'
+  | 'numberFlash'
+  | 'numberTap'
+  | 'numberCount'
 
 /** Pre-8-level path (v3 saves). Kept so older readers still compile; v6 resets level ids. */
 export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
@@ -59,6 +63,9 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
   echo: '/echo-cave',
   storyBook: '/story-book',
   chapterFinale: '/chapter-finale',
+  numberFlash: '/number-flash',
+  numberTap: '/number-tap',
+  numberCount: '/number-count',
 }
 
 const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
@@ -70,6 +77,9 @@ const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   echo: { titleEn: 'Echo', titleZh: '回声跟读' },
   storyBook: { titleEn: 'Story Book', titleZh: '小书点读' },
   chapterFinale: { titleEn: 'Review', titleZh: '小小回顾' },
+  numberFlash: { titleEn: 'Number Cards', titleZh: '数字闪卡' },
+  numberTap: { titleEn: 'Tap the Number', titleZh: '听音点数字' },
+  numberCount: { titleEn: 'Count', titleZh: '数一数' },
 }
 
 export type StoryBeat = {
@@ -91,6 +101,8 @@ export type LevelDef = {
   words?: string[]
   appearWords?: string[]
   storyPages?: StoryBeat[]
+  /** Set on math lessons. Word lessons leave this empty. */
+  numbers?: MathItem[]
   firstClearStars: number
   chapterStickerId?: string
 }
@@ -135,6 +147,7 @@ export type LessonLevelSpec = {
   words?: string[]
   appearWords?: string[]
   storyPages?: StoryBeat[]
+  numbers?: MathItem[]
   titleZh?: string
   chapterStickerId?: string
 }
@@ -173,10 +186,63 @@ export function buildLessonLevels(
       words: spec.words,
       appearWords: spec.appearWords,
       storyPages: spec.storyPages,
+      numbers: spec.numbers,
       firstClearStars: 1,
       chapterStickerId: spec.chapterStickerId,
     }
   })
+}
+
+/** Math课: number cards, tap, count, whack, short review. Only these four numbers appear. */
+export function buildMathLevels(
+  chapterId: string,
+  lessonId: string,
+  items: MathItem[],
+  chapterStickerId?: string,
+): LevelDef[] {
+  const numbers = items.map((item) => ({
+    value: item.value,
+    word: item.word.trim().toLowerCase(),
+    zh: item.zh,
+    sentence: item.sentence,
+  }))
+  const words = numbers.map((item) => item.word)
+  return buildLessonLevels(chapterId, lessonId, [
+    {
+      play: 'numberFlash',
+      notes: 'number flash cards',
+      focusWord: words[0],
+      words,
+      numbers,
+    },
+    {
+      play: 'numberTap',
+      notes: 'hear and tap the numeral',
+      words,
+      numbers,
+    },
+    {
+      play: 'numberCount',
+      notes: 'count objects or tens',
+      words,
+      numbers,
+    },
+    {
+      play: 'whackWord',
+      notes: 'whack the numeral',
+      titleZh: '打地鼠数字',
+      words,
+      numbers,
+    },
+    {
+      play: 'chapterFinale',
+      notes: chapterStickerId ? 'number review + lesson badge' : 'number review',
+      titleZh: '小小回顾',
+      words,
+      numbers,
+      chapterStickerId,
+    },
+  ])
 }
 
 /** Letter + sight word: flash, whack, spell, story, short review. */
@@ -399,10 +465,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Numbers and the Hut',
     emoji: '🏡',
     lessons: [
-      { titleZh: '数字 50–100', titleEn: 'Number 50-100', type: 'math' },
-      { titleZh: '字母 E · at', titleEn: 'Letter E · at', type: 'letterSight', letter: 'E', sightWords: ['at'] },
-      { titleZh: '谁住在小屋', titleEn: 'Who lives in the hut', type: 'story' },
-      { titleZh: '字母 W · look', titleEn: 'Letter W · look', type: 'letterSight', letter: 'W', sightWords: ['look'] },
+      { titleZh: '数字 50–100', titleEn: 'Number 50-100', type: 'math', sentence: 'Count to fifty.' },
+      { titleZh: '字母 E · at', titleEn: 'Letter E · at', type: 'letterSight', letter: 'E', sightWords: ['at'], sentence: 'Ben is at the desk.' },
+      { titleZh: '谁住在小屋', titleEn: 'Who lives in the hut', type: 'story', sentence: 'Who lives in the hut?' },
+      { titleZh: '字母 W · look', titleEn: 'Letter W · look', type: 'letterSight', letter: 'W', sightWords: ['look'], sentence: 'Look at the web.' },
     ],
   },
   {
@@ -494,7 +560,7 @@ type LessonWordPack = {
  * Playable 课 content. Later chapters add a key here; empty chapters stay 即将开放.
  * Each pack is exactly four words. Spell is a subset. The last 课 of a chapter gets the badge.
  */
-const PLAYABLE_LESSONS: Record<string, LessonWordPack[]> = {
+const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
   ch1: [
     {
       words: ['hop', 'pot', 'top', 'mop'],
@@ -663,14 +729,50 @@ const PLAYABLE_LESSONS: Record<string, LessonWordPack[]> = {
       ],
     },
   ],
+  ch5: [
+    null,
+    {
+      words: ['desk', 'tent', 'deck', 'well'],
+      spell: ['desk', 'tent', 'deck'],
+      pages: [
+        { word: 'desk', line: 'Ben is at the desk.' },
+        { word: 'tent', line: 'Ben is at the tent.' },
+        { word: 'deck', line: 'Ben is at the deck.' },
+        { word: 'well', line: 'Ben is at the well.' },
+      ],
+    },
+    {
+      words: ['hut', 'fox', 'rat', 'ant'],
+      spell: ['hut', 'fox', 'rat'],
+      pages: [
+        { word: 'hut', line: 'Who lives in the hut?' },
+        { word: 'fox', line: 'A fox lives in the hut.' },
+        { word: 'rat', line: 'A rat lives in the hut.' },
+        { word: 'ant', line: 'An ant lives in the hut.' },
+      ],
+    },
+    {
+      words: ['web', 'wok', 'wag', 'wink'],
+      spell: ['web', 'wok', 'wag'],
+      pages: [
+        { word: 'web', line: 'Look at the web.' },
+        { word: 'wok', line: 'Look at the wok.' },
+        { word: 'wag', line: 'Look at the dog wag.' },
+        { word: 'wink', line: 'Look at me wink!' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
+  const chapterIndex = Number(chapterId.slice(2)) - 1
+  const lessonBadge =
+    chapterId === 'ch4' || chapterId === 'ch5' ? `rise${chapterIndex * 4 + lessonOrder}` : undefined
+  const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
+  const math = MATH_LESSONS[lessonId]
+  if (math) return buildMathLevels(chapterId, lessonId, math, stickerId)
   const pack = PLAYABLE_LESSONS[chapterId]?.[lessonOrder - 1]
   if (!pack) return []
-  const chapterIndex = Number(chapterId.slice(2)) - 1
-  const lessonBadge = chapterId === 'ch4' ? `rise${12 + lessonOrder}` : undefined
-  const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
   return buildLetterSightLevels(chapterId, lessonId, {
     flash: pack.words,
     whack: pack.words,
