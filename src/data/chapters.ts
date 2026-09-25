@@ -542,10 +542,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Graduation',
     emoji: '🎓',
     lessons: [
-      { titleZh: '两个两个数', titleEn: 'Skip counting by 2s', type: 'math' },
-      { titleZh: '煎饼', titleEn: 'Pancakes', type: 'story' },
-      { titleZh: '毕业啦', titleEn: 'Graduation', type: 'story' },
-      { titleZh: '总复习', titleEn: 'Review', type: 'review' },
+      { titleZh: '两个两个数', titleEn: 'Skip counting by 2s', type: 'math', sentence: 'Skip to four!' },
+      { titleZh: '煎饼', titleEn: 'Pancakes', type: 'story', sentence: 'Flip the pancake!' },
+      { titleZh: '毕业啦', titleEn: 'Graduation', type: 'story', sentence: 'Give me a grin!' },
+      { titleZh: '复习 · 总复习', titleEn: 'Review', type: 'review', sentence: 'Bye-bye, van!' },
     ],
   },
 ]
@@ -987,6 +987,39 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch12: [
+    null,
+    {
+      words: ['flip', 'stack', 'grab', 'lick'],
+      spell: ['flip', 'stack', 'grab'],
+      pages: [
+        { word: 'flip', line: 'Flip the pancake!' },
+        { word: 'stack', line: 'Stack the pancakes!' },
+        { word: 'grab', line: 'Grab the pancake!' },
+        { word: 'lick', line: 'Lick the pancake!' },
+      ],
+    },
+    {
+      words: ['grin', 'kiss', 'hand', 'pat'],
+      spell: ['grin', 'kiss', 'hand'],
+      pages: [
+        { word: 'grin', line: 'Give me a grin!' },
+        { word: 'kiss', line: 'Give me a kiss!' },
+        { word: 'hand', line: 'Give me a hand!' },
+        { word: 'pat', line: 'Give me a pat!' },
+      ],
+    },
+    {
+      words: ['van', 'pup', 'bus', 'fox'],
+      spell: ['van', 'pup', 'bus'],
+      pages: [
+        { word: 'van', line: 'Bye-bye, van!' },
+        { word: 'pup', line: 'Bye-bye, pup!' },
+        { word: 'bus', line: 'Bye-bye, bus!' },
+        { word: 'fox', line: 'Bye-bye, fox!' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
@@ -999,7 +1032,8 @@ function playableLevels(chapterId: string, lessonId: string, lessonOrder: number
     chapterId === 'ch8' ||
     chapterId === 'ch9' ||
     chapterId === 'ch10' ||
-    chapterId === 'ch11'
+    chapterId === 'ch11' ||
+    chapterId === 'ch12'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)

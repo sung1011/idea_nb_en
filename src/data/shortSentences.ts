@@ -161,6 +161,14 @@ export const shortSentences: Record<string, string> = {
   sand: 'Go past the sand.',
   pit: 'Go past the pit.',
   raft: 'Go past the raft.',
+  flip: 'Flip the pancake!',
+  stack: 'Stack the pancakes!',
+  grab: 'Grab the pancake!',
+  lick: 'Lick the pancake!',
+  grin: 'Give me a grin!',
+  kiss: 'Give me a kiss!',
+  hand: 'Give me a hand!',
+  pat: 'Give me a pat!',
 }
 
 export function sentenceForWord(word: string): string {

@@ -638,6 +638,29 @@ export const families: Record<string, PhonicsFamily> = {
       soundFishSticker: { id: 'ear', label: '耳朵' },
     },
   },
+  'rise-12': {
+    id: 'rise-12',
+    family: 'rise-12',
+    targets: ['flip', 'stack', 'grab', 'lick', 'grin', 'kiss', 'hand', 'pat'],
+    distractors: ['f', 's', 'g', 'k', 'h', 'p', 'l', 'r'],
+    warmupPhonemes: [
+      { ipa: '/f/', letter: 'F', speak: 'f' },
+      { ipa: '/g/', letter: 'G', speak: 'g' },
+    ],
+    wordArt: {
+      flip: clayArt('flip', '🥞', '翻'),
+      stack: clayArt('stack', '🥞', '一摞'),
+      grab: clayArt('grab', '✋', '抓'),
+      lick: clayArt('lick', '👅', '舔'),
+      grin: clayArt('grin', '😁', '咧嘴笑'),
+      kiss: clayArt('kiss', '💋', '亲亲'),
+      hand: clayArt('hand', '🖐️', '手'),
+      pat: clayArt('pat', '👋', '轻拍'),
+    },
+    rewards: {
+      soundFishSticker: { id: 'ear', label: '耳朵' },
+    },
+  },
 }
 
 /** Swap this id to ship -ap / -an later. */
