@@ -10,8 +10,8 @@
 - 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 章·课·关卡 / 动物岛日格 / 当日文案 / 星星草地）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁入。persist `version: 6` 起按 RISE 课表的「章 → 课 → 关」。v5 及更早的 `chN-x` 关卡进度会重置，终身星星、贴纸、图鉴词保留。没有 `meadow` 字段的旧档仍能读，草地按空档补上，已通关的章会排队等孵蛋。之后只读写 v2
 - 章节目标条：首页顶部展示当前课的「第N章·第M课 x/y」（y = 该课 `levels.length`）+ 下一关名 + 可选焦点词 + **过关星星条**（格数跟当前课）+ CTA（走无参 `getNextLevel()`）。没有关卡内容的课显示「即将开放」。缺省仍写入 `mainTaskId=animalsCh1`，并从已配置的课词表轮换 `focusWord`（只作文案，不锁关）。动物岛大厅先列章，点开再列课，再进关卡
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
-- 可安装 PWA：`vite-plugin-pwa`，`registerType: autoUpdate`，后台静默更新，没有更新弹窗。manifest 名「星词岛」，`display: standalone`，`orientation: portrait`，`theme_color` / `background_color` 为天空蓝 `#7ec8e3`。`start_url` 与 `scope` 都是 `/idea_nb_en/`。图标在 `public/`（192 / 512 any、512 maskable、180 apple-touch、64 favicon、1024 主图）。Workbox 预缓存构建出的 JS / CSS / HTML，以及 `public/` 里的词卡 webp、图标和音频（仓库里没有音频文件，音效是内存生成的 wav）
-- TTS：`speechSynthesis`（系统语音，不进预缓存）；读词钓鱼 / 回音洞：`SpeechRecognition`。离线或没有麦克风时识别不可用，钓鱼改为点鱼，回音洞点「我说好了」
+- 可安装 PWA：`vite-plugin-pwa`，`registerType: autoUpdate`，后台静默更新，没有更新弹窗。manifest 名「星词岛」，`display: standalone`，`orientation: portrait`，`theme_color` / `background_color` 为天空蓝 `#7ec8e3`。`start_url` 与 `scope` 都是 `/idea_nb_en/`。图标在 `public/`（192 / 512 any、512 maskable、180 apple-touch、64 favicon、1024 主图）。Workbox 预缓存构建出的 JS / CSS / HTML，以及 `public/` 里的词卡 webp、图标、`public/audio/` 的神经语音 mp3 和 `manifest.json`。预缓存在安装后的后台下载，不挡住第一次开口。点击音效仍是内存生成的 wav
+- TTS：固定台词走 `public/audio/` 里预先生成的 Edge 神经语音（英语 `en-US-AnaNeural`、语速 `-12%`；中文 `zh-CN-XiaoxiaoNeural`、默认语速）。`speak` 用「语言 + 整理过的文本」查 `manifest.json`，命中就用同一条 `HTMLAudioElement` 播放，新的一句会停掉上一句；没有条目或播放失败才回退 `speechSynthesis`（英语 en-US、语速 0.86、音高 1.12；中文挑 zh-CN 语音）。`speakPraise` / `speakZh` 不变。单字母和音族热身音素（如 /k/、qu、ch）不生成。找一找开场把几个词拼成一句、小书封面「小书：《课名》」也是临时拼的，这两处仍走系统语音。生成：`npm run tts`（已有文件会跳过）。读词钓鱼 / 回音洞的 `SpeechRecognition` 不变。离线或没有麦克风时识别不可用，钓鱼改为点鱼，回音洞点「我说好了」
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
 - 动物岛 15 词使用 Style-5 描边软陶词卡（`public/word-cards/{word}.webp`，512px 长边，路径走 Vite `base`）；无图或加载失败时回退 emoji / 文字
 
