@@ -113,6 +113,13 @@ async function replayStudy() {
   await speak(studyWord.value)
 }
 
+function hearChinese(text: string | undefined, event: Event) {
+  event.stopPropagation()
+  const line = text?.trim()
+  if (!line) return
+  void speak(line, 'zh-CN', 0.9)
+}
+
 async function beginStudy() {
   locked.value = true
   phase.value = 'study'
@@ -179,7 +186,7 @@ async function finish() {
   goAfterLevel(result)
 }
 
-async function onTap(word: string, event: MouseEvent) {
+async function onTap(word: string, event: Event) {
   if (phase.value !== 'quiz' || locked.value) return
   const target = event.currentTarget instanceof Element ? event.currentTarget : null
   if (word === trialWord.value) {
@@ -230,14 +237,17 @@ onUnmounted(() => {
     </div>
 
     <div v-if="phase === 'study'" class="study">
-      <button
+      <div
         ref="cardEl"
         class="flash-card"
-        :class="{ open: revealed }"
-        type="button"
-        :disabled="locked || !revealed"
+        :class="{ open: revealed, idle: locked || !revealed }"
+        role="button"
+        tabindex="0"
+        :aria-disabled="locked || !revealed"
         :aria-label="revealed ? studyFace.word : 'Look!'"
         @click="replayStudy"
+        @keydown.enter.prevent="replayStudy"
+        @keydown.space.prevent="replayStudy"
       >
         <div v-if="!revealed" class="face back" aria-hidden="true">
           <span>⭐</span>
@@ -246,10 +256,15 @@ onUnmounted(() => {
           <word-pic :word="studyFace.word" :size="140" />
           <div class="name">
             <b>{{ studyFace.word }}</b>
-            <span v-if="studyZh" class="zh">{{ studyZh }}</span>
+            <div v-if="studyZh" class="zh-row">
+              <span class="zh">{{ studyZh }}</span>
+              <button type="button" class="zh-hear" aria-label="读中文" @click.stop="hearChinese(studyZh, $event)">
+                <span aria-hidden="true">🔊</span>中
+              </button>
+            </div>
           </div>
         </div>
-      </button>
+      </div>
       <p class="center hint">{{ studyHint }}</p>
       <div class="study-nav" :class="{ solo: isFirstStudy }">
         <big-button v-if="!isFirstStudy" variant="soft" :disabled="locked" @click="goPrevStudy">
@@ -264,21 +279,34 @@ onUnmounted(() => {
 
     <template v-else>
       <div class="board">
-        <button
+        <div
           v-for="choice in choices"
           :key="choice.word"
           class="target"
-          :class="{ cheer: celebrating && choice.word === trialWord, shake: shaking === choice.word }"
-          type="button"
-          :disabled="locked"
+          :class="{ cheer: celebrating && choice.word === trialWord, shake: shaking === choice.word, idle: locked }"
+          role="button"
+          tabindex="0"
+          :aria-disabled="locked"
           @click="onTap(choice.word, $event)"
+          @keydown.enter.prevent="onTap(choice.word, $event)"
+          @keydown.space.prevent="onTap(choice.word, $event)"
         >
           <word-pic :word="choice.word" :size="64" />
           <div class="name">
             <small>{{ choice.word }}</small>
-            <span v-if="wordZh(choice.word)" class="zh">{{ wordZh(choice.word) }}</span>
+            <div v-if="wordZh(choice.word)" class="zh-row">
+              <span class="zh">{{ wordZh(choice.word) }}</span>
+              <button
+                type="button"
+                class="zh-hear"
+                aria-label="读中文"
+                @click.stop="hearChinese(wordZh(choice.word) || '', $event)"
+              >
+                <span aria-hidden="true">🔊</span>中
+              </button>
+            </div>
           </div>
-        </button>
+        </div>
       </div>
       <p class="center hint">{{ progressText }} · 点错会再问一遍</p>
       <big-button variant="listen" :disabled="locked" @click="ask">再听一次</big-button>
@@ -325,6 +353,7 @@ onUnmounted(() => {
   min-height: 0;
   border: 0;
   padding: 12px 16px;
+  cursor: pointer;
   border-radius: 32px;
   background: #fff;
   color: inherit;
@@ -366,11 +395,38 @@ onUnmounted(() => {
   letter-spacing: 0.02em;
 }
 
+.zh-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .face .zh {
   font-size: 23px;
   line-height: 1.15;
   font-weight: 650;
   color: #8a7564;
+}
+
+.zh-hear {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  background: #e7f6e3;
+  color: #1f6b45;
+  box-shadow: 0 3px 0 #7dcea0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex: none;
 }
 
 .study-nav {
@@ -401,6 +457,7 @@ onUnmounted(() => {
   gap: 2px;
   font-weight: 700;
   padding: 8px 6px;
+  cursor: pointer;
 }
 
 .target small {
@@ -413,6 +470,11 @@ onUnmounted(() => {
   line-height: 1.1;
   font-weight: 650;
   color: #8a7564;
+}
+
+.target .zh-hear {
+  width: 40px;
+  height: 40px;
 }
 
 .target :deep(.word-pic) {
