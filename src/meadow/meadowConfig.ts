@@ -45,6 +45,11 @@ export type MeadowAnimalSave = {
   hearts: number
   /** Worn accessory. `none` until the child picks one at 3 hearts. */
   accessory: MeadowAccessoryId
+  /**
+   * Epoch ms when this animal last became full.
+   * Missing on older saves: treated as full at the moment that save is read.
+   */
+  lastFedAt: number
 }
 
 export type MeadowSave = {
@@ -58,6 +63,57 @@ export type MeadowSave = {
   pendingEggs: string[]
   /** Set when a chapter just cleared, so the celebration screen can hatch it. */
   ceremonyChapterId: string | null
+  /** GM skip added onto the hunger clock. Real feeding does not clear this. */
+  hungerSkipMs: number
+  /** Highest wall-clock ms observed. A backwards device clock cannot lower it. */
+  clockMark: number
+}
+
+/** Real time from full to hungry. */
+export const MEADOW_HUNGER_MS = 12 * 60 * 60 * 1000
+
+/** Highest `Date.now()` seen in this session. Not written on the animation frame. */
+let sessionClock = 0
+let meadowNormalizeDirty = false
+
+export function takeMeadowNormalizeDirty(): boolean {
+  const dirty = meadowNormalizeDirty
+  meadowNormalizeDirty = false
+  return dirty
+}
+
+function wallClock(now: number): number {
+  const wall = Number.isFinite(now) ? now : 0
+  if (wall > sessionClock) sessionClock = wall
+  return Math.max(0, sessionClock)
+}
+
+/** Effective hunger clock: high-water wall time plus any GM skip. Elapsed never goes negative. */
+export function meadowEffectiveNow(
+  meadow: { clockMark: number; hungerSkipMs: number },
+  now = Date.now(),
+): number {
+  const mark = Math.max(0, meadow.clockMark || 0, wallClock(now))
+  const skip = Math.max(0, meadow.hungerSkipMs || 0)
+  return mark + skip
+}
+
+/** Clock value worth persisting. Does not itself write the save. */
+export function meadowClockMark(meadow: { clockMark: number }, now = Date.now()): number {
+  return Math.max(0, meadow.clockMark || 0, wallClock(now))
+}
+
+/** 1 just fed, 0 once `MEADOW_HUNGER_MS` of effective time has passed. */
+export function meadowFullness(lastFedAt: number, effectiveNow: number): number {
+  const elapsed = Math.max(0, effectiveNow - lastFedAt)
+  const left = 1 - elapsed / MEADOW_HUNGER_MS
+  if (left <= 0) return 0
+  if (left >= 1) return 1
+  return left
+}
+
+export function animalIsHungry(lastFedAt: number, effectiveNow: number): boolean {
+  return meadowFullness(lastFedAt, effectiveNow) <= 0
 }
 
 const rosterIds = new Set<string>(MEADOW_ROSTER.map((item) => item.id))
@@ -209,6 +265,8 @@ export function emptyMeadow(): MeadowSave {
     owned: [],
     pendingEggs: [],
     ceremonyChapterId: null,
+    hungerSkipMs: 0,
+    clockMark: 0,
   }
 }
 
@@ -228,10 +286,25 @@ function readAccessory(value: unknown, hearts: number): MeadowAccessoryId {
   return 'none'
 }
 
+function readNonNegative(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0
+}
+
+function readLastFedAt(value: unknown, fullAt: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  meadowNormalizeDirty = true
+  return fullAt
+}
+
 export function normalizeMeadow(raw: unknown): MeadowSave {
   const empty = emptyMeadow()
   if (!raw || typeof raw !== 'object') return empty
   const parsed = raw as Partial<MeadowSave>
+  const hungerSkipMs = readNonNegative(parsed.hungerSkipMs)
+  const storedMark = readNonNegative(parsed.clockMark)
+  const clockMark = Math.max(storedMark, Date.now())
+  if (clockMark !== storedMark) meadowNormalizeDirty = true
+  const fullAt = clockMark + hungerSkipMs
   const owned: MeadowAnimalSave[] = []
   const seen = new Set<string>()
   if (Array.isArray(parsed.owned)) {
@@ -248,6 +321,7 @@ export function normalizeMeadow(raw: unknown): MeadowSave {
         y: clampPercent(row.y, 60),
         hearts,
         accessory: readAccessory(row.accessory, hearts),
+        lastFedAt: readLastFedAt(row.lastFedAt, fullAt),
       })
     }
   }
@@ -271,6 +345,8 @@ export function normalizeMeadow(raw: unknown): MeadowSave {
     owned,
     pendingEggs: pending,
     ceremonyChapterId: ceremony,
+    hungerSkipMs,
+    clockMark,
   }
 }
 
@@ -293,12 +369,17 @@ export function grantAllMeadowAnimals(meadow: MeadowSave): void {
   meadow.owned = meadowRoster().map((animal, index) => {
     const spot = spreadSpot(index)
     const previous = meadow.owned.find((item) => item.id === animal.id)
+    const kept =
+      previous && typeof previous.lastFedAt === 'number' && Number.isFinite(previous.lastFedAt)
+        ? previous.lastFedAt
+        : meadowEffectiveNow(meadow)
     return {
       id: animal.id,
       x: previous?.x ?? spot.x,
       y: previous?.y ?? spot.y,
       hearts: 5,
       accessory: previous?.accessory ?? 'none',
+      lastFedAt: kept,
     }
   })
 }
@@ -312,7 +393,14 @@ export function hatchEgg(meadow: MeadowSave, chapterId: string): MeadowAnimalSav
     return meadow.owned.find((item) => item.id === animal.id) ?? null
   }
   const spot = centerSpot()
-  const save: MeadowAnimalSave = { id: animal.id, x: spot.x, y: spot.y, hearts: 0, accessory: 'none' }
+  const save: MeadowAnimalSave = {
+    id: animal.id,
+    x: spot.x,
+    y: spot.y,
+    hearts: 0,
+    accessory: 'none',
+    lastFedAt: meadowEffectiveNow(meadow),
+  }
   meadow.owned.push(save)
   meadow.pendingEggs = meadow.pendingEggs.filter((id) => id !== chapterId)
   if (meadow.ceremonyChapterId === chapterId) meadow.ceremonyChapterId = null

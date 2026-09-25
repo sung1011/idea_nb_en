@@ -10,6 +10,7 @@ import {
   resetAllProgress,
   setCurrentLesson,
   setMeadowOpenAnytime,
+  skipMeadowHunger,
 } from '../composables/useProgress'
 import appSelect from './appSelect.vue'
 import bigButton from './bigButton.vue'
@@ -77,6 +78,11 @@ function toggleMeadow() {
   setMeadowOpenAnytime(!persistState.meadow.openAnytime)
 }
 
+function skipHunger() {
+  playPop()
+  skipMeadowHunger()
+}
+
 function askWipeConfirm() {
   playPop()
   step.value = 'confirmWipe'
@@ -142,6 +148,7 @@ function applyLesson() {
             「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
             「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡，以及星星草地。词卡图片还在，不会删。
             「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。
+            「草地时间 +12小时」只给调试用，把草地上每只动物的饥饿时间往前拨 12 小时。
           </p>
           <button class="meadow-toggle" type="button" @click="toggleMeadow">
             <span>随时进星星草地</span>
@@ -149,6 +156,7 @@ function applyLesson() {
               {{ persistState.meadow.openAnytime ? '开' : '关' }}
             </span>
           </button>
+          <big-button variant="soft" @click="skipHunger">草地时间 +12小时</big-button>
           <big-button variant="primary" @click="askLesson">设置当前课</big-button>
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
           <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>

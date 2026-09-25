@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import {
   dateKey,
+  feedMeadowAnimal,
+  flushMeadowClock,
   hatchMeadowEgg,
   locationForNextMainline,
   persistState,
@@ -24,6 +26,7 @@ import {
   heartFillPercent,
   MEADOW_ACCESSORIES,
   MEADOW_FOODS,
+  meadowEffectiveNow,
   meadowIsOpen,
   meadowRoster,
   meadowSrc,
@@ -72,7 +75,17 @@ const showEmpty = computed(
 function seeds() {
   return persistState.meadow.owned.flatMap((row) => {
     const def = animalById(row.id)
-    return def ? [{ id: row.id, name: def.name, x: row.x, y: row.y, hearts: row.hearts, accessory: row.accessory }] : []
+    return def
+      ? [{
+          id: row.id,
+          name: def.name,
+          x: row.x,
+          y: row.y,
+          hearts: row.hearts,
+          accessory: row.accessory,
+          lastFedAt: row.lastFedAt,
+        }]
+      : []
   })
 }
 
@@ -110,6 +123,8 @@ function mountStage() {
     onSpeak: (line, immediate) => say(line, immediate),
     onSave: (spots) => saveMeadowLayout(spots),
     onHeartGain: (id, gain) => awardHearts(id, gain),
+    hungerNow: () => meadowEffectiveNow(persistState.meadow),
+    onFedClock: (id) => feedMeadowAnimal(id),
   })
 }
 
@@ -127,7 +142,12 @@ function queueHatch(delay: number) {
   }, delay)
 }
 
+function onVisibility() {
+  if (document.visibilityState === 'hidden') flushMeadowClock()
+}
+
 onMounted(async () => {
+  document.addEventListener('visibilitychange', onVisibility)
   await nextTick()
   mountStage()
   if (!meadowOpen.value) return
@@ -144,8 +164,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibility)
   window.clearTimeout(hatchTimer)
   window.clearTimeout(bannerTimer)
+  flushMeadowClock()
   stage?.destroy()
   stage = null
   foodDrag = null
@@ -306,7 +328,15 @@ function onHatched() {
   hatchId.value = null
   const row = def ? persistState.meadow.owned.find((item) => item.id === def.id) : undefined
   if (stage && row && def) {
-    stage.upsert({ id: row.id, name: def.name, x: row.x, y: row.y, hearts: row.hearts, accessory: row.accessory })
+    stage.upsert({
+      id: row.id,
+      name: def.name,
+      x: row.x,
+      y: row.y,
+      hearts: row.hearts,
+      accessory: row.accessory,
+      lastFedAt: row.lastFedAt,
+    })
   }
   else mountStage()
   if (persistState.meadow.pendingEggs.length) {
@@ -1089,6 +1119,22 @@ function onHatched() {
 
 .meadow-actor.is-nap .meadow-zzz {
   display: block;
+}
+
+.meadow-actor.is-hungry:not(.is-play) .meadow-sprite {
+  transform-origin: 50% 100%;
+  animation: meadow-hungry 1.8s ease-in-out infinite;
+  filter: saturate(0.62) brightness(0.9);
+}
+
+@keyframes meadow-hungry {
+  0%,
+  100% {
+    transform: translateY(8%) rotate(-8deg) scale(1.05, 0.88);
+  }
+  50% {
+    transform: translateY(3%) rotate(-3deg) scale(1.02, 0.94);
+  }
 }
 
 .meadow-heart {

@@ -31,9 +31,13 @@ import {
   emptyMeadow,
   grantAllMeadowAnimals,
   hatchEgg,
+  meadowClockMark,
+  meadowEffectiveNow,
+  MEADOW_HUNGER_MS,
   normalizeMeadow,
   noteClearOn,
   queueEggsForCleared,
+  takeMeadowNormalizeDirty,
   type MeadowAccessoryId,
   type MeadowAnimalId,
   type MeadowSave,
@@ -1065,6 +1069,8 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
   target.clearsDate = source.clearsDate
   target.clearsToday = source.clearsToday
   target.ceremonyChapterId = source.ceremonyChapterId
+  target.hungerSkipMs = source.hungerSkipMs
+  target.clockMark = source.clockMark
   target.pendingEggs.splice(0, target.pendingEggs.length, ...source.pendingEggs)
   target.owned.splice(
     0,
@@ -1075,6 +1081,7 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
       y: item.y,
       hearts: item.hearts,
       accessory: item.accessory,
+      lastFedAt: item.lastFedAt,
     })),
   )
 }
@@ -1109,6 +1116,8 @@ function persist() {
     /* quota / private mode: keep memory state */
   }
 }
+
+if (takeMeadowNormalizeDirty()) persist()
 
 function removeProgressKeys() {
   const known = [PROGRESS_STORAGE_KEY, LEGACY_PROGRESS_KEY, LEGACY_ATLAS_KEY]
@@ -1247,6 +1256,8 @@ function maxedPersistFromConfig(day = dateKey()): PersistShape {
   next.meadow.openAnytime = persistState.meadow.openAnytime
   next.meadow.clearsDate = persistState.meadow.clearsDate
   next.meadow.clearsToday = persistState.meadow.clearsToday
+  next.meadow.hungerSkipMs = persistState.meadow.hungerSkipMs
+  next.meadow.clockMark = meadowClockMark(persistState.meadow)
   next.meadow.owned = persistState.meadow.owned.map((item) => ({ ...item }))
   grantAllMeadowAnimals(next.meadow)
   next.chapter = maxedChapterSave(day)
@@ -1284,6 +1295,34 @@ export function maxOutProgressFromConfig(): void {
 
 export function setMeadowOpenAnytime(open: boolean): void {
   persistState.meadow.openAnytime = open
+  persist()
+}
+
+/** Write the session high-water clock if it moved, so a backwards clock cannot refill anyone. */
+export function flushMeadowClock(): void {
+  const next = meadowClockMark(persistState.meadow)
+  if (next === persistState.meadow.clockMark) return
+  persistState.meadow.clockMark = next
+  persist()
+}
+
+/** One bite refills this animal only and restarts its hunger clock. */
+export function feedMeadowAnimal(id: MeadowAnimalId): number {
+  const at = meadowEffectiveNow(persistState.meadow)
+  const mark = meadowClockMark(persistState.meadow)
+  if (mark !== persistState.meadow.clockMark) persistState.meadow.clockMark = mark
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (row) row.lastFedAt = at
+  persist()
+  return at
+}
+
+/** GM: move every animal 12 hours closer to hungry without changing who was fed. */
+export function skipMeadowHunger(ms = MEADOW_HUNGER_MS): void {
+  const mark = meadowClockMark(persistState.meadow)
+  if (mark !== persistState.meadow.clockMark) persistState.meadow.clockMark = mark
+  const step = Number.isFinite(ms) ? Math.max(0, ms) : MEADOW_HUNGER_MS
+  persistState.meadow.hungerSkipMs = Math.max(0, persistState.meadow.hungerSkipMs) + step
   persist()
 }
 

@@ -5,6 +5,7 @@ import {
   HEART_GAIN_PLAY,
   heartFillPercent,
   animalById,
+  animalIsHungry,
   BUBBLE_HOLD_MS,
   introLine,
   isFavoriteFood,
@@ -29,6 +30,8 @@ export type MeadowActorSeed = {
   y: number
   hearts: number
   accessory: MeadowAccessoryId
+  /** Epoch ms on the hunger clock. Fullness is derived from this, not a running timer. */
+  lastFedAt: number
 }
 
 export type MeadowSpot = {
@@ -62,6 +65,8 @@ type Actor = {
   lean: number
   /** Recent successful bites. In memory only. Cleared when a full nap starts. */
   fedAt: number[]
+  /** Hunger-clock timestamp. Copied from the save; feeding writes a new one. */
+  lastFedAt: number
   fullUntil: number
   eatStart: number
   eatUntil: number
@@ -130,6 +135,10 @@ export function createMeadowStage(options: {
   onSpeak: (line: string, immediate?: boolean) => void
   onSave: (spots: MeadowSpot[]) => void
   onHeartGain?: (id: MeadowAnimalId, gain: number) => void
+  /** Effective hunger clock (wall high-water + GM skip). */
+  hungerNow: () => number
+  /** Persist a refill and return the new lastFedAt. */
+  onFedClock: (id: MeadowAnimalId) => number
 }): MeadowStage {
   const { field, onSpeak, onSave } = options
   const actors = new Map<string, Actor>()
@@ -281,10 +290,13 @@ export function createMeadowStage(options: {
     actor.body.style.transform = `translateY(${bob - lift}px) rotate(${rot}deg) scale(${actor.face * sx}, ${sy})`
     actor.shadow.style.transform = `scale(${shadow}, ${shadow * 0.9})`
     actor.shadow.style.opacity = String(shadowOpacity)
+    const hungry = animalIsHungry(actor.lastFedAt, options.hungerNow())
     actor.el.classList.toggle('is-nap', actor.mode === 'nap')
     actor.el.classList.toggle('is-play', actor.mode === 'play')
     actor.el.classList.toggle('is-dance', actor.mode === 'dance')
     actor.el.classList.toggle('is-hidden', actor.mode === 'play')
+    actor.el.classList.toggle('is-hungry', hungry)
+    actor.el.dataset.hunger = hungry ? 'hungry' : 'full'
     layout(actor)
   }
 
@@ -778,6 +790,7 @@ export function createMeadowStage(options: {
       introNext: true,
       lean: 1,
       fedAt: [],
+      lastFedAt: seed.lastFedAt,
       fullUntil: 0,
       eatStart: 0,
       eatUntil: 0,
@@ -893,6 +906,7 @@ export function createMeadowStage(options: {
     let best: Actor | null = null
     let bestD = 170
     for (const actor of actors.values()) {
+      if (!animalIsHungry(actor.lastFedAt, options.hungerNow())) continue
       if (resting(actor, now)) continue
       if (
         actor.mode === 'pet' ||
@@ -937,6 +951,7 @@ export function createMeadowStage(options: {
   function upsert(seed: MeadowActorSeed) {
     const existing = actors.get(seed.id)
     if (existing) {
+      existing.lastFedAt = seed.lastFedAt
       if (existing.mode === 'drag' || existing.mode === 'pet') return
       pin(existing, seed.x, seed.y)
       paint(existing, performance.now())
@@ -1071,6 +1086,7 @@ export function createMeadowStage(options: {
     playChomp()
     onSpeak(yumLine(foodId, favorite))
     onFeed(actor.id, foodId, favorite)
+    actor.lastFedAt = options.onFedClock(actor.id)
     return { result: 'eaten', animalId: actor.id, favorite, mouth }
   }
 
