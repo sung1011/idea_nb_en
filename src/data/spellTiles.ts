@@ -60,10 +60,15 @@ export function similarCvcWords(target: string, pool: string[]): string[] {
 }
 
 /**
- * 1–2 extra letters. Prefer onsets of similar CVC words, then other
- * unused letters from that pool, then the family distractor list.
+ * 1–2 extra letters. Prefer onsets of similar words in the pool.
+ * Outside a lesson, fall back to the family distractor list.
  */
-export function pickDistractorLetters(target: string, pool: string[], count = 2): string[] {
+export function pickDistractorLetters(
+  target: string,
+  pool: string[],
+  count = 2,
+  strict = false,
+): string[] {
   const want = Math.min(2, Math.max(1, count))
   const letters = wordLetters(target)
   const blocked = new Set(letters)
@@ -80,16 +85,24 @@ export function pickDistractorLetters(target: string, pool: string[], count = 2)
   for (const word of similar) {
     for (const ch of wordLetters(word)) take(ch)
   }
-  for (const ch of shuffledCopy(getCurrentFamily().distractors)) take(ch)
-  for (const ch of FALLBACK_LETTERS) take(ch)
+  if (!strict) {
+    for (const ch of shuffledCopy(getCurrentFamily().distractors)) take(ch)
+    for (const ch of FALLBACK_LETTERS) take(ch)
+  }
 
   if (picked.length >= 2) return picked.slice(0, want)
   return picked.slice(0, Math.min(want, Math.max(1, picked.length)))
 }
 
-export function buildSpellTiles(target: string, pool: string[], extraCount = 2): SpellTile[] {
+export function buildSpellTiles(
+  target: string,
+  pool: string[],
+  extraCount = 2,
+  opts?: { strict?: boolean },
+): SpellTile[] {
   const letters = wordLetters(target)
-  const extras = pickDistractorLetters(target, [...pool, ...getCurrentFamily().targets], extraCount)
+  const source = opts?.strict ? pool : [...pool, ...getCurrentFamily().targets]
+  const extras = pickDistractorLetters(target, source, extraCount, opts?.strict ?? false)
   return shuffledCopy([
     ...letters.map((ch, index) => ({ id: `need-${index}-${ch}`, ch })),
     ...extras.map((ch, index) => ({ id: `extra-${index}-${ch}`, ch })),

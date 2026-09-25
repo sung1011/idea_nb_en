@@ -10,6 +10,7 @@ import { useChapterLevel } from '../composables/useChapterLevel'
 import { flyStarFrom, tweenCelebrate, tweenPulse, tweenShake, tweenSnapTo, waitAfterStar } from '../composables/useMotion'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
+import { getLesson } from '../data/chapters'
 import { buildSpellTiles, nextEmptySlot, wordLetters, type SpellTile } from '../data/spellTiles'
 import { gateSpellHint, gateSpellPrompt, gateSpellSub } from '../data/todayTasks'
 
@@ -37,6 +38,8 @@ const {
   continueAfterClear,
   goLobby,
   themeHint,
+  level,
+  useLevelWords,
   takeRunWords,
 } = useChapterLevel('soundSpell')
 
@@ -85,7 +88,12 @@ function tileEl(id: string): HTMLElement | null {
 
 function resetBoard() {
   slots.value = letters.value.map(() => null)
-  tiles.value = buildSpellTiles(target.value, words).map((tile) => ({ ...tile, used: false }))
+  const lessonPool = getLesson(level.value?.lessonId)?.words ?? []
+  const pool = useLevelWords.value && lessonPool.length ? lessonPool : words
+  tiles.value = buildSpellTiles(target.value, pool, 2, { strict: useLevelWords.value }).map((tile) => ({
+    ...tile,
+    used: false,
+  }))
   celebrating.value = false
   revealed.value = false
   shakingTile.value = ''

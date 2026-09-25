@@ -356,9 +356,9 @@ const SYLLABUS: ChapterSeed[] = [
     emoji: '🔤',
     lessons: [
       { titleZh: '字母 O · I', titleEn: 'Letter O · I', type: 'letterSight', letter: 'O', sightWords: ['I'], sentence: 'I can hop.' },
-      { titleZh: '字母 V · my', titleEn: 'Letter V · my', type: 'letterSight', letter: 'V', sightWords: ['my'], sentence: 'My van.' },
-      { titleZh: '字母 L · good', titleEn: 'Letter L · good', type: 'letterSight', letter: 'L', sightWords: ['good'], sentence: 'It is good.' },
-      { titleZh: '字母 K · three', titleEn: 'Letter K · three', type: 'letterSight', letter: 'K', sightWords: ['three'], sentence: 'Three kids.' },
+      { titleZh: '字母 V · my', titleEn: 'Letter V · my', type: 'letterSight', letter: 'V', sightWords: ['my'], sentence: 'My vet is in the van.' },
+      { titleZh: '字母 L · good', titleEn: 'Letter L · good', type: 'letterSight', letter: 'L', sightWords: ['good'], sentence: 'It is a good log.' },
+      { titleZh: '字母 K · three', titleEn: 'Letter K · three', type: 'letterSight', letter: 'K', sightWords: ['three'], sentence: 'Here are three kids.' },
     ],
   },
   {
@@ -488,43 +488,44 @@ function chapterOneLevels(lessonId: string, lessonOrder: number): LevelDef[] {
   const stickerId = RISE_CHAPTER_STICKERS[0]?.id
   if (lessonOrder === 1) {
     return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['hop', 'pot', 'top', 'mop', 'log'],
-      whack: ['hop', 'pot', 'top', 'mop', 'log'],
+      flash: ['hop', 'pot', 'top', 'mop'],
+      whack: ['hop', 'pot', 'top', 'mop'],
       spell: ['hop', 'pot', 'top'],
       story: [
         { word: 'hop', line: 'I can hop.' },
-        { word: 'pot', line: 'I hop. Pot.' },
-        { word: 'top', line: 'Top. I can hop.' },
         { word: 'mop', line: 'I can mop.' },
+        { word: 'top', line: 'I can spin the top.' },
+        { word: 'pot', line: 'I can mop the pot.' },
       ],
-      review: ['hop', 'pot', 'top', 'mop', 'log'],
+      review: ['hop', 'pot', 'top', 'mop'],
     })
   }
   if (lessonOrder === 2) {
     return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['van', 'vet', 'hop'],
-      whack: ['van', 'vet', 'hop', 'pot'],
-      spell: ['van', 'vet', 'hop'],
+      flash: ['van', 'vet', 'vest', 'vat'],
+      whack: ['van', 'vet', 'vest', 'vat'],
+      spell: ['van', 'vet', 'vat'],
       story: [
-        { word: 'van', line: 'My van.' },
-        { word: 'vet', line: 'Vet. My van.' },
-        { word: 'hop', line: 'I can hop. My van.' },
+        { word: 'vet', line: 'My vet is in the van.' },
+        { word: 'vest', line: 'My vest is in the van.' },
+        { word: 'vat', line: 'My vat is in the van.' },
+        { word: 'van', line: 'My van is big.' },
       ],
-      review: ['van', 'vet', 'hop', 'pot'],
+      review: ['van', 'vet', 'vest', 'vat'],
     })
   }
   if (lessonOrder === 3) {
     return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['lip', 'leg', 'lid', 'log'],
-      whack: ['lip', 'leg', 'lid', 'log'],
-      spell: ['lip', 'leg', 'lid'],
+      flash: ['log', 'lid', 'lamp', 'lock'],
+      whack: ['log', 'lid', 'lamp', 'lock'],
+      spell: ['log', 'lid', 'lamp'],
       story: [
-        { word: 'leg', line: 'My leg is good.' },
-        { word: 'lip', line: 'My lip is good.' },
-        { word: 'lid', line: 'Lid is good.' },
-        { word: 'log', line: 'Log is good.' },
+        { word: 'log', line: 'It is a good log.' },
+        { word: 'lid', line: 'It is a good lid.' },
+        { word: 'lamp', line: 'It is a good lamp.' },
+        { word: 'lock', line: 'It is a good lock.' },
       ],
-      review: ['lip', 'leg', 'lid', 'log'],
+      review: ['log', 'lid', 'lamp', 'lock'],
     })
   }
   return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
@@ -532,12 +533,12 @@ function chapterOneLevels(lessonId: string, lessonOrder: number): LevelDef[] {
     whack: ['kid', 'kit', 'keg', 'kick'],
     spell: ['kid', 'kit', 'keg'],
     story: [
-      { word: 'kid', line: 'Three kids.' },
-      { word: 'kit', line: 'My kit is good.' },
-      { word: 'kick', line: 'I can kick.' },
-      { word: 'keg', line: 'Keg. Three kids.' },
+      { word: 'kid', line: 'Here are three kids.' },
+      { word: 'kit', line: 'Here are three kits.' },
+      { word: 'keg', line: 'Here are three kegs.' },
+      { word: 'kick', line: 'Kick it, kid!' },
     ],
-    review: ['kid', 'kit', 'keg', 'kick', 'van', 'lip'],
+    review: ['kid', 'kit', 'keg', 'kick'],
     chapterStickerId: stickerId,
   })
 }
