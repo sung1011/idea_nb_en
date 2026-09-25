@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { buyMeadowDecoration, meadowStarsLeft, persistState } from '../composables/useProgress'
-import { MEADOW_DECORATIONS, meadowSrc, type MeadowDecorSave } from './meadowConfig'
+import { meadowShopCatalog, meadowSrc, type MeadowDecorSave } from './meadowConfig'
 
 const emit = defineEmits<{
   close: []
@@ -9,6 +9,7 @@ const emit = defineEmits<{
 }>()
 
 const starsLeft = computed(() => meadowStarsLeft())
+const catalog = computed(() => meadowShopCatalog())
 const ownedIds = computed(() => new Set(persistState.meadow.decorations.map((item) => item.id)))
 
 function owned(id: string) {
@@ -39,7 +40,7 @@ function buy(id: string, price: number) {
         <button class="close" type="button" @click="emit('close')">关掉</button>
       </div>
       <div class="cards">
-        <article v-for="item in MEADOW_DECORATIONS" :key="item.id" class="card">
+        <article v-for="item in catalog" :key="item.id" class="card">
           <img :src="meadowSrc(item.file)" alt="" draggable="false" />
           <p class="name">{{ item.zh }}</p>
           <p class="price">{{ item.price }} ⭐</p>

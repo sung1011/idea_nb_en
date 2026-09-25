@@ -90,6 +90,8 @@ export type MeadowDecorDef = {
   interaction: MeadowDecorInteraction
   /** Short English line for the bubble and TTS. */
   line: string
+  /** Second line, used when a nap in the pet house ends. */
+  wakeLine?: string
   /** Sprite size relative to an animal. Defaults to 1.4. */
   scale?: number
 }
@@ -103,9 +105,29 @@ export type MeadowDecorSave = {
 
 /** Shop catalog. A new item is one row here plus `public/meadow/{file}.webp`. */
 export const MEADOW_DECORATIONS: readonly MeadowDecorDef[] = [
+  { id: 'ball', zh: '皮球', price: 5, file: 'deco-ball', interaction: 'ball', line: 'Kick!', scale: 0.4 },
+  { id: 'flowers', zh: '花丛', price: 5, file: 'deco-flowers', interaction: 'flower', line: 'Achoo!', scale: 1.4 },
+  { id: 'swing', zh: '秋千', price: 10, file: 'deco-swing', interaction: 'swing', line: 'Wheee!', scale: 1.3 },
   { id: 'pond', zh: '水池', price: 10, file: 'deco-pond', interaction: 'water', line: 'Splash!' },
   { id: 'campfire', zh: '火堆', price: 15, file: 'deco-campfire', interaction: 'fire', line: 'So warm!' },
+  {
+    id: 'house',
+    zh: '小窝',
+    price: 20,
+    file: 'deco-house',
+    interaction: 'house',
+    line: 'Good night!',
+    wakeLine: 'Good morning!',
+    scale: 1.3,
+  },
 ]
+
+/** Shop order: cheaper first, catalog order breaks a tie. */
+export function meadowShopCatalog(): MeadowDecorDef[] {
+  return MEADOW_DECORATIONS.map((item, index) => ({ item, index })).sort(
+    (a, b) => a.item.price - b.item.price || a.index - b.index,
+  ).map((row) => row.item)
+}
 
 const decorIds = new Set(MEADOW_DECORATIONS.map((item) => item.id))
 
@@ -120,9 +142,17 @@ export function meadowStarsAvailable(totalStars: number, spentStars: number): nu
 }
 
 /** Where a newly bought decoration lands, spread so they do not stack. */
+/** 买下后的落点。六件错开，不会叠在一起。 */
 export function decorDropSpot(index: number): { x: number; y: number } {
-  const col = index % 3
-  return { x: 26 + col * 24, y: 50 }
+  const spots = [
+    { x: 22, y: 40 },
+    { x: 78, y: 40 },
+    { x: 50, y: 56 },
+    { x: 24, y: 74 },
+    { x: 76, y: 74 },
+    { x: 50, y: 88 },
+  ]
+  return spots[index % spots.length]!
 }
 
 /** Real time from full to hungry. */

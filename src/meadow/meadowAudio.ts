@@ -127,6 +127,15 @@ export function playWater(): void {
   tone(context, start + 0.1, 360, 0.14, 0.025)
 }
 
+/** Two quiet notes when petals leave the flower bed. */
+export function playSoftChime(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  tone(context, start, 620, 0.16, 0.035)
+  tone(context, start + 0.09, 880, 0.2, 0.03)
+}
+
 /** A few wood-pop crackles for the campfire. */
 export function playCrackle(): void {
   const context = audio()

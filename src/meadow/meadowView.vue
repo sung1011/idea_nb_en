@@ -1177,7 +1177,8 @@ function onHatched() {
   animation: meadow-zzz 1.5s ease-in-out infinite;
 }
 
-.meadow-actor.is-nap .meadow-zzz {
+.meadow-actor.is-nap .meadow-zzz,
+.meadow-actor.is-snooze .meadow-zzz {
   display: block;
 }
 
@@ -1215,6 +1216,47 @@ function onHatched() {
 .meadow-decor.is-fire img {
   transform-origin: 50% 78%;
   animation: meadow-flame 0.48s ease-in-out infinite;
+}
+
+.meadow-decor.is-swing.is-swinging img {
+  transform-origin: 50% 1%;
+  transform: rotate(var(--swing, 0deg));
+}
+
+.meadow-decor.is-ball {
+  transform: translateY(var(--bounce, 0px));
+}
+
+.meadow-decor.is-ball img {
+  transform-origin: 50% 58%;
+  transform: rotate(var(--spin, 0deg));
+}
+
+.meadow-decor-line {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 16px;
+  background: #fffdf6;
+  border: 3px solid #f0c36a;
+  color: #2d3a4a;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.meadow-petal {
+  position: absolute;
+  width: 11px;
+  height: 15px;
+  border-radius: 70% 12% 70% 12%;
+  z-index: 32;
+  pointer-events: none;
+  animation: meadow-petal 0.85s ease-out forwards;
 }
 
 .meadow-decor.is-dropping {
@@ -1343,6 +1385,13 @@ function onHatched() {
 @keyframes meadow-splash {
   to {
     transform: translate(var(--dx), var(--dy)) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-petal {
+  to {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
     opacity: 0;
   }
 }
