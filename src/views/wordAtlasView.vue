@@ -6,6 +6,7 @@ import wordPic from '../components/wordPic.vue'
 import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, speak, stopSpeech } from '../composables/useSpeech'
 import { useWordAtlas } from '../composables/useWordAtlas'
+import { wordZh } from '../data/phonicsFamily'
 
 type AtlasCard = {
   word: string
@@ -70,7 +71,10 @@ function onLeave() {
             <span class="pic">
               <word-pic :word="item.word" :size="64" />
             </span>
-            <span v-if="item.unlocked" class="word">{{ item.word }}</span>
+            <template v-if="item.unlocked">
+              <span class="word">{{ item.word }}</span>
+              <span v-if="wordZh(item.word)" class="zh">{{ wordZh(item.word) }}</span>
+            </template>
             <span v-else class="mystery" aria-hidden="true">?</span>
           </button>
         </div>
@@ -117,6 +121,7 @@ function onLeave() {
 
 .card-btn {
   min-height: 118px;
+  min-width: 0;
   padding: 10px 6px 12px;
   border-radius: 24px;
   background: #fff;
@@ -142,6 +147,15 @@ function onLeave() {
   font-size: 20px;
   font-weight: 750;
   letter-spacing: 0.02em;
+}
+
+.zh {
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.15;
+  font-weight: 650;
+  color: #8a7564;
+  text-align: center;
 }
 
 .mystery {
