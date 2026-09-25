@@ -366,10 +366,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Leopard and Recycle',
     emoji: '🐆',
     lessons: [
-      { titleZh: '小豹子', titleEn: 'Leopard', type: 'story' },
-      { titleZh: '回收小书', titleEn: 'Recycle it', type: 'story' },
-      { titleZh: '词块工坊 · we', titleEn: 'Word builder · we', type: 'wordFamily', sightWords: ['we'] },
-      { titleZh: '我想吃', titleEn: 'I like to eat · for', type: 'story', sightWords: ['for'] },
+      { titleZh: '小豹子', titleEn: 'Leopard', type: 'story', sentence: 'Leopard has a cub.' },
+      { titleZh: '回收小书', titleEn: 'Recycle it', type: 'story', sentence: 'Recycle the box.' },
+      { titleZh: '词块工坊 · we', titleEn: 'Word builder · we', type: 'wordFamily', sightWords: ['we'], sentence: 'We have a bug.' },
+      { titleZh: '我想吃', titleEn: 'I like to eat · for', type: 'story', sightWords: ['for'], sentence: 'I like to eat ham.' },
     ],
   },
   {
@@ -484,61 +484,114 @@ const SYLLABUS: ChapterSeed[] = [
   },
 ]
 
-function chapterOneLevels(lessonId: string, lessonOrder: number): LevelDef[] {
-  const stickerId = RISE_CHAPTER_STICKERS[0]?.id
-  if (lessonOrder === 1) {
-    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['hop', 'pot', 'top', 'mop'],
-      whack: ['hop', 'pot', 'top', 'mop'],
+type LessonWordPack = {
+  words: string[]
+  spell: string[]
+  pages: StoryBeat[]
+}
+
+/**
+ * Playable 课 content. Later chapters add a key here; empty chapters stay 即将开放.
+ * Each pack is exactly four words. Spell is a subset. The last 课 of a chapter gets the badge.
+ */
+const PLAYABLE_LESSONS: Record<string, LessonWordPack[]> = {
+  ch1: [
+    {
+      words: ['hop', 'pot', 'top', 'mop'],
       spell: ['hop', 'pot', 'top'],
-      story: [
+      pages: [
         { word: 'hop', line: 'I can hop.' },
         { word: 'mop', line: 'I can mop.' },
         { word: 'top', line: 'I can spin the top.' },
         { word: 'pot', line: 'I can mop the pot.' },
       ],
-      review: ['hop', 'pot', 'top', 'mop'],
-    })
-  }
-  if (lessonOrder === 2) {
-    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['van', 'vet', 'vest', 'vat'],
-      whack: ['van', 'vet', 'vest', 'vat'],
+    },
+    {
+      words: ['van', 'vet', 'vest', 'vat'],
       spell: ['van', 'vet', 'vat'],
-      story: [
+      pages: [
         { word: 'vet', line: 'My vet is in the van.' },
         { word: 'vest', line: 'My vest is in the van.' },
         { word: 'vat', line: 'My vat is in the van.' },
         { word: 'van', line: 'My van is big.' },
       ],
-      review: ['van', 'vet', 'vest', 'vat'],
-    })
-  }
-  if (lessonOrder === 3) {
-    return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-      flash: ['log', 'lid', 'lamp', 'lock'],
-      whack: ['log', 'lid', 'lamp', 'lock'],
+    },
+    {
+      words: ['log', 'lid', 'lamp', 'lock'],
       spell: ['log', 'lid', 'lamp'],
-      story: [
+      pages: [
         { word: 'log', line: 'It is a good log.' },
         { word: 'lid', line: 'It is a good lid.' },
         { word: 'lamp', line: 'It is a good lamp.' },
         { word: 'lock', line: 'It is a good lock.' },
       ],
-      review: ['log', 'lid', 'lamp', 'lock'],
-    })
-  }
-  return buildLetterSightLevels(CHAPTER_1_ID, lessonId, {
-    flash: ['kid', 'kit', 'keg', 'kick'],
-    whack: ['kid', 'kit', 'keg', 'kick'],
-    spell: ['kid', 'kit', 'keg'],
-    story: [
-      { word: 'kid', line: 'Here are three kids.' },
-      { word: 'kit', line: 'Here are three kits.' },
-      { word: 'keg', line: 'Here are three kegs.' },
-      { word: 'kick', line: 'Kick it, kid!' },
-    ],
-    review: ['kid', 'kit', 'keg', 'kick'],
+    },
+    {
+      words: ['kid', 'kit', 'keg', 'kick'],
+      spell: ['kid', 'kit', 'keg'],
+      pages: [
+        { word: 'kid', line: 'Here are three kids.' },
+        { word: 'kit', line: 'Here are three kits.' },
+        { word: 'keg', line: 'Here are three kegs.' },
+        { word: 'kick', line: 'Kick it, kid!' },
+      ],
+    },
+  ],
+  ch2: [
+    {
+      words: ['cub', 'spot', 'den', 'nap'],
+      spell: ['cub', 'den', 'nap'],
+      pages: [
+        { word: 'cub', line: 'Leopard has a cub.' },
+        { word: 'spot', line: 'Leopard has a spot.' },
+        { word: 'den', line: 'Leopard has a den.' },
+        { word: 'nap', line: 'Leopard has a nap.' },
+      ],
+    },
+    {
+      words: ['box', 'bag', 'tin', 'tub'],
+      spell: ['box', 'bag', 'tin'],
+      pages: [
+        { word: 'box', line: 'Recycle the box.' },
+        { word: 'bag', line: 'Recycle the bag.' },
+        { word: 'tin', line: 'Recycle the tin.' },
+        { word: 'tub', line: 'Recycle the tub.' },
+      ],
+    },
+    {
+      words: ['bug', 'mug', 'rug', 'hug'],
+      spell: ['bug', 'mug', 'rug'],
+      pages: [
+        { word: 'bug', line: 'We have a bug.' },
+        { word: 'mug', line: 'We have a mug.' },
+        { word: 'rug', line: 'We have a rug.' },
+        { word: 'hug', line: 'We have a big hug!' },
+      ],
+    },
+    {
+      words: ['ham', 'bun', 'egg', 'fish'],
+      spell: ['ham', 'bun', 'egg'],
+      pages: [
+        { word: 'ham', line: 'I like to eat ham.' },
+        { word: 'bun', line: 'I like to eat a bun.' },
+        { word: 'egg', line: 'I like to eat an egg.' },
+        { word: 'fish', line: 'I like to eat fish.' },
+      ],
+    },
+  ],
+}
+
+function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
+  const pack = PLAYABLE_LESSONS[chapterId]?.[lessonOrder - 1]
+  if (!pack) return []
+  const chapterIndex = Number(chapterId.slice(2)) - 1
+  const stickerId = lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined
+  return buildLetterSightLevels(chapterId, lessonId, {
+    flash: pack.words,
+    whack: pack.words,
+    spell: pack.spell,
+    story: pack.pages,
+    review: pack.words,
     chapterStickerId: stickerId,
   })
 }
@@ -561,7 +614,7 @@ function buildChapters(): ChapterDef[] {
       const order = lessonIndex + 1
       const id = `${chapterId}-k${order}`
       const rangeStart = 49 + (index - 1) * 2
-      const levels = chapterId === CHAPTER_1_ID ? chapterOneLevels(id, order) : []
+      const levels = playableLevels(chapterId, id, order)
       const sightWords = raw.sightWords ?? []
       return {
         id,

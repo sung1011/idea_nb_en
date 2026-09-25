@@ -19,7 +19,7 @@
 
 每日主路径 = **主题岛**（第一座：动物岛），内容按学校 **RISE Mart P1** 课表，从 **L49** 起。配置在 `src/data/chapters.ts`：两节学校课 = 一课（L49-50 是第 1 课，L143-144 是第 48 课），每 4 课 = 一章，共 **12 章**。课的 `type` 为 `letterSight` / `story` / `wordFamily` / `math` / `review`。关卡数读该课的 `levels.length`，不要写死。
 
-解锁：课内关卡严格按顺序；上一课全通才开下一课；一章 4 课都通才开下一章。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析。没有 `levels` 的课显示「即将开放」，点了不会进游戏、也不会被当成已通关。当前只有第 1 章四课有内容（字母 O/V/L/K，每课 5 关：闪卡、地鼠、听音拼一拼、小书点读、小小回顾）。第 4 课的回顾关带章节徽章。数学课只标记 `type: 'math'`，这一期不做数字关。
+解锁：课内关卡严格按顺序；上一课全通才开下一课；一章 4 课都通才开下一章。**不用等日历日**。上海 `dateKey` 只用于文案 / 分析。没有 `levels` 的课显示「即将开放」，点了不会进游戏、也不会被当成已通关。当前第 1 章和第 2 章各四课有内容（每课 5 关：闪卡、地鼠、听音拼一拼、小书点读、小小回顾）。一章最后一课的回顾关带该章徽章（`rise1` / `rise2`）。第 3–12 章仍是「即将开放」。数学课只标记 `type: 'math'`，这一期不做数字关。
 
 首页 → 动物岛（12 章）→ 点开一章看 4 课（小字课表范围，如 L49-50）→ 点开一课看关卡。进度文案是「第1章·第2课 3/5」。
 
@@ -27,7 +27,7 @@
 
 **字母工坊**是弱复习入口，不是每日作业。工坊可重玩 `-at` 两关，但带 `?review=1`，不写入首次通关星星 / 贴纸 / 打卡。
 
-**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + 第 1 章 `rise-1` 词）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章 16 个词已有 Style-5 词卡（lip / leg 不再进课，旧图仍留在 `public/word-cards/`）；其余还没有 webp 的词用 emoji。
+**单词图鉴**也是弱入口（首页，挨着字母工坊 / 玩法一览），不走每日强制路径。格子里放出 `phonicsFamily` 全部家族 `targets`（旧 `-at` 15 词 + `-ap` / `-og` / `-ck` / `-an` + `rise-1` / `rise-2`）。已解锁：词卡图（或 emoji 回退）+ 英文单词；未解锁：剪影 + 问号。点已解锁词会用现有 TTS 朗读，并有 Howler pop / GSAP pulse；卡片上不写中文。任意关卡里该词首次成功使用即 `unlockWord` / `markWordSeen` 写入 `lifetime.unlockedWords`（只记已知音族词，刷新仍在，设置「初始化」清空）：闪卡翻翻点对、地鼠词点对、拖一拖拖对、听音拼一拼拼对、钓鱼读对或点鱼钓到、回音洞跟读通过或点「我说好了」、找一找点中、唱一唱点「我唱好了」。点错、只听 TTS、逛图鉴本身不解锁，也不发当日星星。第 1 章 16 个词和第 2 章 16 个词已有 Style-5 词卡（lip / leg 不再进课，旧图仍留在 `public/word-cards/`；`fish` 沿用已有词卡）。其余还没有 webp 的词用 emoji。
 
 **贴纸相册**是收集入口（首页暖色按钮、动物岛大厅关卡列表下、完成页「回家」下），不走每日强制路径，也不交换 / 花费贴纸。格子读 `lifetime.stickers`：已拥有亮色 emoji + 中文名，未拥有剪影 + 问号。一张都没有时提示「还没有贴纸，先去动物岛玩一章吧」。设置「初始化」后相册清空。
 
@@ -49,13 +49,13 @@
 
 **回声跟读（Echo）**听后跟读：有关卡 id 时用该关词表（ch1-5 三词，ch2-5 走完 frog→hog 五词，ch3-5 duck/rock/sock）；试玩 / 复习且没有关卡 id 时仍从 15 词库抽 3 个。每轮先听单词再听一句短句（`shortSentences`，如 “A cap on a map.”），孩子跟读句子或单词；永远可点「我说好了」。标题按章轻提（听句子说一说 / 听声喊伙伴 / 石头和袜子）。
 
-**小小回顾（Finale）**读 `?level=` 的词表。课内回顾不发徽章；一章最后一课的回顾关带 `chapterStickerId`（第 1 章是 `rise1`）。词卡没有图时回退 emoji。
+**小小回顾（Finale）**读 `?level=` 的词表。课内回顾不发徽章；一章最后一课的回顾关带 `chapterStickerId`（第 1 章 `rise1`，第 2 章 `rise2`「小豹来了徽章」）。词卡没有图时回退 emoji。
 
 章节关卡进度跨日保留，跨午夜不会把孩子锁回「等明天」。同一关首次通关才加星；重玩、`?practice=1`、`?demo=1`、`?review=1`、找一找 / 唱一唱不加星。找一找 / 唱一唱仍只从玩法一览进入。
 
 ## 音族配置
 
-`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`（每课 4 个：hop / pot / top / mop，van / vet / vest / vat，log / lid / lamp / lock，kid / kit / keg / kick），词卡在 `public/word-cards/{word}.webp`。`log` 也在更早的 `-og` 里，`lock` 也在 `-ck` 里，先命中的家族同样带上 `wordArt.image`。lip / leg 已从 `rise-1` 去掉。旧 `-at` / `-ap` / `-og` / `-ck` / `-an` 仍留在图鉴。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。回音按词轮流读这些短句。
+`src/data/phonicsFamily.ts` 为数据源。试玩无 `?level=` 时仍用 id `-at` 的 15 词抽样。主线第 1 章词在家族 `rise-1`，第 2 章在 `rise-2`（cub / spot / den / nap，box / bag / tin / tub，bug / mug / rug / hug，ham / bun / egg / fish）。词卡在 `public/word-cards/{word}.webp`。`log` 也在 `-og`，`lock` 也在 `-ck`，`nap` 也在 `-ap`，`fish` 也在 `-at`，先命中的家族同样带上 `wordArt.image` 和 `zh`。可玩关写在 `PLAYABLE_LESSONS`，后面的章加一组配置即可。短句在 `src/data/shortSentences.ts`；小书若关卡写了 `storyPages`，优先用那几句。回音按词轮流读这些短句。
 
 主线 / 已过关重玩带 `?level=` 时，闪卡 / 地鼠 / 拖一拖 / 听音拼一拼 / 钓鱼 / 回音 / 章节回顾从 `src/data/chapters.ts` 该关词表出词（`src/data/gateWords.ts` 的 `sampleGateWords`：`focusWord` + `appearWords` + `words`，去重；焦点词固定排第一）。词表有几只就用几只，不再从 15 词 `-at` 库补位。试玩 / 复习 / 一览且没有关卡 id 时，仍用 `sampleWords` 从 15 词库抽一小撮：钓鱼 / 回音 / 拖一拖 / 听音拼一拼 / 唱一唱 / 找一找各 3 个；闪卡翻翻 4 个；地鼠词 5 个。不要一次塞进全部 15 个。图鉴格子展示全部音族 `targets`。已有卡的 `wordArt.image` 指向 `/idea_nb_en/word-cards/{word}.webp`（`import.meta.env.BASE_URL`）。`sampleWords` / `pickOtherWords` / 关卡词表会预加载本局词卡。
 
@@ -94,7 +94,7 @@ src/data/spellTiles.ts         听音拼一拼字母块（目标字母 + 相近 
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
-src/data/chapters.ts           RISE 12 章 × 48 课（课类型、课表范围、关卡；目前只有第 1 章有关卡）
+src/data/chapters.ts           RISE 12 章 × 48 课（课类型、课表范围、关卡；目前第 1–2 章有关卡）
 src/data/stickers.ts           贴纸目录（5 个日奖占位 + 旧三枚岛徽章 + `rise1`…`rise12` 章徽章）
 src/data/todayTasks.ts         章节目标文案（进度 / 下一关 / 焦点词）
 src/composables/progressStore.ts 进度数据模型 + 章节关卡 + localStorage 迁移 + 初始化清档 + 完全化打满
