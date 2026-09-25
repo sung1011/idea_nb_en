@@ -8,6 +8,7 @@ import {
   animalIsHungry,
   BUBBLE_HOLD_MS,
   introLine,
+  meadowDecoration,
   isFavoriteFood,
   meadowSrc,
   nextPlayLine,
@@ -18,9 +19,12 @@ import {
   type MeadowBubbleItem,
   type MeadowAccessoryId,
   type MeadowAnimalId,
+  type MeadowDecorDef,
+  type MeadowDecorInteraction,
+  type MeadowDecorSave,
   type MeadowFoodId,
 } from './meadowConfig'
-import { playChomp, playGiggle, playHeartChime, playPetChirp, playSleepySigh } from './meadowAudio'
+import { playBoing, playChomp, playCrackle, playGiggle, playHeartChime, playPetChirp, playSleepySigh, playWater } from './meadowAudio'
 import { wordEmoji, wordImage } from '../data/phonicsFamily'
 
 export type MeadowActorSeed = {
@@ -40,7 +44,16 @@ export type MeadowSpot = {
   y: number
 }
 
-type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag' | 'eat' | 'play' | 'dance'
+type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag' | 'eat' | 'play' | 'dance' | 'decor'
+
+type DecorRole = 'idle' | 'special'
+
+type DecorVisit = {
+  id: string
+  interaction: MeadowDecorInteraction
+  role: DecorRole
+  until: number
+}
 
 type Actor = {
   id: MeadowAnimalId
@@ -83,6 +96,23 @@ type Actor = {
   bubbleEl: HTMLButtonElement | null
   bubbleTimer: number
   lastBubbleKey: string
+  /** Decoration id this animal is walking toward. */
+  seeking: string | null
+  decor: DecorVisit | null
+  /** Next time an idle, full animal may wander over to a decoration. */
+  nextVisitAt: number
+  lastSplash: number
+  mallow: HTMLElement | null
+}
+
+type Decor = {
+  id: string
+  def: MeadowDecorDef
+  el: HTMLDivElement
+  x: number
+  y: number
+  px: number
+  py: number
 }
 
 type Session = {
@@ -116,6 +146,7 @@ export type MeadowStage = {
   dropFood: (foodId: MeadowFoodId, clientX: number, clientY: number) => FeedDrop
   noteHearts: (id: string, hearts: number, meter: boolean, chime: boolean) => void
   setAccessory: (id: string, accessory: MeadowAccessoryId) => void
+  addDecoration: (item: MeadowDecorSave, drop: boolean) => void
 }
 
 const HOLD_MS = 350
@@ -139,9 +170,15 @@ export function createMeadowStage(options: {
   hungerNow: () => number
   /** Persist a refill and return the new lastFedAt. */
   onFedClock: (id: MeadowAnimalId) => number
+  decorations: MeadowDecorSave[]
+  /** Speak a decoration line only when nothing else is already talking. */
+  onDecorLine: (line: string) => void
+  onSaveDecor: (id: string, x: number, y: number) => void
 }): MeadowStage {
   const { field, onSpeak, onSave } = options
   const actors = new Map<string, Actor>()
+  const decors = new Map<string, Decor>()
+  let decorDrag: { decor: Decor; pointerId: number; moved: number } | null = null
   let fieldW = 1
   let fieldH = 1
   let sprite = 96
@@ -174,6 +211,7 @@ export function createMeadowStage(options: {
     sprite = Math.round(clamp(short * 0.25, short * 0.22, short * 0.28))
     field.style.setProperty('--sprite', `${sprite}px`)
     for (const actor of actors.values()) pin(actor, actor.x, actor.y)
+    for (const decor of decors.values()) layoutDecor(decor)
   }
 
   function playBounds() {
@@ -261,6 +299,13 @@ export function createMeadowStage(options: {
       lift = Math.sin(p * Math.PI * 2) * 12
       sx = 1.06
       sy = 1.06
+    } else if (actor.mode === 'decor' && actor.decor) {
+      const pose = decorPose(actor.decor, now)
+      bob = pose.bob
+      sx = pose.sx
+      sy = pose.sy
+      rot = pose.rot
+      lift = pose.lift
     }
     if (now < actor.popUntil) {
       const k = 1 - (actor.popUntil - now) / 420
@@ -291,12 +336,23 @@ export function createMeadowStage(options: {
     actor.shadow.style.transform = `scale(${shadow}, ${shadow * 0.9})`
     actor.shadow.style.opacity = String(shadowOpacity)
     const hungry = animalIsHungry(actor.lastFedAt, options.hungerNow())
+    const visit = actor.decor
     actor.el.classList.toggle('is-nap', actor.mode === 'nap')
     actor.el.classList.toggle('is-play', actor.mode === 'play')
     actor.el.classList.toggle('is-dance', actor.mode === 'dance')
     actor.el.classList.toggle('is-hidden', actor.mode === 'play')
     actor.el.classList.toggle('is-hungry', hungry)
+    actor.el.classList.toggle('is-swim', visit?.interaction === 'water' && visit.role === 'special')
+    actor.el.classList.toggle('is-drink', visit?.interaction === 'water' && visit.role === 'idle')
+    actor.el.classList.toggle('is-warm', visit?.interaction === 'fire' && visit.role === 'idle')
+    actor.el.classList.toggle('is-toast', visit?.interaction === 'fire' && visit.role === 'special')
+    actor.el.classList.toggle('is-swing', visit?.interaction === 'swing')
+    actor.el.classList.toggle('is-ball', visit?.interaction === 'ball')
+    actor.el.classList.toggle('is-sniff', visit?.interaction === 'flower')
+    actor.el.classList.toggle('is-home', visit?.interaction === 'house')
     actor.el.dataset.hunger = hungry ? 'hungry' : 'full'
+    actor.el.dataset.decor = visit?.id ?? ''
+    actor.el.dataset.decorRole = visit?.role ?? ''
     layout(actor)
   }
 
@@ -691,8 +747,10 @@ export function createMeadowStage(options: {
       actor.mode = 'idle'
       schedule(actor, now)
     } else if (session.mode === 'drag') {
+      const decor = decorAtClient(ev.clientX, ev.clientY)
       const other = overlapTarget(actor)
-      if (other) startScuffle(actor, other, now)
+      if (decor) beginDecor(actor, decor, 'special', now)
+      else if (other) startScuffle(actor, other, now)
       else {
         hop(actor, now, 320)
         flush()
@@ -705,6 +763,8 @@ export function createMeadowStage(options: {
   function onPointerDown(actor: Actor, ev: PointerEvent) {
     if (session || ev.button !== 0 || actor.mode === 'play') return
     ev.preventDefault()
+    actor.seeking = null
+    if (actor.decor) clearDecor(actor)
     actor.el.setPointerCapture(ev.pointerId)
     const now = performance.now()
     session = {
@@ -807,6 +867,11 @@ export function createMeadowStage(options: {
       bubbleEl: null,
       bubbleTimer: 0,
       lastBubbleKey: '',
+      seeking: null,
+      decor: null,
+      nextVisitAt: performance.now() + visitDelay(),
+      lastSplash: 0,
+      mallow: null,
     }
     actor.el.dataset.hearts = String(seed.hearts)
     syncAccessory(actor, false)
@@ -859,14 +924,31 @@ export function createMeadowStage(options: {
 
   function tick(actor: Actor, dt: number, now: number) {
     settleFull(actor, now)
+    if (hungryNow(actor) && (actor.seeking || actor.decor)) {
+      actor.seeking = null
+      clearDecor(actor)
+      if (actor.mode === 'decor') {
+        actor.mode = 'idle'
+        schedule(actor, now)
+      }
+    }
     const busy =
       actor.mode === 'pet' ||
       actor.mode === 'drag' ||
       actor.mode === 'hop' ||
       actor.mode === 'eat' ||
       actor.mode === 'play' ||
-      actor.mode === 'dance'
+      actor.mode === 'dance' ||
+      actor.mode === 'decor'
     if (actor.mode === 'eat' && now >= actor.eatUntil) finishEat(actor, now)
+    if (actor.mode === 'decor' && actor.decor) {
+      if (now >= actor.decor.until) endDecor(actor, now)
+      else if (actor.decor.interaction === 'water' && actor.decor.role === 'special' && now - actor.lastSplash > 460) {
+        actor.lastSplash = now
+        const pond = decors.get(actor.decor.id)
+        if (pond) burstSplash(pond, 3)
+      }
+    }
     if (!busy && !paused) {
       if (actor.mode === 'walk') {
         const tx = (actor.walkTx / 100) * fieldW
@@ -874,9 +956,20 @@ export function createMeadowStage(options: {
         const dx = tx - actor.px
         const dy = ty - actor.py
         const dist = Math.hypot(dx, dy)
-        if (dist < 4) {
-          actor.mode = 'idle'
-          schedule(actor, now)
+        const near = actor.seeking ? 28 : 4
+        if (dist < near) {
+          if (actor.seeking) {
+            const decor = decors.get(actor.seeking)
+            actor.seeking = null
+            if (decor && !hungryNow(actor)) beginDecor(actor, decor, 'idle', now)
+            else {
+              actor.mode = 'idle'
+              schedule(actor, now)
+            }
+          } else {
+            actor.mode = 'idle'
+            schedule(actor, now)
+          }
         } else {
           const step = Math.min(dist, 60 * dt)
           setFeet(actor, actor.px + (dx / dist) * step, actor.py + (dy / dist) * step)
@@ -891,6 +984,7 @@ export function createMeadowStage(options: {
       } else if (actor.mode === 'idle' && now >= actor.nextThink) {
         think(actor, now)
       }
+      if (!paused) maybeVisit(actor, now)
     } else if (actor.mode === 'hop' && now >= actor.hopUntil) {
       actor.mode = 'idle'
       schedule(actor, now)
@@ -914,7 +1008,8 @@ export function createMeadowStage(options: {
         actor.mode === 'eat' ||
         actor.mode === 'hop' ||
         actor.mode === 'play' ||
-        actor.mode === 'dance'
+        actor.mode === 'dance' ||
+        actor.mode === 'decor'
       ) {
         continue
       }
@@ -967,6 +1062,8 @@ export function createMeadowStage(options: {
     }
     if (performance.now() < actor.fullUntil) return
     const now = performance.now()
+    actor.seeking = null
+    clearDecor(actor)
     wake(actor, now)
     actor.mode = 'walk'
     actor.walkTx = 50
@@ -992,6 +1089,8 @@ export function createMeadowStage(options: {
       actor.el.remove()
     }
     actors.clear()
+    for (const decor of decors.values()) decor.el.remove()
+    decors.clear()
     field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note').forEach((node) => node.remove())
   }
 
@@ -1060,6 +1159,7 @@ export function createMeadowStage(options: {
     const now = performance.now()
     const mouth = mouthOf(actor)
     if (actor.mode === 'eat' || actor.mode === 'play' || actor.mode === 'dance') return { result: 'miss' }
+    if (actor.mode === 'decor') clearDecor(actor)
     if (resting(actor, now)) {
       actor.wiggleUntil = now + 700
       if (actor.mode !== 'pet' && actor.mode !== 'drag' && actor.mode !== 'hop') {
@@ -1090,8 +1190,281 @@ export function createMeadowStage(options: {
     return { result: 'eaten', animalId: actor.id, favorite, mouth }
   }
 
+  function visitDelay() {
+    return 20000 + Math.random() * 20000
+  }
+
+  function hungryNow(actor: Actor) {
+    return animalIsHungry(actor.lastFedAt, options.hungerNow())
+  }
+
+  function decorSize(decor: Decor) {
+    return sprite * (decor.def.scale ?? 1.4)
+  }
+
+  function anchorKind(interaction: MeadowDecorInteraction, role: DecorRole): 'in' | 'beside' | 'above' {
+    if (interaction === 'water' && role === 'special') return 'in'
+    if (interaction === 'swing') return 'above'
+    if (interaction === 'house' && role === 'special') return 'in'
+    return 'beside'
+  }
+
+  function decorPose(visit: DecorVisit, now: number) {
+    switch (visit.interaction) {
+      case 'water':
+        if (visit.role === 'special') {
+          return { bob: Math.sin(now / 180) * 7, sx: 1.14, sy: 0.76, rot: Math.sin(now / 220) * 8, lift: 10 }
+        }
+        return { bob: Math.sin(now / 260) * 2, sx: 1.06, sy: 0.86, rot: 18, lift: 0 }
+      case 'fire':
+        return { bob: Math.sin(now / 300) * 2, sx: 1.03, sy: 0.94, rot: Math.sin(now / 280) * 5, lift: 0 }
+      case 'swing':
+        return { bob: 0, sx: 1, sy: 1, rot: Math.sin(now / 260) * 18, lift: 22 }
+      case 'ball':
+        return { bob: Math.abs(Math.sin(now / 150)) * 14, sx: 1.04, sy: 0.96, rot: Math.sin(now / 150) * 8, lift: 0 }
+      case 'flower':
+        return { bob: 0, sx: 1.05, sy: 0.94, rot: 14, lift: 2 }
+      case 'house':
+        return { bob: Math.sin(now / 380) * 3, sx: 0.7, sy: 0.7, rot: 0, lift: visit.role === 'special' ? -6 : 0 }
+    }
+  }
+
+  function layoutDecor(decor: Decor) {
+    const size = decorSize(decor)
+    decor.px = (decor.x / 100) * fieldW
+    decor.py = (decor.y / 100) * fieldH
+    decor.el.style.width = `${size}px`
+    decor.el.style.height = `${size}px`
+    decor.el.style.left = `${decor.px - size / 2}px`
+    decor.el.style.top = `${decor.py - size}px`
+    decor.el.style.zIndex = String(4 + Math.round(decor.y))
+  }
+
+  function placeForDecor(actor: Actor, decor: Decor, role: DecorRole) {
+    const where = anchorKind(decor.def.interaction, role)
+    if (where === 'beside') {
+      const side: 1 | -1 = actor.px < decor.px ? -1 : 1
+      const px = decor.px + side * sprite * 1.05
+      setFeet(actor, px, decor.py)
+      actor.face = side === 1 ? 1 : -1
+      return
+    }
+    if (where === 'above') {
+      setFeet(actor, decor.px, decor.py - sprite * 0.2)
+      return
+    }
+    setFeet(actor, decor.px, decor.py)
+  }
+
+  function showDecorLine(actor: Actor, line: string) {
+    showBubble(actor, { kind: 'sentence', key: `decor:${line}`, speak: line, text: line })
+    options.onDecorLine(line)
+  }
+
+  function showMallow(actor: Actor) {
+    if (actor.mallow) return
+    const stick = document.createElement('span')
+    stick.className = 'meadow-mallow'
+    stick.appendChild(document.createElement('i'))
+    actor.el.appendChild(stick)
+    actor.mallow = stick
+  }
+
+  function hideMallow(actor: Actor) {
+    actor.mallow?.remove()
+    actor.mallow = null
+  }
+
+  function clearDecor(actor: Actor) {
+    actor.decor = null
+    hideMallow(actor)
+  }
+
+  function burstSplash(decor: Decor, count = 6) {
+    for (let i = 0; i < count; i += 1) {
+      const drop = document.createElement('i')
+      drop.className = 'meadow-splash'
+      drop.style.left = `${decor.px + (Math.random() - 0.5) * sprite * 0.55}px`
+      drop.style.top = `${decor.py - sprite * 0.32}px`
+      drop.style.setProperty('--dx', `${(Math.random() - 0.5) * 40}px`)
+      drop.style.setProperty('--dy', `${-16 - Math.random() * 30}px`)
+      field.appendChild(drop)
+      drop.addEventListener('animationend', () => drop.remove())
+    }
+  }
+
+  function spawnRipple(decor: Decor) {
+    const ripple = document.createElement('i')
+    ripple.className = 'meadow-ripple'
+    decor.el.appendChild(ripple)
+    ripple.addEventListener('animationend', () => ripple.remove())
+  }
+
+  function spawnSparks(decor: Decor) {
+    for (let i = 0; i < 5; i += 1) {
+      const spark = document.createElement('i')
+      spark.className = 'meadow-spark'
+      spark.style.left = `${40 + Math.random() * 20}%`
+      spark.style.top = `${28 + Math.random() * 16}%`
+      spark.style.setProperty('--dx', `${(Math.random() - 0.5) * 30}px`)
+      spark.style.setProperty('--dy', `${-14 - Math.random() * 26}px`)
+      decor.el.appendChild(spark)
+      spark.addEventListener('animationend', () => spark.remove())
+    }
+  }
+
+  function beginDecor(actor: Actor, decor: Decor, role: DecorRole, now: number) {
+    actor.seeking = null
+    actor.decor = { id: decor.id, interaction: decor.def.interaction, role, until: now + 4200 }
+    actor.mode = 'decor'
+    actor.poseUntil = actor.decor.until
+    placeForDecor(actor, decor, role)
+    if (decor.def.interaction === 'fire' && role === 'special') showMallow(actor)
+    else hideMallow(actor)
+    showDecorLine(actor, decor.def.line)
+    if (decor.def.interaction === 'water' && role === 'special') burstSplash(decor)
+  }
+
+  function endDecor(actor: Actor, now: number) {
+    const visit = actor.decor
+    clearDecor(actor)
+    actor.nextVisitAt = now + visitDelay()
+    if (visit?.interaction === 'water' && visit.role === 'special') {
+      const decor = decors.get(visit.id)
+      if (decor) setFeet(actor, decor.px, decor.py + sprite * 0.62)
+      hop(actor, now, 420)
+      return
+    }
+    actor.mode = 'idle'
+    schedule(actor, now)
+  }
+
+  function maybeVisit(actor: Actor, now: number) {
+    if (now < actor.nextVisitAt || actor.seeking || actor.decor) return
+    if (hungryNow(actor)) {
+      actor.nextVisitAt = now + visitDelay()
+      return
+    }
+    if (actor.mode !== 'idle' && actor.mode !== 'walk' && actor.mode !== 'sit' && actor.mode !== 'look') return
+    const choices = [...decors.values()]
+    if (!choices.length) return
+    const decor = choices[Math.floor(Math.random() * choices.length)]!
+    const where = anchorKind(decor.def.interaction, 'idle')
+    let x = decor.x
+    let y = decor.y
+    if (where === 'beside') {
+      const side: 1 | -1 = actor.px < decor.px ? -1 : 1
+      x = clamp(((decor.px + side * sprite * 1.05) / fieldW) * 100, 8, 92)
+      y = clamp(((decor.py + (decor.def.interaction === 'water' ? sprite * 0.12 : 0)) / fieldH) * 100, 20, 90)
+    } else if (where === 'above') {
+      y = clamp(((decor.py - sprite * 0.2) / fieldH) * 100, 18, 90)
+    }
+    actor.seeking = decor.id
+    actor.mode = 'walk'
+    actor.walkTx = x
+    actor.walkTy = y
+    actor.hopUntil = 0
+    actor.nextVisitAt = now + visitDelay()
+  }
+
+  function decorAtClient(clientX: number, clientY: number): Decor | null {
+    let best: Decor | null = null
+    let bestArea = Infinity
+    for (const decor of decors.values()) {
+      const rect = decor.el.getBoundingClientRect()
+      const pad = 16
+      if (clientX < rect.left - pad || clientX > rect.right + pad || clientY < rect.top - pad || clientY > rect.bottom + pad) {
+        continue
+      }
+      const area = rect.width * rect.height
+      if (!best || area < bestArea) {
+        best = decor
+        bestArea = area
+      }
+    }
+    return best
+  }
+
+  function moveDecor(decor: Decor, clientX: number, clientY: number) {
+    const rect = field.getBoundingClientRect()
+    const px = clamp(clientX - rect.left, fieldW * 0.12, fieldW * 0.88)
+    const py = clamp(clientY - rect.top, fieldH * 0.3, fieldH * 0.9)
+    decor.x = clamp((px / fieldW) * 100, 8, 92)
+    decor.y = clamp((py / fieldH) * 100, 24, 90)
+    layoutDecor(decor)
+  }
+
+  function tapDecor(decor: Decor) {
+    if (decor.def.interaction === 'water') {
+      spawnRipple(decor)
+      playWater()
+      return
+    }
+    if (decor.def.interaction === 'fire') {
+      spawnSparks(decor)
+      playCrackle()
+      return
+    }
+    decor.el.classList.remove('is-tap')
+    void decor.el.offsetWidth
+    decor.el.classList.add('is-tap')
+    playBoing()
+  }
+
+  function onDecorDown(decor: Decor, ev: PointerEvent) {
+    if (session || decorDrag || ev.button !== 0) return
+    ev.preventDefault()
+    ev.stopPropagation()
+    decor.el.setPointerCapture(ev.pointerId)
+    decorDrag = { decor, pointerId: ev.pointerId, moved: 0 }
+  }
+
+  function onDecorMove(ev: PointerEvent) {
+    if (!decorDrag || decorDrag.pointerId !== ev.pointerId) return
+    decorDrag.moved += Math.hypot(ev.movementX, ev.movementY)
+    if (decorDrag.moved > TAP_SLOP) moveDecor(decorDrag.decor, ev.clientX, ev.clientY)
+  }
+
+  function onDecorUp(ev: PointerEvent) {
+    if (!decorDrag || decorDrag.pointerId !== ev.pointerId) return
+    const drag = decorDrag
+    decorDrag = null
+    if (drag.decor.el.hasPointerCapture(ev.pointerId)) drag.decor.el.releasePointerCapture(ev.pointerId)
+    if (drag.moved < TAP_SLOP) {
+      tapDecor(drag.decor)
+      return
+    }
+    options.onSaveDecor(drag.decor.id, Math.round(drag.decor.x * 10) / 10, Math.round(drag.decor.y * 10) / 10)
+  }
+
+  function addDecoration(item: MeadowDecorSave, drop: boolean) {
+    const def = meadowDecoration(item.id)
+    if (!def || decors.has(item.id)) return
+    const el = document.createElement('div')
+    el.className = 'meadow-decor'
+    if (def.interaction === 'fire') el.classList.add('is-fire')
+    if (drop) el.classList.add('is-dropping')
+    el.dataset.id = def.id
+    el.dataset.interaction = def.interaction
+    const img = document.createElement('img')
+    img.alt = def.zh
+    img.draggable = false
+    img.src = meadowSrc(def.file)
+    el.appendChild(img)
+    field.appendChild(el)
+    const decor: Decor = { id: def.id, def, el, x: item.x, y: item.y, px: 0, py: 0 }
+    decors.set(def.id, decor)
+    layoutDecor(decor)
+    if (drop) el.addEventListener('animationend', () => el.classList.remove('is-dropping'), { once: true })
+    el.addEventListener('pointerdown', (ev) => onDecorDown(decor, ev))
+    el.addEventListener('pointermove', onDecorMove)
+    el.addEventListener('pointerup', onDecorUp)
+    el.addEventListener('pointercancel', onDecorUp)
+  }
+
   measure()
   options.animals.forEach((seed, index) => add(seed, index))
+  options.decorations.forEach((item) => addDecoration(item, false))
   resize.observe(field)
   raf = requestAnimationFrame(frame)
 
@@ -1118,5 +1491,5 @@ export function createMeadowStage(options: {
     syncAccessory(actor, true)
   }
 
-  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood, noteHearts, setAccessory }
+  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood, noteHearts, setAccessory, addDecoration }
 }

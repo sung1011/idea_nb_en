@@ -28,11 +28,14 @@ import { families, getCurrentFamily, listAllFamilyWords } from '../data/phonicsF
 import { ALBUM_STICKERS } from '../data/stickers'
 import { MAIN_TASK_CHAPTER_1, MAIN_TASK_DAILY_CHAIN, MAIN_TASK_FISH_ECHO } from '../data/todayTasks'
 import {
+  decorDropSpot,
   emptyMeadow,
   grantAllMeadowAnimals,
   hatchEgg,
   meadowClockMark,
+  meadowDecoration,
   meadowEffectiveNow,
+  meadowStarsAvailable,
   MEADOW_HUNGER_MS,
   normalizeMeadow,
   noteClearOn,
@@ -40,6 +43,7 @@ import {
   takeMeadowNormalizeDirty,
   type MeadowAccessoryId,
   type MeadowAnimalId,
+  type MeadowDecorSave,
   type MeadowSave,
 } from '../meadow/meadowConfig'
 
@@ -1071,6 +1075,13 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
   target.ceremonyChapterId = source.ceremonyChapterId
   target.hungerSkipMs = source.hungerSkipMs
   target.clockMark = source.clockMark
+  target.spentStars = source.spentStars
+  if (!Array.isArray(target.decorations)) target.decorations = []
+  target.decorations.splice(
+    0,
+    target.decorations.length,
+    ...source.decorations.map((item) => ({ id: item.id, x: item.x, y: item.y })),
+  )
   target.pendingEggs.splice(0, target.pendingEggs.length, ...source.pendingEggs)
   target.owned.splice(
     0,
@@ -1323,6 +1334,32 @@ export function skipMeadowHunger(ms = MEADOW_HUNGER_MS): void {
   if (mark !== persistState.meadow.clockMark) persistState.meadow.clockMark = mark
   const step = Number.isFinite(ms) ? Math.max(0, ms) : MEADOW_HUNGER_MS
   persistState.meadow.hungerSkipMs = Math.max(0, persistState.meadow.hungerSkipMs) + step
+  persist()
+}
+
+export function meadowStarsLeft(): number {
+  return meadowStarsAvailable(persistState.lifetime.totalStars, persistState.meadow.spentStars)
+}
+
+/** Buy one decoration. Lifetime stars stay put; only spentStars grows. */
+export function buyMeadowDecoration(id: string): MeadowDecorSave | null {
+  const def = meadowDecoration(id)
+  if (!def) return null
+  if (persistState.meadow.decorations.some((item) => item.id === id)) return null
+  if (meadowStarsLeft() < def.price) return null
+  const spot = decorDropSpot(persistState.meadow.decorations.length)
+  const row: MeadowDecorSave = { id: def.id, x: spot.x, y: spot.y }
+  persistState.meadow.spentStars += def.price
+  persistState.meadow.decorations.push(row)
+  persist()
+  return row
+}
+
+export function saveMeadowDecor(id: string, x: number, y: number): void {
+  const row = persistState.meadow.decorations.find((item) => item.id === id)
+  if (!row) return
+  row.x = x
+  row.y = y
   persist()
 }
 

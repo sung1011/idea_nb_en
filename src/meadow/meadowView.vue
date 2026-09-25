@@ -10,12 +10,13 @@ import {
   locationForNextMainline,
   persistState,
   saveMeadowAccessory,
+  saveMeadowDecor,
   saveMeadowHearts,
   saveMeadowLayout,
 } from '../composables/useProgress'
 import { speak } from '../composables/useSpeech'
 import hatchOverlay from './hatchOverlay.vue'
-import { playBoing } from './meadowAudio'
+import { playBoing, playHeartChime } from './meadowAudio'
 import {
   accessoryBanner,
   addHearts,
@@ -30,12 +31,15 @@ import {
   meadowIsOpen,
   meadowRoster,
   meadowSrc,
+  meadowStarsAvailable,
   trickBanner,
   type MeadowAccessoryId,
   type MeadowAnimalId,
+  type MeadowDecorSave,
   type MeadowFoodId,
 } from './meadowConfig'
 import { createMeadowStage, type MeadowStage } from './meadowStage'
+import shopSheet from './shopSheet.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -43,6 +47,8 @@ const roster = meadowRoster()
 const fieldEl = ref<HTMLElement | null>(null)
 const hatchId = ref<string | null>(null)
 const cardId = ref<MeadowAnimalId | null>(null)
+const shopOpen = ref(false)
+const starsLeft = computed(() => meadowStarsAvailable(persistState.lifetime.totalStars, persistState.meadow.spentStars))
 const bannerText = ref('')
 const bannerQueue: string[] = []
 let bannerTimer = 0
@@ -125,6 +131,9 @@ function mountStage() {
     onHeartGain: (id, gain) => awardHearts(id, gain),
     hungerNow: () => meadowEffectiveNow(persistState.meadow),
     onFedClock: (id) => feedMeadowAnimal(id),
+    decorations: persistState.meadow.decorations.map((item) => ({ ...item })),
+    onDecorLine: (line) => sayDecor(line),
+    onSaveDecor: (id, x, y) => saveMeadowDecor(id, x, y),
   })
 }
 
@@ -187,6 +196,11 @@ function pumpSpeech() {
     if (gen !== speechGen) return
     pumpSpeech()
   })
+}
+
+function sayDecor(line: string) {
+  if (speaking || speechQueue.length) return
+  say(line)
 }
 
 function say(line: string, immediate = false) {
@@ -320,6 +334,12 @@ function wear(accessory: MeadowAccessoryId) {
   stage?.setAccessory(id, accessory)
 }
 
+function onBought(row: MeadowDecorSave) {
+  shopOpen.value = false
+  playHeartChime()
+  stage?.addDecoration(row, true)
+}
+
 function onHatched() {
   const chapterId = hatchId.value
   if (!chapterId) return
@@ -352,6 +372,10 @@ function onHatched() {
   <Teleport to="body">
     <div class="meadow-root">
       <button class="back" type="button" @click="goHome">首页</button>
+      <div v-if="meadowOpen" class="meadow-tools">
+        <p class="star-purse" aria-label="可以花的星星">⭐ {{ starsLeft }}</p>
+        <button class="shop-open" type="button" @click="shopOpen = true">小商店</button>
+      </div>
       <p v-if="bannerText" class="banner">{{ bannerText }}</p>
 
       <div v-if="!meadowOpen" class="gate">
@@ -438,6 +462,7 @@ function onHatched() {
       </template>
 
       <hatch-overlay v-if="hatchAnimal" :key="hatchAnimal.chapterId" :animal="hatchAnimal" @done="onHatched" />
+      <shop-sheet v-if="shopOpen" @close="shopOpen = false" @bought="onBought" />
     </div>
   </Teleport>
 </template>
@@ -481,6 +506,41 @@ function onHatched() {
   box-shadow: 0 6px 0 rgba(214, 120, 90, 0.28);
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+.meadow-tools {
+  position: absolute;
+  z-index: 6;
+  top: calc(10px + env(safe-area-inset-top));
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.star-purse {
+  margin: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #fff4d2;
+  color: #8a5a12;
+  font-size: 18px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 0 rgba(45, 58, 74, 0.12);
+}
+
+.shop-open {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 #f0c36a;
 }
 
 .back {
@@ -1134,6 +1194,156 @@ function onHatched() {
   }
   50% {
     transform: translateY(3%) rotate(-3deg) scale(1.02, 0.94);
+  }
+}
+
+.meadow-decor {
+  position: absolute;
+  touch-action: none;
+  z-index: 3;
+}
+
+.meadow-decor img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.meadow-decor.is-fire img {
+  transform-origin: 50% 78%;
+  animation: meadow-flame 0.48s ease-in-out infinite;
+}
+
+.meadow-decor.is-dropping {
+  animation: meadow-drop 0.72s cubic-bezier(0.18, 1.35, 0.36, 1) both;
+}
+
+.meadow-decor.is-tap img {
+  animation: meadow-decor-tap 0.35s ease-out;
+}
+
+.meadow-ripple,
+.meadow-spark,
+.meadow-splash {
+  position: absolute;
+  pointer-events: none;
+}
+
+.meadow-ripple {
+  left: 18%;
+  right: 18%;
+  bottom: 18%;
+  height: 22%;
+  border-radius: 50%;
+  border: 3px solid rgba(120, 190, 230, 0.85);
+  animation: meadow-ripple 0.7s ease-out forwards;
+}
+
+.meadow-spark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffe08a;
+  box-shadow: 0 0 0 2px #ff9f43;
+  animation: meadow-spark 0.55s ease-out forwards;
+}
+
+.meadow-splash {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ad7f5;
+  z-index: 30;
+  animation: meadow-splash 0.55s ease-out forwards;
+}
+
+.meadow-mallow {
+  position: absolute;
+  left: 68%;
+  top: 8%;
+  width: 7px;
+  height: 46%;
+  border-radius: 4px;
+  background: #c4a574;
+  transform: rotate(-32deg);
+  transform-origin: bottom center;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.meadow-mallow i {
+  position: absolute;
+  left: 50%;
+  top: -12px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff8ee;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 3px #f3d2a2;
+}
+
+@keyframes meadow-flame {
+  0%,
+  100% {
+    transform: scale(1, 1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05, 0.94);
+    opacity: 0.78;
+  }
+}
+
+@keyframes meadow-drop {
+  0% {
+    transform: translateY(-48vh) scale(0.82);
+  }
+  68% {
+    transform: translateY(10px) scale(1.06, 0.9);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes meadow-decor-tap {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08, 0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes meadow-ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-spark {
+  to {
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes meadow-splash {
+  to {
+    transform: translate(var(--dx), var(--dy)) scale(0.5);
+    opacity: 0;
   }
 }
 

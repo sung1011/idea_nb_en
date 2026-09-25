@@ -67,6 +67,62 @@ export type MeadowSave = {
   hungerSkipMs: number
   /** Highest wall-clock ms observed. A backwards device clock cannot lower it. */
   clockMark: number
+  /** Stars spent in the meadow shop. Lifetime total never goes down. */
+  spentStars: number
+  /** Decorations placed on the grass. One of each id. */
+  decorations: MeadowDecorSave[]
+}
+
+/**
+ * Behaviors the stage already plays. Phase 2 adds a catalog row and a sprite;
+ * it does not need a new interaction unless the motion is new.
+ */
+export const MEADOW_DECOR_INTERACTIONS = ['water', 'fire', 'swing', 'ball', 'flower', 'house'] as const
+
+export type MeadowDecorInteraction = (typeof MEADOW_DECOR_INTERACTIONS)[number]
+
+export type MeadowDecorDef = {
+  id: string
+  zh: string
+  price: number
+  /** File in `public/meadow/` without the extension. */
+  file: string
+  interaction: MeadowDecorInteraction
+  /** Short English line for the bubble and TTS. */
+  line: string
+  /** Sprite size relative to an animal. Defaults to 1.4. */
+  scale?: number
+}
+
+export type MeadowDecorSave = {
+  id: string
+  /** Feet position, percent of the play field. */
+  x: number
+  y: number
+}
+
+/** Shop catalog. A new item is one row here plus `public/meadow/{file}.webp`. */
+export const MEADOW_DECORATIONS: readonly MeadowDecorDef[] = [
+  { id: 'pond', zh: '水池', price: 10, file: 'deco-pond', interaction: 'water', line: 'Splash!' },
+  { id: 'campfire', zh: '火堆', price: 15, file: 'deco-campfire', interaction: 'fire', line: 'So warm!' },
+]
+
+const decorIds = new Set(MEADOW_DECORATIONS.map((item) => item.id))
+
+export function meadowDecoration(id: string): MeadowDecorDef | null {
+  return MEADOW_DECORATIONS.find((item) => item.id === id) ?? null
+}
+
+export function meadowStarsAvailable(totalStars: number, spentStars: number): number {
+  const total = Number.isFinite(totalStars) ? Math.max(0, Math.floor(totalStars)) : 0
+  const spent = Number.isFinite(spentStars) ? Math.max(0, Math.floor(spentStars)) : 0
+  return Math.max(0, total - spent)
+}
+
+/** Where a newly bought decoration lands, spread so they do not stack. */
+export function decorDropSpot(index: number): { x: number; y: number } {
+  const col = index % 3
+  return { x: 26 + col * 24, y: 50 }
 }
 
 /** Real time from full to hungry. */
@@ -267,6 +323,8 @@ export function emptyMeadow(): MeadowSave {
     ceremonyChapterId: null,
     hungerSkipMs: 0,
     clockMark: 0,
+    spentStars: 0,
+    decorations: [],
   }
 }
 
@@ -347,7 +405,28 @@ export function normalizeMeadow(raw: unknown): MeadowSave {
     ceremonyChapterId: ceremony,
     hungerSkipMs,
     clockMark,
+    spentStars: readNonNegative(parsed.spentStars),
+    decorations: readDecorations(parsed.decorations),
   }
+}
+
+function readDecorations(raw: unknown): MeadowDecorSave[] {
+  if (!Array.isArray(raw)) return []
+  const out: MeadowDecorSave[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const id = (item as MeadowDecorSave).id
+    if (typeof id !== 'string' || !decorIds.has(id) || seen.has(id)) continue
+    seen.add(id)
+    const row = item as Partial<MeadowDecorSave>
+    out.push({
+      id,
+      x: clampPercent(row.x, 50),
+      y: clampPercent(row.y, 50),
+    })
+  }
+  return out
 }
 
 /** Queue an egg for every cleared chapter that does not already own its animal. */

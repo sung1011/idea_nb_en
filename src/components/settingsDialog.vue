@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { listChapters } from '../data/chapters'
 import { playPop } from '../composables/useSfx'
 import {
+  addStar,
   getFrontierLesson,
   maxOutProgressFromConfig,
   persistState,
@@ -83,6 +84,11 @@ function skipHunger() {
   skipMeadowHunger()
 }
 
+function grantStars() {
+  playPop()
+  addStar(50)
+}
+
 function askWipeConfirm() {
   playPop()
   step.value = 'confirmWipe'
@@ -147,8 +153,9 @@ function applyLesson() {
           <p class="warn">
             「设置当前课」会把这一课之前的课标成已过，并发放对应星星和章节徽章，方便跟学校进度对齐。
             「初始化」会清空本地进度：星星、贴纸、图鉴解锁、课和关卡，以及星星草地。词卡图片还在，不会删。
-            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。
+            「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。不会送小商店里的装饰。
             「草地时间 +12小时」只给调试用，把草地上每只动物的饥饿时间往前拨 12 小时。
+            「星星 +50」只给调试用，加的是一辈子的星星，不会把小商店里的装饰送掉。
           </p>
           <button class="meadow-toggle" type="button" @click="toggleMeadow">
             <span>随时进星星草地</span>
@@ -157,6 +164,7 @@ function applyLesson() {
             </span>
           </button>
           <big-button variant="soft" @click="skipHunger">草地时间 +12小时</big-button>
+          <big-button variant="soft" @click="grantStars">星星 +50</big-button>
           <big-button variant="primary" @click="askLesson">设置当前课</big-button>
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
           <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>

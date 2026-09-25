@@ -94,6 +94,49 @@ export function playHeartChime(): void {
   tone(context, start + 0.2, 1320, 0.22, 0.04)
 }
 
+function noiseBurst(context: AudioContext, when: number, seconds: number, peak: number, lowpass: number) {
+  const count = Math.max(1, Math.floor(context.sampleRate * seconds))
+  const buffer = context.createBuffer(1, count, context.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / data.length)
+  }
+  const source = context.createBufferSource()
+  source.buffer = buffer
+  const filter = context.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(lowpass, when)
+  const gain = context.createGain()
+  gain.gain.setValueAtTime(0.0001, when)
+  gain.gain.exponentialRampToValueAtTime(peak, when + 0.015)
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + seconds)
+  source.connect(filter)
+  filter.connect(gain)
+  gain.connect(context.destination)
+  source.start(when)
+  source.stop(when + seconds + 0.02)
+}
+
+/** Soft splash when the pond is tapped or someone jumps in. */
+export function playWater(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  noiseBurst(context, start, 0.22, 0.07, 780)
+  tone(context, start + 0.02, 480, 0.12, 0.03)
+  tone(context, start + 0.1, 360, 0.14, 0.025)
+}
+
+/** A few wood-pop crackles for the campfire. */
+export function playCrackle(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  for (let i = 0; i < 4; i += 1) {
+    noiseBurst(context, start + i * 0.07, 0.045, 0.045, 1800 + i * 200)
+  }
+}
+
 /** Soft boing when a treat flies home. */
 export function playBoing(): void {
   const context = audio()
