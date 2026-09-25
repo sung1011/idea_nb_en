@@ -476,10 +476,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Dan and Cam',
     emoji: '👦',
     lessons: [
-      { titleZh: '词块工坊', titleEn: 'Word Builder', type: 'wordFamily' },
-      { titleZh: '词族肖像', titleEn: 'Word Family Portrait', type: 'wordFamily' },
-      { titleZh: '字母 J · red', titleEn: 'Letter Jj · red', type: 'letterSight', letter: 'J', sightWords: ['red'] },
-      { titleZh: '丹和卡姆', titleEn: 'Dan and Cam · yellow', type: 'story', sightWords: ['yellow'] },
+      { titleZh: '词块工坊', titleEn: 'Word Builder', type: 'wordFamily', sentence: 'Can you dip it?' },
+      { titleZh: '词族肖像', titleEn: 'Word Family Portrait', type: 'wordFamily', sentence: 'Where is the cap?' },
+      { titleZh: '字母 J · red', titleEn: 'Letter Jj · red', type: 'letterSight', letter: 'J', sightWords: ['red'], sentence: 'The jam is red.' },
+      { titleZh: '丹和卡姆', titleEn: 'Dan and Cam · yellow', type: 'story', sightWords: ['yellow'], sentence: 'Dan and Cam are sad.' },
     ],
   },
   {
@@ -762,12 +762,56 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch6: [
+    {
+      words: ['dip', 'sip', 'tip', 'rip'],
+      spell: ['dip', 'sip', 'tip'],
+      pages: [
+        { word: 'dip', line: 'Can you dip it?' },
+        { word: 'sip', line: 'Can you sip it?' },
+        { word: 'tip', line: 'Can you tip it?' },
+        { word: 'rip', line: 'Can you rip it?' },
+      ],
+    },
+    {
+      words: ['cap', 'tap', 'trap', 'clap'],
+      spell: ['cap', 'tap', 'trap'],
+      pages: [
+        { word: 'cap', line: 'Where is the cap?' },
+        { word: 'tap', line: 'Where is the tap?' },
+        { word: 'trap', line: 'Where is the trap?' },
+        { word: 'clap', line: 'Clap, clap! Here it is!' },
+      ],
+    },
+    {
+      words: ['jam', 'jet', 'jug', 'jog'],
+      spell: ['jam', 'jet', 'jug'],
+      pages: [
+        { word: 'jam', line: 'The jam is red.' },
+        { word: 'jet', line: 'The jet is red.' },
+        { word: 'jug', line: 'The jug is red.' },
+        { word: 'jog', line: 'Jog, jog, jog!' },
+      ],
+    },
+    {
+      words: ['sad', 'glad', 'hot', 'wet'],
+      spell: ['sad', 'glad', 'hot'],
+      pages: [
+        { word: 'sad', line: 'Dan and Cam are sad.' },
+        { word: 'glad', line: 'Dan and Cam are glad.' },
+        { word: 'hot', line: 'Dan and Cam are hot in the yellow sun.' },
+        { word: 'wet', line: 'Dan and Cam are wet.' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
   const chapterIndex = Number(chapterId.slice(2)) - 1
   const lessonBadge =
-    chapterId === 'ch4' || chapterId === 'ch5' ? `rise${chapterIndex * 4 + lessonOrder}` : undefined
+    chapterId === 'ch4' || chapterId === 'ch5' || chapterId === 'ch6'
+      ? `rise${chapterIndex * 4 + lessonOrder}`
+      : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
   const math = MATH_LESSONS[lessonId]
   if (math) return buildMathLevels(chapterId, lessonId, math, stickerId)

@@ -1,15 +1,15 @@
 const FALLBACK_PREFIX = 'I see a'
 
 export const shortSentences: Record<string, string> = {
-  cap: 'A cap on a map.',
+  cap: 'Where is the cap?',
   map: 'I see a map.',
   nap: 'Leopard has a nap.',
-  tap: 'Tap the map.',
+  tap: 'Where is the tap?',
   lap: 'Sit on a lap.',
   frog: 'A frog on a log.',
   log: 'It is a good log.',
   fog: 'Fog on a log.',
-  jog: 'I can jog.',
+  jog: 'Jog, jog, jog!',
   hog: 'A hog can jog.',
   duck: 'A duck on a rock.',
   rock: 'A lot of rocks!',
@@ -97,6 +97,19 @@ export const shortSentences: Record<string, string> = {
   wok: 'Look at the wok.',
   wag: 'Look at the dog wag.',
   wink: 'Look at me wink!',
+  dip: 'Can you dip it?',
+  sip: 'Can you sip it?',
+  tip: 'Can you tip it?',
+  rip: 'Can you rip it?',
+  trap: 'Where is the trap?',
+  clap: 'Clap, clap! Here it is!',
+  jam: 'The jam is red.',
+  jet: 'The jet is red.',
+  jug: 'The jug is red.',
+  sad: 'Dan and Cam are sad.',
+  glad: 'Dan and Cam are glad.',
+  hot: 'Dan and Cam are hot in the yellow sun.',
+  wet: 'Dan and Cam are wet.',
 }
 
 export function sentenceForWord(word: string): string {
