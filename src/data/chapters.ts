@@ -388,10 +388,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Six Hens',
     emoji: '🐔',
     lessons: [
-      { titleZh: '六只母鸡会跳', titleEn: 'Six Hens Can hop · one two', type: 'story', sightWords: ['one', 'two'] },
-      { titleZh: '字母 G', titleEn: 'Letter G', type: 'letterSight', letter: 'G' },
-      { titleZh: '大力一击', titleEn: 'A Big Hit', type: 'story' },
-      { titleZh: '大胡萝卜', titleEn: 'The big carrot · help', type: 'story', sightWords: ['help'] },
+      { titleZh: '六只母鸡会跳', titleEn: 'Six Hens Can hop · one two', type: 'story', sightWords: ['one', 'two'], sentence: 'One hen, two hens.' },
+      { titleZh: '字母 G', titleEn: 'Letter G', type: 'letterSight', letter: 'G', sentence: 'A dog with gum.' },
+      { titleZh: '大力一击', titleEn: 'A Big Hit', type: 'story', sentence: 'A big hit!' },
+      { titleZh: '大胡萝卜', titleEn: 'The big carrot · help', type: 'story', sightWords: ['help'], sentence: 'Dad can help.' },
     ],
   },
   {
@@ -621,13 +621,56 @@ const PLAYABLE_LESSONS: Record<string, LessonWordPack[]> = {
       ],
     },
   ],
+  ch4: [
+    {
+      words: ['hen', 'bed', 'pet', 'leg'],
+      spell: ['hen', 'bed', 'pet'],
+      pages: [
+        { word: 'hen', line: 'One hen, two hens.' },
+        { word: 'bed', line: 'One bed, two beds.' },
+        { word: 'pet', line: 'One pet, two pets.' },
+        { word: 'leg', line: 'One leg, two legs.' },
+      ],
+    },
+    {
+      words: ['gum', 'tag', 'gift', 'rag'],
+      spell: ['gum', 'tag', 'gift'],
+      pages: [
+        { word: 'gum', line: 'A dog with gum.' },
+        { word: 'tag', line: 'A dog with a tag.' },
+        { word: 'gift', line: 'A dog with a gift.' },
+        { word: 'rag', line: 'A dog with a rag.' },
+      ],
+    },
+    {
+      words: ['hit', 'bat', 'mitt', 'win'],
+      spell: ['hit', 'bat', 'mitt'],
+      pages: [
+        { word: 'hit', line: 'A big hit!' },
+        { word: 'bat', line: 'A big bat!' },
+        { word: 'mitt', line: 'A big mitt!' },
+        { word: 'win', line: 'A big win!' },
+      ],
+    },
+    {
+      words: ['dad', 'mom', 'sis', 'tug'],
+      spell: ['dad', 'mom', 'sis'],
+      pages: [
+        { word: 'dad', line: 'Dad can help.' },
+        { word: 'mom', line: 'Mom can help.' },
+        { word: 'sis', line: 'Sis can help.' },
+        { word: 'tug', line: 'We tug and tug!' },
+      ],
+    },
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
   const pack = PLAYABLE_LESSONS[chapterId]?.[lessonOrder - 1]
   if (!pack) return []
   const chapterIndex = Number(chapterId.slice(2)) - 1
-  const stickerId = lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined
+  const lessonBadge = chapterId === 'ch4' ? `rise${12 + lessonOrder}` : undefined
+  const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)
   return buildLetterSightLevels(chapterId, lessonId, {
     flash: pack.words,
     whack: pack.words,

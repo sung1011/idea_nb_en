@@ -693,6 +693,9 @@ function syncRewardsFromClearedLessons(data: PersistShape) {
     if (!save.clearedLessonIds.includes(lesson.id)) continue
     for (const level of lesson.levels) {
       if (save.levels[level.id] !== 'cleared') continue
+      if (level.chapterStickerId && !data.lifetime.stickers.includes(level.chapterStickerId)) {
+        data.lifetime.stickers.push(level.chapterStickerId)
+      }
       if (save.firstClearStars.includes(level.id)) continue
       save.firstClearStars.push(level.id)
       save.firstClearAt[level.id] = data.dateKey
