@@ -4,13 +4,24 @@ import { useRouter } from 'vue-router'
 import { listChapters } from '../data/chapters'
 import { playPop } from '../composables/useSfx'
 import { getFrontierLesson, maxOutProgressFromConfig, resetAllProgress, setCurrentLesson } from '../composables/useProgress'
+import appSelect from './appSelect.vue'
 import bigButton from './bigButton.vue'
 
 const open = defineModel<boolean>({ default: false })
 const step = ref<'main' | 'confirmWipe' | 'confirmMax' | 'pickLesson' | 'confirmLesson'>('main')
+const lessonMenuOpen = ref(false)
 const pickedLessonId = ref(getFrontierLesson().id)
 const router = useRouter()
 const chapters = listChapters()
+const lessonGroups = computed(() =>
+  chapters.map((chapter, index) => ({
+    label: `第${index + 1}章 ${chapter.kidTitle}`,
+    options: chapter.lessons.map((lesson) => ({
+      value: lesson.id,
+      label: `第${lesson.order}课 ${lesson.titleZh} ${lesson.syllabusRange}`,
+    })),
+  })),
+)
 const pickedLesson = computed(() => {
   for (const chapter of chapters) {
     const lesson = chapter.lessons.find((item) => item.id === pickedLessonId.value)
@@ -22,6 +33,10 @@ const pickedLesson = computed(() => {
 function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape' && open.value) close()
 }
+
+watch(step, () => {
+  lessonMenuOpen.value = false
+})
 
 watch(open, (value) => {
   if (value) {
@@ -105,7 +120,7 @@ function applyLesson() {
       <div
         class="settings-card"
         role="dialog"
-        aria-modal="true"
+        :aria-modal="lessonMenuOpen ? 'false' : 'true'"
         aria-labelledby="settings-title"
       >
         <template v-if="step === 'main'">
@@ -126,13 +141,13 @@ function applyLesson() {
           <h2 id="settings-title" class="title">设置当前课</h2>
           <p class="warn">选学校现在上到的那一课。更早的课会记成已过。</p>
           <label class="pick-label" for="lesson-pick">当前课</label>
-          <select id="lesson-pick" v-model="pickedLessonId" class="lesson-pick">
-            <optgroup v-for="chapter in chapters" :key="chapter.id" :label="`第${chapters.indexOf(chapter) + 1}章 ${chapter.kidTitle}`">
-              <option v-for="lesson in chapter.lessons" :key="lesson.id" :value="lesson.id">
-                第{{ lesson.order }}课 {{ lesson.titleZh }} {{ lesson.syllabusRange }}
-              </option>
-            </optgroup>
-          </select>
+          <app-select
+            id="lesson-pick"
+            v-model="pickedLessonId"
+            :groups="lessonGroups"
+            placeholder="选一课"
+            @open-change="lessonMenuOpen = $event"
+          />
           <big-button variant="primary" @click="askLessonConfirm">就设成这课</big-button>
           <big-button variant="soft" @click="step = 'main'">返回</big-button>
         </template>
@@ -213,18 +228,6 @@ function applyLesson() {
 .pick-label {
   font-size: 14px;
   font-weight: 750;
-}
-
-.lesson-pick {
-  width: 100%;
-  min-height: 48px;
-  padding: 8px 12px;
-  border-radius: 16px;
-  border: 2px solid #d5e2ea;
-  background: #fff;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
 }
 
 .settings-card {
