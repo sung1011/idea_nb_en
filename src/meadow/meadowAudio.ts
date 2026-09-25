@@ -146,6 +146,19 @@ export function playCrackle(): void {
   }
 }
 
+/** Short ding when a dragged pet first enters a decoration. Hungry pets get one quieter note. */
+export function playDropDing(soft = false): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  if (soft) {
+    tone(context, start, 480, 0.08, 0.016)
+    return
+  }
+  tone(context, start, 784, 0.08, 0.034)
+  tone(context, start + 0.06, 1046, 0.1, 0.026)
+}
+
 /** Soft boing when a treat flies home. */
 export function playBoing(): void {
   const context = audio()

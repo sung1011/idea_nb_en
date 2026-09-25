@@ -861,6 +861,56 @@ function onHatched() {
   z-index: 2;
 }
 
+.meadow-gleam {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffe56a;
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.meadow-actor.is-gleam .meadow-gleam {
+  animation: meadow-gleam 0.9s ease-in-out infinite;
+}
+
+.meadow-gleam.g0 {
+  left: -6px;
+  top: 22%;
+}
+
+.meadow-gleam.g1 {
+  right: -4px;
+  top: 8%;
+  animation-delay: 0.2s;
+}
+
+.meadow-gleam.g2 {
+  left: 8%;
+  top: -8px;
+  animation-delay: 0.45s;
+}
+
+.meadow-gleam.g3 {
+  right: 6%;
+  bottom: 18%;
+  animation-delay: 0.15s;
+}
+
+@keyframes meadow-gleam {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.55) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(18deg);
+  }
+}
+
 .meadow-body {
   position: absolute;
   inset: 0;
@@ -1202,6 +1252,128 @@ function onHatched() {
   position: absolute;
   touch-action: none;
   z-index: 3;
+}
+
+.meadow-decor-fit {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 92%;
+  transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.meadow-decor.is-drop-ready .meadow-decor-fit,
+.meadow-decor.is-drop-hungry .meadow-decor-fit {
+  transform: scale(1.1);
+}
+
+.meadow-drop-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 1%;
+  width: 88%;
+  height: 36%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 214, 90, 0.95) 0%, rgba(255, 186, 60, 0.42) 48%, rgba(255, 186, 60, 0) 74%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) scale(0.9);
+  transition: opacity 0.22s ease;
+}
+
+.meadow-decor.is-drop-ready .meadow-drop-ring,
+.meadow-decor.is-drop-hungry .meadow-drop-ring {
+  opacity: 1;
+  animation: meadow-ring-breathe 1.6s ease-in-out infinite;
+}
+
+.meadow-decor.is-drop-hungry .meadow-drop-ring {
+  background: radial-gradient(ellipse at center, rgba(176, 182, 190, 0.92) 0%, rgba(140, 146, 156, 0.38) 50%, rgba(140, 146, 156, 0) 74%);
+}
+
+@keyframes meadow-ring-breathe {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(0.92);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+.meadow-drop-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  border-radius: 16px;
+  border: 3px solid #f0c36a;
+  background: #fffdf6;
+  box-shadow: 0 4px 0 rgba(232, 168, 70, 0.35);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.meadow-decor.is-drop-hungry .meadow-drop-bubble {
+  border-color: #c5c9d1;
+  box-shadow: 0 4px 0 rgba(150, 156, 166, 0.28);
+}
+
+.meadow-decor.is-drop-ready .meadow-drop-bubble,
+.meadow-decor.is-drop-hungry .meadow-drop-bubble {
+  opacity: 1;
+  animation: meadow-drop-bob 1.15s ease-in-out infinite;
+}
+
+@keyframes meadow-drop-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.meadow-drop-icon {
+  display: none;
+  width: 26px;
+  height: 26px;
+}
+
+.meadow-drop-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.meadow-decor.is-drop-ready .meadow-drop-icon.is-action,
+.meadow-decor.is-drop-hungry .meadow-drop-icon.is-apple {
+  display: block;
+}
+
+.meadow-hit-guide {
+  display: none;
+  position: absolute;
+  left: -20%;
+  top: -20%;
+  width: 140%;
+  height: 140%;
+  box-sizing: border-box;
+  border: 2px dashed rgba(70, 130, 190, 0.9);
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.meadow-decor.is-hit-guide .meadow-hit-guide {
+  display: block;
 }
 
 .meadow-decor img {

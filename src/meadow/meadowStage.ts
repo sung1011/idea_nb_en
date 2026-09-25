@@ -9,6 +9,7 @@ import {
   BUBBLE_HOLD_MS,
   introLine,
   meadowDecoration,
+  decorHitZonesVisible,
   isFavoriteFood,
   meadowSrc,
   nextPlayLine,
@@ -24,7 +25,7 @@ import {
   type MeadowDecorSave,
   type MeadowFoodId,
 } from './meadowConfig'
-import { playBoing, playChomp, playCrackle, playGiggle, playHeartChime, playPetChirp, playSleepySigh, playSoftChime, playWater } from './meadowAudio'
+import { playBoing, playChomp, playCrackle, playDropDing, playGiggle, playHeartChime, playPetChirp, playSleepySigh, playSoftChime, playWater } from './meadowAudio'
 import { wordEmoji, wordImage } from '../data/phonicsFamily'
 
 export type MeadowActorSeed = {
@@ -177,6 +178,28 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
+function actionIcon(interaction: MeadowDecorInteraction): string {
+  const common = 'viewBox="0 0 32 32" aria-hidden="true"'
+  switch (interaction) {
+    case 'swing':
+      return `<svg ${common}><path d="M7 8h18" stroke="#e0a050" stroke-width="2.4" stroke-linecap="round"/><path d="M10 8c1 8 2 12 6 12s5-4 6-12" fill="none" stroke="#e07a3d" stroke-width="2.2" stroke-linecap="round"/><rect x="11" y="19" width="10" height="3.4" rx="1.6" fill="#f4b400"/><path d="M6 16c2-3 4-3 6 0" fill="none" stroke="#f0c36a" stroke-width="1.8" stroke-linecap="round"/></svg>`
+    case 'ball':
+      return `<svg ${common}><path d="M9 20c1.2-6 4-9 7-9s5.6 3 6.6 9" fill="#ffd0a8"/><ellipse cx="16" cy="21.5" rx="8" ry="3.4" fill="#f0a060"/><circle cx="21" cy="17" r="1.5" fill="#e09070"/></svg>`
+    case 'flower':
+      return `<svg ${common}><circle cx="16" cy="13" r="3" fill="#ffe08a"/><circle cx="11" cy="12" r="2.8" fill="#ff8fab"/><circle cx="21" cy="12" r="2.8" fill="#ff8fab"/><circle cx="13" cy="17" r="2.6" fill="#ffb3c7"/><circle cx="19" cy="17" r="2.6" fill="#ffb3c7"/><path d="M16 18.5v7" stroke="#6fc45e" stroke-width="2.2" stroke-linecap="round"/></svg>`
+    case 'water':
+      return `<svg ${common}><ellipse cx="16" cy="22" rx="9" ry="3.6" fill="#7ec8f0"/><path d="M16 18V11" stroke="#5aa7e0" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="13" r="1.7" fill="#b9e6ff"/><circle cx="21" cy="11" r="2.1" fill="#8fd4ff"/></svg>`
+    case 'fire':
+      return `<svg ${common}><path d="M16 6c2 4.5 6 6.5 6 11.2a6 6 0 0 1-12 0C10 13 12.2 11 13.2 9c.2 2 1.6 2.8 2.4 2.8C15.6 9 15.6 6.8 16 6z" fill="#ff8a3d"/><path d="M16 15c.8 1.6 2 2.6 2 4.2a2.2 2.2 0 0 1-4.4 0c0-1.2.8-2 1.3-2.8.2.7.7 1 .8 1 .1-1 .1-1.8 0-2.4z" fill="#ffe08a"/></svg>`
+    case 'house':
+      return `<svg ${common}><path d="M12 10a6.5 6.5 0 1 0 7.2 10A5.2 5.2 0 1 1 12 10z" fill="#f6d56a"/><path d="M22 9h6.2L22 15.2h6.2" fill="none" stroke="#c9843a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  }
+}
+
+function appleIcon(): string {
+  return '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 11c-4.2 0-8 3.6-8 8.2 0 3.6 2.8 6.3 8 6.3s8-2.7 8-6.3c0-4.6-3.8-8.2-8-8.2z" fill="#e85d4c"/><path d="M16 11c.6-3 2.6-4.4 5-4.4" fill="none" stroke="#6fc45e" stroke-width="2" stroke-linecap="round"/><ellipse cx="21.5" cy="8.2" rx="3" ry="1.5" fill="#8ed56a" transform="rotate(24 21.5 8.2)"/></svg>'
+}
+
 /**
  * One animation frame drives every animal.
  * A treat drop calls `onFeed`. Dropping one animal onto another calls `onPlayTogether`.
@@ -208,6 +231,10 @@ export function createMeadowStage(options: {
   let lastSave = 0
   let lastUserAt = performance.now()
   let session: Session | null = null
+  /** Decoration currently showing the drop hint. Empty when the pet is outside every zone. */
+  let dropDecorId = ''
+  let gleamActor: Actor | null = null
+  let hitGuides = false
   let raf = 0
   let lastFrame = performance.now()
   let foodHover: { x: number; y: number } | null = null
@@ -768,6 +795,7 @@ export function createMeadowStage(options: {
     session.mode = 'drag'
     session.actor.mode = 'drag'
     wake(session.actor, now)
+    syncDropReady(session.actor)
   }
 
   function endSession(ev: PointerEvent) {
@@ -784,14 +812,16 @@ export function createMeadowStage(options: {
       schedule(actor, now)
     } else if (session.mode === 'drag') {
       const wasHouse = actor.decor?.interaction === 'house'
-      const decor = decorAtClient(ev.clientX, ev.clientY)
+      const decor = nearestDropDecor(actor)
+      const hungry = hungryNow(actor)
       const other = overlapTarget(actor)
+      clearDropReady()
       if (wasHouse && !decor) {
         wakeHouse(actor, now)
         flush()
       } else {
         if (wasHouse) clearDecor(actor)
-        if (decor) beginDecor(actor, decor, 'special', now)
+        if (decor && !hungry) beginDecor(actor, decor, 'special', now)
         else if (other) startScuffle(actor, other, now)
         else {
           hop(actor, now, 320)
@@ -853,6 +883,7 @@ export function createMeadowStage(options: {
     if (session.mode === 'drag') {
       const rect = field.getBoundingClientRect()
       setFeet(actor, ev.clientX - rect.left, ev.clientY - rect.top + sprite * 0.28)
+      syncDropReady(actor)
     }
   }
 
@@ -863,6 +894,11 @@ export function createMeadowStage(options: {
     const zzz = document.createElement('span')
     zzz.className = 'meadow-zzz'
     zzz.textContent = 'z z'
+    for (let i = 0; i < 4; i += 1) {
+      const star = document.createElement('i')
+      star.className = `meadow-gleam g${i}`
+      el.appendChild(star)
+    }
     const body = document.createElement('div')
     body.className = 'meadow-body'
     const shadow = document.createElement('i')
@@ -1098,6 +1134,9 @@ export function createMeadowStage(options: {
     attract(now)
     tickDecors(now)
     for (const actor of actors.values()) tick(actor, dt, now)
+    syncHitGuides()
+    if (session?.mode === 'drag') syncDropReady(session.actor)
+    else if (dropDecorId) clearDropReady()
     if (dirty && now - lastSave > 2000) flush()
     raf = requestAnimationFrame(frame)
   }
@@ -1546,22 +1585,80 @@ export function createMeadowStage(options: {
     actor.nextVisitAt = now + visitDelay()
   }
 
-  function decorAtClient(clientX: number, clientY: number): Decor | null {
+  /** Pet sprite center, in field pixels. The drop zone uses this, not the pointer. */
+  function petCenter(actor: Actor) {
+    return { x: actor.px, y: actor.py - sprite * 0.5 }
+  }
+
+  /**
+   * Decoration whose hit box (bounds grown about 20% on every side) contains the pet center.
+   * Overlaps keep the one whose center is closest.
+   */
+  function nearestDropDecor(actor: Actor): Decor | null {
+    const center = petCenter(actor)
     let best: Decor | null = null
-    let bestArea = Infinity
+    let bestD = Infinity
     for (const decor of decors.values()) {
-      const rect = decor.el.getBoundingClientRect()
-      const pad = decor.def.interaction === 'ball' ? 36 : 16
-      if (clientX < rect.left - pad || clientX > rect.right + pad || clientY < rect.top - pad || clientY > rect.bottom + pad) {
-        continue
-      }
-      const area = rect.width * rect.height
-      if (!best || area < bestArea) {
+      const size = decorSize(decor)
+      const left = decor.px - size * 0.7
+      const right = decor.px + size * 0.7
+      const top = decor.py - size * 1.2
+      const bottom = decor.py + size * 0.2
+      if (center.x < left || center.x > right || center.y < top || center.y > bottom) continue
+      const dx = center.x - decor.px
+      const dy = center.y - (decor.py - size * 0.5)
+      const dist = dx * dx + dy * dy
+      if (dist < bestD) {
         best = decor
-        bestArea = area
+        bestD = dist
       }
     }
     return best
+  }
+
+  function clearDropReady() {
+    if (dropDecorId) {
+      const prev = decors.get(dropDecorId)
+      if (prev) {
+        prev.el.classList.remove('is-drop-ready', 'is-drop-hungry')
+        prev.el.dataset.dropReady = ''
+      }
+      dropDecorId = ''
+    }
+    if (gleamActor) {
+      gleamActor.el.classList.remove('is-gleam')
+      gleamActor = null
+    }
+  }
+
+  /** Edge-triggered: ding and vibrate only when the highlighted decoration changes. */
+  function syncDropReady(actor: Actor | null) {
+    if (!actor || actor.mode !== 'drag') {
+      clearDropReady()
+      return
+    }
+    const next = nearestDropDecor(actor)
+    const nextId = next?.id ?? ''
+    if (nextId === dropDecorId) return
+    clearDropReady()
+    if (!next) return
+    const hungry = hungryNow(actor)
+    dropDecorId = next.id
+    next.el.classList.add(hungry ? 'is-drop-hungry' : 'is-drop-ready')
+    next.el.dataset.dropReady = hungry ? 'hungry' : 'play'
+    if (!hungry) {
+      actor.el.classList.add('is-gleam')
+      gleamActor = actor
+      navigator.vibrate?.(20)
+    }
+    playDropDing(hungry)
+  }
+
+  function syncHitGuides() {
+    const on = decorHitZonesVisible()
+    if (on === hitGuides) return
+    hitGuides = on
+    for (const decor of decors.values()) decor.el.classList.toggle('is-hit-guide', on)
   }
 
   function moveDecor(decor: Decor, clientX: number, clientY: number) {
@@ -1750,11 +1847,22 @@ export function createMeadowStage(options: {
     if (drop) el.classList.add('is-dropping')
     el.dataset.id = def.id
     el.dataset.interaction = def.interaction
+    const ring = document.createElement('i')
+    ring.className = 'meadow-drop-ring'
+    const fit = document.createElement('div')
+    fit.className = 'meadow-decor-fit'
     const img = document.createElement('img')
     img.alt = def.zh
     img.draggable = false
     img.src = meadowSrc(def.file)
-    el.appendChild(img)
+    fit.appendChild(img)
+    const bubble = document.createElement('div')
+    bubble.className = 'meadow-drop-bubble'
+    bubble.innerHTML = `<span class="meadow-drop-icon is-action">${actionIcon(def.interaction)}</span><span class="meadow-drop-icon is-apple">${appleIcon()}</span>`
+    const guide = document.createElement('i')
+    guide.className = 'meadow-hit-guide'
+    el.append(ring, fit, bubble, guide)
+    if (hitGuides) el.classList.add('is-hit-guide')
     field.appendChild(el)
     const decor: Decor = { id: def.id, def, el, x: item.x, y: item.y, px: 0, py: 0, spin: 0, motion: null }
     decors.set(def.id, decor)

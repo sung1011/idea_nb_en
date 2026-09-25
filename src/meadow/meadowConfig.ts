@@ -142,6 +142,17 @@ export function meadowStarsAvailable(totalStars: number, spentStars: number): nu
 }
 
 /** Where a newly bought decoration lands, spread so they do not stack. */
+/** 调试：拖动物时把装饰热区画成虚线。只活在这一次打开里，不写入存档。 */
+let showDecorHitZones = false
+
+export function decorHitZonesVisible(): boolean {
+  return showDecorHitZones
+}
+
+export function setDecorHitZonesVisible(on: boolean): void {
+  showDecorHitZones = on
+}
+
 /** 买下后的落点。六件错开，不会叠在一起。 */
 export function decorDropSpot(index: number): { x: number; y: number } {
   const spots = [
