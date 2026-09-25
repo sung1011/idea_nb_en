@@ -240,6 +240,11 @@ const GATE_CHAIN_NEXT: Record<GateId, ChainStep> = {
 
 const atlasWords = listAllFamilyWords()
 const knownWords = new Set(atlasWords.map((item) => item.word.toLowerCase()))
+for (const chapter of CHAPTERS) {
+  for (const lesson of chapter.lessons) {
+    for (const word of lesson.words) knownWords.add(word.toLowerCase())
+  }
+}
 
 function chainRank(step: ChainStep): number {
   const index = CHAIN_STEPS.indexOf(step)
@@ -691,6 +696,11 @@ function syncRewardsFromClearedLessons(data: PersistShape) {
   const save = data.chapter
   for (const lesson of listLessons()) {
     if (!save.clearedLessonIds.includes(lesson.id)) continue
+    for (const word of lesson.words) {
+      const key = normalizeWord(word)
+      if (!key || data.lifetime.unlockedWords.includes(key)) continue
+      data.lifetime.unlockedWords.push(key)
+    }
     for (const level of lesson.levels) {
       if (save.levels[level.id] !== 'cleared') continue
       if (level.chapterStickerId && !data.lifetime.stickers.includes(level.chapterStickerId)) {
@@ -1139,6 +1149,16 @@ function hydratePersist(fresh: PersistShape) {
   persist()
 }
 
+function wordsOfClearedLessons(clearedLessonIds: string[]): string[] {
+  const cleared = new Set(clearedLessonIds)
+  const out: string[] = []
+  for (const lesson of listLessons()) {
+    if (!cleared.has(lesson.id)) continue
+    for (const word of lesson.words) pushUnique(out, normalizeWord(word))
+  }
+  return out
+}
+
 function pushUnique(list: string[], value?: string) {
   const key = value?.trim()
   if (!key || list.includes(key)) return
@@ -1460,6 +1480,7 @@ export function setCurrentLesson(lessonId: string): boolean {
   save.celebrated = save.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
   persistState.chapter = repairChapterInvariants(save)
   syncRewardsFromClearedLessons(persistState)
+  persistState.lifetime.unlockedWords = wordsOfClearedLessons(persistState.chapter.clearedLessonIds)
   syncTodayAndGatesFromChapter(persistState)
   persist()
   return true

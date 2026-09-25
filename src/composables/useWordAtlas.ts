@@ -1,37 +1,29 @@
 import { computed } from 'vue'
-import { listAllFamilyWords } from '../data/phonicsFamily'
+import { atlasChapterGroups } from '../data/atlasCatalog'
 import { isWordUnlocked, unlockWord } from './progressStore'
 
-const atlasWords = listAllFamilyWords()
+const catalog = atlasChapterGroups()
 
 export { isWordUnlocked, unlockWord }
 
 export function useWordAtlas() {
-  const items = computed(() =>
-    atlasWords.map((item) => ({
-      ...item,
-      unlocked: isWordUnlocked(item.word),
+  const chapters = computed(() =>
+    catalog.map((group) => ({
+      ...group,
+      words: group.words.map((item) => ({
+        ...item,
+        unlocked: isWordUnlocked(item.word),
+      })),
     })),
   )
+  const items = computed(() => chapters.value.flatMap((group) => group.words))
   const unlockedCount = computed(() => items.value.filter((item) => item.unlocked).length)
-  const families = computed(() => {
-    const groups: { family: string; items: typeof items.value }[] = []
-    for (const item of items.value) {
-      const last = groups[groups.length - 1]
-      if (last && last.family === item.family) {
-        last.items.push(item)
-      } else {
-        groups.push({ family: item.family, items: [item] })
-      }
-    }
-    return groups
-  })
 
   return {
+    chapters,
     items,
-    families,
     unlockedCount,
-    total: atlasWords.length,
+    total: items.value.length,
     unlockWord,
     isWordUnlocked,
   }

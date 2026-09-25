@@ -14,6 +14,7 @@ import soundSpellView from './views/soundSpellView.vue'
 import stickerAlbumView from './views/stickerAlbumView.vue'
 import storyBookView from './views/storyBookView.vue'
 import whackWordView from './views/whackWordView.vue'
+import sentenceAtlasView from './views/sentenceAtlasView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
 import meadowView from './meadow/meadowView.vue'
 import numberCountView from './views/numberCountView.vue'
@@ -27,6 +28,7 @@ export const router = createRouter({
     { path: '/animal-island', name: 'animalIsland', component: animalIslandView },
     { path: '/letter-workshop', redirect: '/' },
     { path: '/word-atlas', name: 'wordAtlas', component: wordAtlasView },
+    { path: '/sentence-atlas', name: 'sentenceAtlas', component: sentenceAtlasView },
     { path: '/sticker-album', name: 'stickerAlbum', component: stickerAlbumView },
     { path: '/play-gallery', name: 'playGallery', component: playGalleryView },
     { path: '/sound-fish', name: 'soundFish', component: soundFishView },

@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import atlasChapterHead from '../components/atlasChapterHead.vue'
+import numberClay from '../components/numberClay.vue'
 import starBar from '../components/starBar.vue'
 import wordPic from '../components/wordPic.vue'
 import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { playNudge, playPop, speak, stopSpeech } from '../composables/useSpeech'
 import { useWordAtlas } from '../composables/useWordAtlas'
-import { wordZh } from '../data/phonicsFamily'
 
 type AtlasCard = {
   word: string
-  emoji: string
-  image?: string
+  zh: string
+  numeral?: number
   unlocked: boolean
 }
 
 const router = useRouter()
-const { families, unlockedCount, total } = useWordAtlas()
+const { chapters, unlockedCount, total } = useWordAtlas()
 const busy = ref(false)
 
 async function onTap(item: AtlasCard, event: MouseEvent) {
@@ -56,24 +57,26 @@ function onLeave() {
     <p class="progress-line center">已收集 {{ unlockedCount }} / {{ total }}</p>
 
     <div class="book">
-      <section v-for="group in families" :key="group.family" class="family">
-        <p class="family-tag">{{ group.family }}</p>
+      <section v-for="group in chapters" :key="group.chapterId" class="chapter" :data-chapter="group.chapterId">
+        <atlas-chapter-head :chapter-no="group.chapterNo" :animal-id="group.animalId" :animal-zh="group.animalZh" />
         <div class="grid">
           <button
-            v-for="item in group.items"
+            v-for="item in group.words"
             :key="item.word"
             class="card-btn"
             :class="{ locked: !item.unlocked }"
             type="button"
+            :data-word="item.word"
             :aria-label="item.unlocked ? item.word : 'locked word'"
             @click="onTap(item, $event)"
           >
             <span class="pic">
-              <word-pic :word="item.word" :size="64" />
+              <number-clay v-if="item.numeral != null" :value="item.numeral" size="sm" />
+              <word-pic v-else :word="item.word" :size="64" />
             </span>
             <template v-if="item.unlocked">
               <span class="word">{{ item.word }}</span>
-              <span v-if="wordZh(item.word)" class="zh">{{ wordZh(item.word) }}</span>
+              <span v-if="item.zh" class="zh">{{ item.zh }}</span>
             </template>
             <span v-else class="mystery" aria-hidden="true">?</span>
           </button>
@@ -101,16 +104,9 @@ function onLeave() {
 
 .book {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   margin-top: 4px;
   padding-bottom: 8px;
-}
-
-.family-tag {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 750;
-  color: var(--muted);
 }
 
 .grid {
@@ -141,6 +137,12 @@ function onLeave() {
   height: 64px;
   font-size: 42px;
   line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.pic :deep(.number-clay) {
+  transform: scale(0.72);
 }
 
 .word {

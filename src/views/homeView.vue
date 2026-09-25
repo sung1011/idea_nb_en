@@ -42,6 +42,10 @@ function goAtlas() {
   void router.push('/word-atlas')
 }
 
+function goSentences() {
+  void router.push('/sentence-atlas')
+}
+
 function goAlbum() {
   void router.push('/sticker-album')
 }
@@ -91,9 +95,12 @@ function goMeadow() {
       <span aria-hidden="true">📒</span>
       贴纸相册
     </button>
+    <div class="atlas-row">
+      <button class="atlas-chip" type="button" @click="goAtlas">单词图鉴</button>
+      <button class="atlas-chip" type="button" @click="goSentences">句子图鉴</button>
+    </div>
     <div class="weak-links">
       <button class="weak-link" type="button" @click="goGallery">玩法一览</button>
-      <button class="weak-link" type="button" @click="goAtlas">单词图鉴</button>
     </div>
   </section>
 </template>
@@ -276,6 +283,27 @@ function goMeadow() {
   display: grid;
   place-items: center;
   box-shadow: 0 2px 0 rgba(45, 58, 74, 0.12);
+}
+
+.atlas-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.atlas-chip {
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  box-shadow: 0 4px 0 rgba(45, 58, 74, 0.1);
+}
+
+.atlas-chip:active {
+  transform: translateY(2px);
 }
 
 .weak-links {
