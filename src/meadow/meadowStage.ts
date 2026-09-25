@@ -4,18 +4,23 @@ import {
   HEART_GAIN_PET,
   HEART_GAIN_PLAY,
   heartFillPercent,
+  animalById,
+  BUBBLE_HOLD_MS,
   introLine,
   isFavoriteFood,
   meadowSrc,
   nextPlayLine,
   onFeed,
   onPlayTogether,
+  pickMeadowBubble,
   yumLine,
+  type MeadowBubbleItem,
   type MeadowAccessoryId,
   type MeadowAnimalId,
   type MeadowFoodId,
 } from './meadowConfig'
 import { playChomp, playGiggle, playHeartChime, playPetChirp, playSleepySigh } from './meadowAudio'
+import { wordEmoji, wordImage } from '../data/phonicsFamily'
 
 export type MeadowActorSeed = {
   id: MeadowAnimalId
@@ -70,6 +75,9 @@ type Actor = {
   lastTapAt: number
   popUntil: number
   meter: HTMLElement | null
+  bubbleEl: HTMLButtonElement | null
+  bubbleTimer: number
+  lastBubbleKey: string
 }
 
 type Session = {
@@ -119,7 +127,7 @@ function clamp(n: number, min: number, max: number) {
 export function createMeadowStage(options: {
   field: HTMLElement
   animals: MeadowActorSeed[]
-  onSpeak: (line: string) => void
+  onSpeak: (line: string, immediate?: boolean) => void
   onSave: (spots: MeadowSpot[]) => void
   onHeartGain?: (id: MeadowAnimalId, gain: number) => void
 }): MeadowStage {
@@ -191,7 +199,7 @@ export function createMeadowStage(options: {
   function layout(actor: Actor) {
     actor.el.style.left = `${actor.px - sprite / 2}px`
     actor.el.style.top = `${actor.py - sprite}px`
-    actor.el.style.zIndex = actor.mode === 'drag' ? '40' : String(8 + Math.round(actor.y))
+    actor.el.style.zIndex = actor.mode === 'drag' ? '40' : actor.bubbleEl ? '36' : String(8 + Math.round(actor.y))
   }
 
   function paint(actor: Actor, now: number) {
@@ -530,6 +538,91 @@ export function createMeadowStage(options: {
     heart.addEventListener('animationend', () => heart.remove())
   }
 
+  function dismissBubble(actor: Actor, animate: boolean) {
+    window.clearTimeout(actor.bubbleTimer)
+    actor.bubbleTimer = 0
+    const el = actor.bubbleEl
+    if (!el) return
+    actor.bubbleEl = null
+    if (!animate || !el.isConnected) {
+      el.remove()
+      return
+    }
+    el.classList.add('is-leaving')
+    const done = () => el.remove()
+    el.addEventListener('animationend', done, { once: true })
+    window.setTimeout(done, 360)
+  }
+
+  function armBubble(actor: Actor) {
+    window.clearTimeout(actor.bubbleTimer)
+    actor.bubbleTimer = window.setTimeout(() => dismissBubble(actor, true), BUBBLE_HOLD_MS)
+  }
+
+  function bubbleFace(item: MeadowBubbleItem, host: HTMLButtonElement) {
+    if (item.kind === 'sentence') {
+      host.classList.add('is-sentence')
+      const line = document.createElement('p')
+      line.textContent = item.text
+      host.append(line)
+      return
+    }
+    if (item.numeral != null) {
+      const numeral = document.createElement('span')
+      numeral.className = 'meadow-bubble-num'
+      if (item.numeral >= 100) numeral.classList.add('wide')
+      numeral.textContent = String(item.numeral)
+      host.append(numeral)
+    } else {
+      const src = wordImage(item.label)
+      if (src) {
+        const img = document.createElement('img')
+        img.className = 'meadow-bubble-card'
+        img.alt = ''
+        img.draggable = false
+        img.src = src
+        img.addEventListener('error', () => {
+          const emoji = document.createElement('span')
+          emoji.className = 'meadow-bubble-emoji'
+          emoji.textContent = wordEmoji(item.label)
+          img.replaceWith(emoji)
+        })
+        host.append(img)
+      } else {
+        const emoji = document.createElement('span')
+        emoji.className = 'meadow-bubble-emoji'
+        emoji.textContent = wordEmoji(item.label)
+        host.append(emoji)
+      }
+    }
+    const label = document.createElement('b')
+    label.textContent = item.label
+    host.append(label)
+  }
+
+  function showBubble(actor: Actor, item: MeadowBubbleItem) {
+    dismissBubble(actor, false)
+    const host = document.createElement('button')
+    host.type = 'button'
+    host.className = 'meadow-bubble'
+    host.setAttribute('aria-label', item.speak)
+    bubbleFace(item, host)
+    host.addEventListener('pointerdown', (event) => {
+      event.stopPropagation()
+      event.preventDefault()
+    })
+    host.addEventListener('pointerup', (event) => {
+      event.stopPropagation()
+      event.preventDefault()
+      onSpeak(item.speak, true)
+      armBubble(actor)
+    })
+    actor.el.append(host)
+    actor.bubbleEl = host
+    actor.lastBubbleKey = item.key
+    armBubble(actor)
+  }
+
   function tap(actor: Actor, now: number) {
     if (actor.hearts >= 5 && actor.lastTapAt > 0 && now - actor.lastTapAt < 450) {
       actor.lastTapAt = 0
@@ -539,6 +632,13 @@ export function createMeadowStage(options: {
     actor.lastTapAt = now
     wake(actor, now)
     hop(actor, now, 450)
+    const chapterId = animalById(actor.id)?.chapterId
+    const bubble = chapterId ? pickMeadowBubble(chapterId, actor.lastBubbleKey) : null
+    if (bubble) {
+      showBubble(actor, bubble)
+      onSpeak(bubble.speak, true)
+      return
+    }
     const line = actor.introNext ? introLine(actor.name) : actor.name
     actor.introNext = !actor.introNext
     onSpeak(line)
@@ -691,6 +791,9 @@ export function createMeadowStage(options: {
       lastTapAt: 0,
       popUntil: 0,
       meter: null,
+      bubbleEl: null,
+      bubbleTimer: 0,
+      lastBubbleKey: '',
     }
     actor.el.dataset.hearts = String(seed.hearts)
     syncAccessory(actor, false)
@@ -869,7 +972,10 @@ export function createMeadowStage(options: {
     for (const id of timers) window.clearTimeout(id)
     timers.clear()
     flush()
-    for (const actor of actors.values()) actor.el.remove()
+    for (const actor of actors.values()) {
+      window.clearTimeout(actor.bubbleTimer)
+      actor.el.remove()
+    }
     actors.clear()
     field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note').forEach((node) => node.remove())
   }

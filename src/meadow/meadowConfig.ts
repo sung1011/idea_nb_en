@@ -93,6 +93,104 @@ export function introLine(name: string): string {
   return `Hi! I am ${article} ${name}!`
 }
 
+/** Chance a tap shows a chapter bubble instead of the usual hello. */
+export const BUBBLE_CHANCE = 0.25
+/** Among bubbles, this fraction are words; the rest are sentences. */
+export const BUBBLE_WORD_SPLIT = 0.5
+/** How long a bubble stays before it pops away. */
+export const BUBBLE_HOLD_MS = 3000
+
+export type MeadowBubbleWord = {
+  kind: 'word'
+  key: string
+  speak: string
+  label: string
+  numeral?: number
+}
+
+export type MeadowBubbleSentence = {
+  kind: 'sentence'
+  key: string
+  speak: string
+  text: string
+}
+
+export type MeadowBubbleItem = MeadowBubbleWord | MeadowBubbleSentence
+
+type BubblePool = {
+  words: MeadowBubbleWord[]
+  sentences: MeadowBubbleSentence[]
+}
+
+function pushBubbleWord(list: MeadowBubbleWord[], seen: Set<string>, word: string, numeral?: number) {
+  const label = word.trim()
+  const key = numeral == null ? `w:${label.toLowerCase()}` : `n:${numeral}`
+  if (!label || seen.has(key)) return
+  seen.add(key)
+  list.push({ kind: 'word', key, speak: label, label, numeral })
+}
+
+function pushBubbleSentence(list: MeadowBubbleSentence[], seen: Set<string>, text: string) {
+  const line = text.trim()
+  const key = `s:${line.toLowerCase()}`
+  if (!line || seen.has(key)) return
+  seen.add(key)
+  list.push({ kind: 'sentence', key, speak: line, text: line })
+}
+
+function poolForChapter(chapterId: string): BubblePool {
+  const chapter = CHAPTERS.find((item) => item.id === chapterId)
+  const words: MeadowBubbleWord[] = []
+  const sentences: MeadowBubbleSentence[] = []
+  const seenWords = new Set<string>()
+  const seenSentences = new Set<string>()
+  if (!chapter) return { words, sentences }
+  for (const lesson of chapter.lessons) {
+    if (lesson.sentence) pushBubbleSentence(sentences, seenSentences, lesson.sentence)
+    const numbers = lesson.levels.flatMap((level) => level.numbers ?? [])
+    if (numbers.length) {
+      for (const item of numbers) {
+        pushBubbleWord(words, seenWords, item.word, item.value)
+        pushBubbleSentence(sentences, seenSentences, item.sentence)
+      }
+    } else {
+      for (const word of lesson.words) pushBubbleWord(words, seenWords, word)
+    }
+    for (const level of lesson.levels) {
+      for (const page of level.storyPages ?? []) pushBubbleSentence(sentences, seenSentences, page.line)
+    }
+  }
+  return { words, sentences }
+}
+
+const bubblePools = new Map<string, BubblePool>(CHAPTERS.map((chapter) => [chapter.id, poolForChapter(chapter.id)]))
+
+function pickFresh<T extends { key: string }>(list: T[], previousKey: string, random: () => number): T {
+  const fresh = list.filter((item) => item.key !== previousKey)
+  const choices = fresh.length ? fresh : list
+  return choices[Math.floor(random() * choices.length)]
+}
+
+/**
+ * 25% of taps. Half of those are a chapter word, half a chapter sentence.
+ * Empty chapters return null so the usual hello still plays.
+ */
+export function pickMeadowBubble(
+  chapterId: string,
+  previousKey = '',
+  random: () => number = Math.random,
+): MeadowBubbleItem | null {
+  const pool = bubblePools.get(chapterId)
+  if (!pool || (!pool.words.length && !pool.sentences.length)) return null
+  if (random() >= BUBBLE_CHANCE) return null
+  const preferWord = random() < BUBBLE_WORD_SPLIT
+  const primary: MeadowBubbleItem[] = preferWord ? pool.words : pool.sentences
+  const backup: MeadowBubbleItem[] = preferWord ? pool.sentences : pool.words
+  const list = primary.length ? primary : backup
+  if (!list.length) return null
+  return pickFresh(list, previousKey, random)
+}
+
 export function spreadSpot(index: number): { x: number; y: number } {
   const col = index % 4
   const row = Math.floor(index / 4)

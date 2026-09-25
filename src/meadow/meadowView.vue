@@ -48,6 +48,7 @@ let stage: MeadowStage | null = null
 let hatchTimer = 0
 let speechQueue: string[] = []
 let speaking = false
+let speechGen = 0
 const ghosts: HTMLImageElement[] = []
 
 type FoodDrag = {
@@ -106,7 +107,7 @@ function mountStage() {
   stage = createMeadowStage({
     field: fieldEl.value,
     animals: seeds(),
-    onSpeak: (line) => say(line),
+    onSpeak: (line, immediate) => say(line, immediate),
     onSave: (spots) => saveMeadowLayout(spots),
     onHeartGain: (id, gain) => awardHearts(id, gain),
   })
@@ -152,19 +153,35 @@ onUnmounted(() => {
   ghosts.length = 0
 })
 
-function say(line: string) {
-  speechQueue.push(line)
-  if (speaking) return
-  speaking = true
-  const pump = () => {
-    const next = speechQueue.shift()
-    if (!next) {
-      speaking = false
-      return
-    }
-    void speak(next).finally(pump)
+function pumpSpeech() {
+  const next = speechQueue.shift()
+  if (!next) {
+    speaking = false
+    return
   }
-  pump()
+  speaking = true
+  const gen = speechGen
+  void speak(next).finally(() => {
+    if (gen !== speechGen) return
+    pumpSpeech()
+  })
+}
+
+function say(line: string, immediate = false) {
+  if (immediate) {
+    speechQueue.length = 0
+    speechGen += 1
+    const gen = speechGen
+    speaking = true
+    void speak(line).finally(() => {
+      if (gen !== speechGen) return
+      speaking = false
+      pumpSpeech()
+    })
+    return
+  }
+  speechQueue.push(line)
+  if (!speaking) pumpSpeech()
 }
 
 function placeGhost(ghost: HTMLImageElement, x: number, y: number, scale: number) {
@@ -793,8 +810,112 @@ function onHatched() {
 .meadow-actor.is-hidden .meadow-sprite,
 .meadow-actor.is-hidden .meadow-acc,
 .meadow-actor.is-hidden .meadow-zzz,
-.meadow-actor.is-hidden .meadow-shadow {
+.meadow-actor.is-hidden .meadow-shadow,
+.meadow-actor.is-hidden .meadow-bubble {
   visibility: hidden;
+}
+
+.meadow-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 6;
+  width: max-content;
+  max-width: 176px;
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 3px solid #f0c36a;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffef8 0%, #fff1c9 100%);
+  box-shadow:
+    0 6px 0 #f4b400,
+    inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  color: #2d3a4a;
+  font-family: 'Fredoka', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+  animation: meadow-bubble-in 0.28s cubic-bezier(0.2, 1.4, 0.36, 1);
+}
+
+.meadow-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+  background: #fff1c9;
+  border-right: 3px solid #f0c36a;
+  border-bottom: 3px solid #f0c36a;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.meadow-bubble.is-sentence {
+  max-width: 210px;
+  padding: 10px 12px 12px;
+}
+
+.meadow-bubble p,
+.meadow-bubble b {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.meadow-bubble-card {
+  width: 84px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.meadow-bubble-emoji {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.meadow-bubble-num {
+  min-width: 64px;
+  padding: 2px 10px 6px;
+  border-radius: 16px;
+  border: 3px solid #f0c36a;
+  background: linear-gradient(180deg, #fffef8 0%, #fff6d8 100%);
+  color: #e07a12;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 4px 0 #f4b400;
+}
+
+.meadow-bubble-num.wide {
+  font-size: 26px;
+}
+
+.meadow-bubble.is-leaving {
+  animation: meadow-bubble-out 0.28s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes meadow-bubble-in {
+  from {
+    transform: translateX(-50%) scale(0.35);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes meadow-bubble-out {
+  to {
+    transform: translateX(-50%) scale(1.18);
+    opacity: 0;
+  }
 }
 
 .meadow-meter {
