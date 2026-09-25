@@ -520,10 +520,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Dad Cooks',
     emoji: '🍳',
     lessons: [
-      { titleZh: '字母 X', titleEn: 'Letter X', type: 'letterSight', letter: 'X' },
-      { titleZh: '爸爸爱做饭', titleEn: 'Dad Likes to cook', type: 'story' },
-      { titleZh: 'CVC 复习', titleEn: 'CVC Review', type: 'review' },
-      { titleZh: '五个五个数', titleEn: 'Skip counting by 5s', type: 'math' },
+      { titleZh: '字母 X', titleEn: 'Letter X', type: 'letterSight', letter: 'X', sentence: 'Oh, an ox!' },
+      { titleZh: '爸爸爱做饭', titleEn: 'Dad Likes to cook', type: 'story', sentence: 'Dad likes to chop.' },
+      { titleZh: '复习 · 谁有', titleEn: 'CVC Review', type: 'review', sentence: 'Who has the cat?' },
+      { titleZh: '五个五个数', titleEn: 'Skip counting by 5s', type: 'math', sentence: 'Clap for five.' },
     ],
   },
   {
@@ -912,6 +912,39 @@ const PLAYABLE_LESSONS: Record<string, Array<LessonWordPack | null>> = {
       ],
     },
   ],
+  ch10: [
+    {
+      words: ['ox', 'fix', 'mix', 'wax'],
+      spell: ['ox', 'fix', 'mix'],
+      pages: [
+        { word: 'ox', line: 'Oh, an ox!' },
+        { word: 'fix', line: 'The ox will fix it.' },
+        { word: 'mix', line: 'The ox will mix it.' },
+        { word: 'wax', line: 'The ox will wax it.' },
+      ],
+    },
+    {
+      words: ['chop', 'cut', 'stir', 'mash'],
+      spell: ['chop', 'cut', 'stir'],
+      pages: [
+        { word: 'chop', line: 'Dad likes to chop.' },
+        { word: 'cut', line: 'Dad likes to cut.' },
+        { word: 'stir', line: 'Dad likes to stir.' },
+        { word: 'mash', line: 'Dad likes to mash.' },
+      ],
+    },
+    {
+      words: ['cat', 'hen', 'pig', 'cub'],
+      spell: ['cat', 'hen', 'pig'],
+      pages: [
+        { word: 'cat', line: 'Who has the cat?' },
+        { word: 'hen', line: 'Who has the hen?' },
+        { word: 'pig', line: 'Who has the pig?' },
+        { word: 'cub', line: 'Who has the cub?' },
+      ],
+    },
+    null,
+  ],
 }
 
 function playableLevels(chapterId: string, lessonId: string, lessonOrder: number): LevelDef[] {
@@ -922,7 +955,8 @@ function playableLevels(chapterId: string, lessonId: string, lessonOrder: number
     chapterId === 'ch6' ||
     chapterId === 'ch7' ||
     chapterId === 'ch8' ||
-    chapterId === 'ch9'
+    chapterId === 'ch9' ||
+    chapterId === 'ch10'
       ? `rise${chapterIndex * 4 + lessonOrder}`
       : undefined
   const stickerId = lessonBadge ?? (lessonOrder === 4 ? RISE_CHAPTER_STICKERS[chapterIndex]?.id : undefined)

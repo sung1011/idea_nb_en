@@ -1,6 +1,6 @@
 /**
  * Config for math lessons. Each lesson is exactly four numbers.
- * Later lessons only need another key here (课40 `ch10-k4`、课45 `ch12-k1`).
+ * Later lessons only need another key here (课45 `ch12-k1`).
  * Numbers stay off the phonics atlas: no word-card art, and “one hundred” is a poor atlas key.
  */
 export type MathItem = {
@@ -28,6 +28,12 @@ export const MATH_LESSONS: Record<string, MathItem[]> = {
     { value: 11, word: 'eleven', zh: '十一', sentence: 'One fewer than twelve is eleven.' },
     { value: 12, word: 'twelve', zh: '十二', sentence: 'One fewer than thirteen is twelve.' },
     { value: 13, word: 'thirteen', zh: '十三', sentence: 'One fewer than fourteen is thirteen.' },
+  ],
+  'ch10-k4': [
+    { value: 5, word: 'five', zh: '五', sentence: 'Clap for five.' },
+    { value: 10, word: 'ten', zh: '十', sentence: 'Clap for ten.' },
+    { value: 15, word: 'fifteen', zh: '十五', sentence: 'Clap for fifteen.' },
+    { value: 20, word: 'twenty', zh: '二十', sentence: 'Clap for twenty.' },
   ],
 }
 

@@ -146,6 +146,14 @@ export const shortSentences: Record<string, string> = {
   sting: 'Do not sting me, Bug!',
   bump: 'Do not bump me, Bug!',
   pinch: 'Do not pinch me, Bug! Quit it!',
+  ox: 'Oh, an ox!',
+  fix: 'The ox will fix it.',
+  mix: 'The ox will mix it.',
+  wax: 'The ox will wax it.',
+  chop: 'Dad likes to chop.',
+  cut: 'Dad likes to cut.',
+  stir: 'Dad likes to stir.',
+  mash: 'Dad likes to mash.',
 }
 
 export function sentenceForWord(word: string): string {
