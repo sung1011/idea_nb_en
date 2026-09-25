@@ -50,6 +50,11 @@ export type MeadowAnimalSave = {
    * Missing on older saves: treated as full at the moment that save is read.
    */
   lastFedAt: number
+  /**
+   * Effective hunger-clock ms when this animal was put in the basket.
+   * 0 means they are on the meadow. Hunger does not advance while this is set.
+   */
+  storedAt: number
 }
 
 export type MeadowSave = {
@@ -101,6 +106,8 @@ export type MeadowDecorSave = {
   /** Feet position, percent of the play field. */
   x: number
   y: number
+  /** In the basket. Still owned, so the shop does not sell it again. */
+  stored?: boolean
 }
 
 /** Shop catalog. A new item is one row here plus `public/meadow/{file}.webp`. */
@@ -389,6 +396,10 @@ function readNonNegative(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0
 }
 
+function readStoredAt(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
+}
+
 function readLastFedAt(value: unknown, fullAt: number): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   meadowNormalizeDirty = true
@@ -421,6 +432,7 @@ export function normalizeMeadow(raw: unknown): MeadowSave {
         hearts,
         accessory: readAccessory(row.accessory, hearts),
         lastFedAt: readLastFedAt(row.lastFedAt, fullAt),
+        storedAt: readStoredAt(row.storedAt),
       })
     }
   }
@@ -465,6 +477,7 @@ function readDecorations(raw: unknown): MeadowDecorSave[] {
       id,
       x: clampPercent(row.x, 50),
       y: clampPercent(row.y, 50),
+      stored: row.stored === true,
     })
   }
   return out
@@ -500,6 +513,7 @@ export function grantAllMeadowAnimals(meadow: MeadowSave): void {
       hearts: 5,
       accessory: previous?.accessory ?? 'none',
       lastFedAt: kept,
+      storedAt: 0,
     }
   })
 }
@@ -521,6 +535,7 @@ export function grantOpenedMeadowAnimals(meadow: MeadowSave, chapterIds: readonl
       hearts: 0,
       accessory: 'none',
       lastFedAt: now,
+      storedAt: 0,
     })
   })
 }
@@ -541,6 +556,7 @@ export function hatchEgg(meadow: MeadowSave, chapterId: string): MeadowAnimalSav
     hearts: 0,
     accessory: 'none',
     lastFedAt: meadowEffectiveNow(meadow),
+    storedAt: 0,
   }
   meadow.owned.push(save)
   meadow.pendingEggs = meadow.pendingEggs.filter((id) => id !== chapterId)

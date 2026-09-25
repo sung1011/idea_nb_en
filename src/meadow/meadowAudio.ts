@@ -146,6 +146,16 @@ export function playCrackle(): void {
   }
 }
 
+/** Soft puff when something drops into the storage basket. */
+export function playPoof(): void {
+  const context = audio()
+  if (!context) return
+  const start = context.currentTime
+  noiseBurst(context, start, 0.16, 0.045, 980)
+  tone(context, start, 480, 0.08, 0.02)
+  tone(context, start + 0.05, 280, 0.12, 0.016)
+}
+
 /** Short ding when a dragged pet first enters a decoration. Hungry pets get one quieter note. */
 export function playDropDing(soft = false): void {
   const context = audio()

@@ -1122,7 +1122,12 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
   target.decorations.splice(
     0,
     target.decorations.length,
-    ...source.decorations.map((item) => ({ id: item.id, x: item.x, y: item.y })),
+    ...source.decorations.map((item) => ({
+      id: item.id,
+      x: item.x,
+      y: item.y,
+      stored: item.stored === true,
+    })),
   )
   target.pendingEggs.splice(0, target.pendingEggs.length, ...source.pendingEggs)
   target.owned.splice(
@@ -1135,6 +1140,7 @@ function writeMeadow(target: MeadowSave, source: MeadowSave) {
       hearts: item.hearts,
       accessory: item.accessory,
       lastFedAt: item.lastFedAt,
+      storedAt: item.storedAt > 0 ? item.storedAt : 0,
     })),
   )
 }
@@ -1395,6 +1401,44 @@ export function buyMeadowDecoration(id: string): MeadowDecorSave | null {
   persistState.meadow.decorations.push(row)
   persist()
   return row
+}
+
+/** Put a pet in the basket and freeze hunger at the fullness they have right now. */
+export function storeMeadowAnimal(id: MeadowAnimalId, x: number, y: number): void {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row || row.storedAt > 0) return
+  row.x = x
+  row.y = y
+  row.storedAt = meadowEffectiveNow(persistState.meadow)
+  persist()
+}
+
+/** Bring a pet back. The time spent in the basket is added onto lastFedAt, so hunger matches the moment they were stored. */
+export function restoreMeadowAnimal(id: MeadowAnimalId): boolean {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  if (!row || !(row.storedAt > 0)) return false
+  const now = meadowEffectiveNow(persistState.meadow)
+  row.lastFedAt += Math.max(0, now - row.storedAt)
+  row.storedAt = 0
+  persist()
+  return true
+}
+
+/** Put a decoration in the basket. It stays owned and keeps its last saved spot. */
+export function storeMeadowDecoration(id: string): void {
+  const row = persistState.meadow.decorations.find((item) => item.id === id)
+  if (!row || row.stored) return
+  row.stored = true
+  persist()
+}
+
+/** Put a decoration back on its last saved spot. */
+export function restoreMeadowDecoration(id: string): MeadowDecorSave | null {
+  const row = persistState.meadow.decorations.find((item) => item.id === id)
+  if (!row?.stored) return null
+  row.stored = false
+  persist()
+  return { id: row.id, x: row.x, y: row.y, stored: false }
 }
 
 export function saveMeadowDecor(id: string, x: number, y: number): void {

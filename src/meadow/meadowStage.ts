@@ -25,7 +25,7 @@ import {
   type MeadowDecorSave,
   type MeadowFoodId,
 } from './meadowConfig'
-import { playBoing, playChomp, playCrackle, playDropDing, playGiggle, playHeartChime, playPetChirp, playSleepySigh, playSoftChime, playWater } from './meadowAudio'
+import { playBoing, playChomp, playCrackle, playDropDing, playGiggle, playHeartChime, playPetChirp, playPoof, playSleepySigh, playSoftChime, playWater } from './meadowAudio'
 import { wordEmoji, wordImage } from '../data/phonicsFamily'
 
 export type MeadowActorSeed = {
@@ -148,6 +148,11 @@ type Actor = {
   exitToY: number
   /** Wake-up stretch is taller than the ordinary one. */
   bigStretch: boolean
+  /** Shrinking into the basket. Tick leaves it alone. */
+  stowing: boolean
+  /** Standing spot remembered when a drag starts, so the basket does not save the corner. */
+  stashX: number
+  stashY: number
 }
 
 type Decor = {
@@ -162,6 +167,8 @@ type Decor = {
   motion: BallMotion | null
   /** Epoch ms. While this is in the future the ball squishes on landing. */
   squashUntil: number
+  /** Shrinking into the basket. */
+  stowing: boolean
 }
 
 type Session = {
@@ -196,6 +203,8 @@ export type MeadowStage = {
   noteHearts: (id: string, hearts: number, meter: boolean, chime: boolean) => void
   setAccessory: (id: string, accessory: MeadowAccessoryId) => void
   addDecoration: (item: MeadowDecorSave, drop: boolean) => void
+  /** Hop a pet out of the basket onto their saved spot. */
+  popOut: (animal: MeadowActorSeed) => void
 }
 
 const HOLD_MS = 350
@@ -245,11 +254,13 @@ export function createMeadowStage(options: {
   /** Speak a decoration line only when nothing else is already talking. */
   onDecorLine: (line: string) => void
   onSaveDecor: (id: string, x: number, y: number) => void
+  onStoreAnimal: (id: MeadowAnimalId, x: number, y: number) => void
+  onStoreDecor: (id: string) => void
 }): MeadowStage {
   const { field, onSpeak, onSave } = options
   const actors = new Map<string, Actor>()
   const decors = new Map<string, Decor>()
-  let decorDrag: { decor: Decor; pointerId: number; moved: number } | null = null
+  let decorDrag: { decor: Decor; pointerId: number; moved: number; lastX: number; lastY: number } | null = null
   let fieldW = 1
   let fieldH = 1
   let sprite = 96
@@ -260,6 +271,8 @@ export function createMeadowStage(options: {
   let session: Session | null = null
   /** Decoration currently showing the drop hint. Empty when the pet is outside every zone. */
   let dropDecorId = ''
+  let basketHot = false
+  let basketEl: HTMLDivElement | null = null
   let gleamActor: Actor | null = null
   let hitGuides = false
   let raf = 0
@@ -833,7 +846,10 @@ export function createMeadowStage(options: {
     }
     session.mode = 'drag'
     session.actor.mode = 'drag'
+    session.actor.stashX = session.actor.x
+    session.actor.stashY = session.actor.y
     wake(session.actor, now)
+    showBasket()
     syncDropReady(session.actor)
   }
 
@@ -850,15 +866,21 @@ export function createMeadowStage(options: {
       actor.mode = 'idle'
       schedule(actor, now)
     } else if (session.mode === 'drag') {
+      const overBasket = basketHot
       const wasHouse = actor.decor?.interaction === 'house'
-      const decor = nearestDropDecor(actor)
+      const decor = overBasket ? null : nearestDropDecor(actor)
       const hungry = hungryNow(actor)
       const other = overlapTarget(actor)
       clearDropReady()
-      if (wasHouse && !decor) {
+      if (overBasket) {
+        stowActor(actor)
+        hideBasket()
+      } else if (wasHouse && !decor) {
+        hideBasket()
         wakeHouse(actor, now)
         flush()
       } else {
+        hideBasket()
         if (wasHouse) clearDecor(actor)
         if (decor && !hungry) beginDecor(actor, decor, 'special', now)
         else if (other) startScuffle(actor, other, now)
@@ -927,8 +949,17 @@ export function createMeadowStage(options: {
     }
     if (session.mode === 'drag') {
       const rect = field.getBoundingClientRect()
-      setFeet(actor, ev.clientX - rect.left, ev.clientY - rect.top + sprite * 0.28)
-      syncDropReady(actor)
+      if (pointerOverBasket(ev.clientX, ev.clientY)) {
+        actor.px = clamp(ev.clientX - rect.left, 8, fieldW - 8)
+        actor.py = clamp(ev.clientY - rect.top + sprite * 0.28, sprite * 0.4, fieldH - 4)
+        actor.x = clamp((actor.px / fieldW) * 100, 4, 96)
+        actor.y = clamp((actor.py / fieldH) * 100, 4, 96)
+      } else {
+        setFeet(actor, ev.clientX - rect.left, ev.clientY - rect.top + sprite * 0.28)
+      }
+      syncBasket(ev.clientX, ev.clientY)
+      if (basketHot) clearDropReady()
+      else syncDropReady(actor)
     }
   }
 
@@ -1013,6 +1044,9 @@ export function createMeadowStage(options: {
       exitToX: 0,
       exitToY: 0,
       bigStretch: false,
+      stowing: false,
+      stashX: seed.x,
+      stashY: seed.y,
     }
     actor.el.dataset.hearts = String(seed.hearts)
     syncAccessory(actor, false)
@@ -1064,6 +1098,7 @@ export function createMeadowStage(options: {
   }
 
   function tick(actor: Actor, dt: number, now: number) {
+    if (actor.stowing) return
     settleFull(actor, now)
     if (actor.bigStretch && now >= actor.stretchUntil) actor.bigStretch = false
     if (actor.exitUntil > 0 && actor.mode !== 'drag' && actor.mode !== 'pet') {
@@ -1187,8 +1222,9 @@ export function createMeadowStage(options: {
     tickDecors(now)
     for (const actor of actors.values()) tick(actor, dt, now)
     syncHitGuides()
-    if (session?.mode === 'drag') syncDropReady(session.actor)
-    else if (dropDecorId) clearDropReady()
+    if (session?.mode === 'drag') {
+      if (!basketHot) syncDropReady(session.actor)
+    } else if (dropDecorId) clearDropReady()
     if (dirty && now - lastSave > 2000) flush()
     raf = requestAnimationFrame(frame)
   }
@@ -1197,7 +1233,10 @@ export function createMeadowStage(options: {
     dirty = false
     lastSave = performance.now()
     const spots: MeadowSpot[] = []
-    for (const actor of actors.values()) spots.push({ id: actor.id, x: Math.round(actor.x * 10) / 10, y: Math.round(actor.y * 10) / 10 })
+    for (const actor of actors.values()) {
+      if (actor.mode === 'drag' || actor.stowing) continue
+      spots.push({ id: actor.id, x: Math.round(actor.x * 10) / 10, y: Math.round(actor.y * 10) / 10 })
+    }
     if (spots.length) onSave(spots)
   }
 
@@ -1241,6 +1280,12 @@ export function createMeadowStage(options: {
     if (session) window.clearTimeout(session.timer)
     for (const id of timers) window.clearTimeout(id)
     timers.clear()
+    for (const actor of actors.values()) {
+      if (actor.stowing) options.onStoreAnimal(actor.id, actor.stashX, actor.stashY)
+    }
+    for (const decor of decors.values()) {
+      if (decor.stowing) options.onStoreDecor(decor.id)
+    }
     flush()
     for (const actor of actors.values()) {
       window.clearTimeout(actor.bubbleTimer)
@@ -1249,6 +1294,7 @@ export function createMeadowStage(options: {
     actors.clear()
     for (const decor of decors.values()) decor.el.remove()
     decors.clear()
+    basketEl?.remove()
     field.querySelectorAll('.meadow-heart, .meadow-crumb, .meadow-cloud, .meadow-meter, .meadow-note, .meadow-petal, .meadow-dust, .meadow-splash').forEach((node) => node.remove())
   }
 
@@ -1810,6 +1856,143 @@ export function createMeadowStage(options: {
     }
   }
 
+  function basketMarkup(): string {
+    return `<svg class="basket-svg" viewBox="0 0 88 80" aria-hidden="true">
+      <g class="basket-lid">
+        <path d="M16 30c8-16 48-16 56 0" fill="#f3d7a2" stroke="#6b3e22" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M24 28c6-8 34-8 40 0" fill="none" stroke="#c4894a" stroke-width="2.2" stroke-linecap="round"/>
+        <circle cx="44" cy="22" r="3.2" fill="#f7e2bc" stroke="#6b3e22" stroke-width="2.4"/>
+      </g>
+      <path d="M14 32h60l-6 34c-1 6-10 10-24 10s-23-4-24-10z" fill="#f6e0b8" stroke="#6b3e22" stroke-width="3.2" stroke-linejoin="round"/>
+      <path d="M20 46h48M22 56h44M24 66h40" fill="none" stroke="#d09a55" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+      <path d="M30 34c1 12 2 28 4 40M44 33v42M58 34c-1 12-2 28-4 40" fill="none" stroke="#e2b56e" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M18 62c8 8 44 8 52 0" fill="#e7c48a" opacity="0.55"/>
+    </svg>`
+  }
+
+  function showBasket() {
+    basketEl?.classList.add('is-in')
+  }
+
+  function hideBasket() {
+    basketHot = false
+    basketEl?.classList.remove('is-in', 'is-open')
+  }
+
+  function pointerOverBasket(clientX: number, clientY: number) {
+    if (!basketEl?.classList.contains('is-in')) return false
+    const rect = basketEl.getBoundingClientRect()
+    const pad = 14
+    return clientX >= rect.left - pad && clientX <= rect.right + pad && clientY >= rect.top - pad && clientY <= rect.bottom + pad
+  }
+
+  /** Basket wins over a decoration zone. Ding once when the pointer first enters. */
+  function syncBasket(clientX: number, clientY: number) {
+    const over = pointerOverBasket(clientX, clientY)
+    if (over === basketHot) return
+    basketHot = over
+    basketEl?.classList.toggle('is-open', over)
+    if (!over) return
+    clearDropReady()
+    playDropDing(false)
+    navigator.vibrate?.(20)
+  }
+
+  function stowNode(el: HTMLElement, done: () => void) {
+    const basket = basketEl?.getBoundingClientRect()
+    const rect = el.getBoundingClientRect()
+    const dx = basket ? basket.left + basket.width / 2 - (rect.left + rect.width / 2) : 0
+    const dy = basket ? basket.top + basket.height * 0.55 - (rect.top + rect.height / 2) : 24
+    el.style.setProperty('--stow-x', `${dx}px`)
+    el.style.setProperty('--stow-y', `${dy}px`)
+    el.style.zIndex = '60'
+    el.classList.add('is-stowing')
+    playPoof()
+    let finished = false
+    const finish = () => {
+      if (finished) return
+      finished = true
+      el.remove()
+      done()
+    }
+    el.addEventListener('animationend', finish, { once: true })
+    later(finish, 520)
+  }
+
+  function quietLeave(actor: Actor, decorId: string) {
+    if (actor.decor?.id !== decorId && actor.seeking !== decorId) return
+    if (actor.decor?.id === decorId) clearDecor(actor)
+    if (actor.seeking === decorId) actor.seeking = null
+    actor.ballFollow = false
+    if (actor.mode === 'decor' || actor.mode === 'walk') {
+      actor.mode = 'idle'
+      schedule(actor, performance.now())
+    }
+  }
+
+  function evictDecor(decor: Decor) {
+    for (const actor of actors.values()) quietLeave(actor, decor.id)
+  }
+
+  function stowActor(actor: Actor) {
+    actor.stowing = true
+    actor.seeking = null
+    actor.ballFollow = false
+    actor.exitUntil = 0
+    actor.launchLift = 0
+    clearDecor(actor)
+    const id = actor.id
+    const x = actor.stashX
+    const y = actor.stashY
+    stowNode(actor.el, () => {
+      actors.delete(id)
+      options.onStoreAnimal(id, x, y)
+    })
+  }
+
+  function stowDecor(decor: Decor) {
+    decor.stowing = true
+    decor.motion = null
+    decor.el.classList.remove('is-dropping')
+    evictDecor(decor)
+    const id = decor.id
+    stowNode(decor.el, () => {
+      decors.delete(id)
+      options.onStoreDecor(id)
+    })
+  }
+
+  function keepPoint() {
+    const button = document.querySelector('.meadow-keep')
+    const fieldRect = field.getBoundingClientRect()
+    if (button) {
+      const rect = button.getBoundingClientRect()
+      return {
+        x: rect.left + rect.width / 2 - fieldRect.left,
+        y: rect.top + rect.height / 2 - fieldRect.top,
+      }
+    }
+    return { x: fieldW - 48, y: fieldH - 42 }
+  }
+
+  function popOut(seed: MeadowActorSeed) {
+    if (actors.has(seed.id)) return
+    add(seed, actors.size)
+    const actor = actors.get(seed.id)
+    if (!actor) return
+    const now = performance.now()
+    const from = keepPoint()
+    actor.exitStart = now
+    actor.exitUntil = now + 760
+    actor.exitFromX = from.x
+    actor.exitFromY = from.y
+    actor.exitToX = actor.px
+    actor.exitToY = actor.py
+    actor.mode = 'idle'
+    glideFeet(actor, from.x, from.y)
+    paint(actor, now)
+  }
+
   /** Edge-triggered: ding and vibrate only when the highlighted decoration changes. */
   function syncDropReady(actor: Actor | null) {
     if (!actor || actor.mode !== 'drag') {
@@ -1842,8 +2025,19 @@ export function createMeadowStage(options: {
 
   function moveDecor(decor: Decor, clientX: number, clientY: number) {
     const rect = field.getBoundingClientRect()
-    const px = clamp(clientX - rect.left, fieldW * 0.12, fieldW * 0.88)
-    const py = clamp(clientY - rect.top, fieldH * 0.3, fieldH * 0.9)
+    const nearBasket = pointerOverBasket(clientX, clientY)
+    const px = clamp(clientX - rect.left, fieldW * (nearBasket ? 0.05 : 0.12), fieldW * (nearBasket ? 0.96 : 0.88))
+    const py = clamp(clientY - rect.top, fieldH * (nearBasket ? 0.16 : 0.3), fieldH * (nearBasket ? 0.98 : 0.9))
+    if (nearBasket) {
+      decor.px = px
+      decor.py = py
+      const size = decorSize(decor)
+      decor.el.style.width = `${size}px`
+      decor.el.style.height = `${size}px`
+      decor.el.style.left = `${decor.px - size / 2}px`
+      decor.el.style.top = `${decor.py - size}px`
+      return
+    }
     decor.x = clamp((px / fieldW) * 100, 8, 92)
     decor.y = clamp((py / fieldH) * 100, 24, 90)
     layoutDecor(decor)
@@ -2018,7 +2212,7 @@ export function createMeadowStage(options: {
     for (const decor of decors.values()) {
       paintSquash(decor, now)
       const motion = decor.motion
-      if (!motion || !motion.legs.length) continue
+      if (decor.stowing || !motion || !motion.legs.length) continue
       while (motion.index < motion.legs.length - 1 && now >= motion.legs[motion.index]!.until) {
         const done = motion.legs[motion.index]!
         decor.px = done.toX
@@ -2346,13 +2540,20 @@ export function createMeadowStage(options: {
     ev.preventDefault()
     ev.stopPropagation()
     decor.el.setPointerCapture(ev.pointerId)
-    decorDrag = { decor, pointerId: ev.pointerId, moved: 0 }
+    decorDrag = { decor, pointerId: ev.pointerId, moved: 0, lastX: ev.clientX, lastY: ev.clientY }
   }
 
   function onDecorMove(ev: PointerEvent) {
     if (!decorDrag || decorDrag.pointerId !== ev.pointerId) return
-    decorDrag.moved += Math.hypot(ev.movementX, ev.movementY)
-    if (decorDrag.moved > TAP_SLOP) moveDecor(decorDrag.decor, ev.clientX, ev.clientY)
+    const step = Math.hypot(ev.clientX - decorDrag.lastX, ev.clientY - decorDrag.lastY)
+    decorDrag.lastX = ev.clientX
+    decorDrag.lastY = ev.clientY
+    decorDrag.moved += step
+    if (decorDrag.moved > TAP_SLOP) {
+      showBasket()
+      moveDecor(decorDrag.decor, ev.clientX, ev.clientY)
+      syncBasket(ev.clientX, ev.clientY)
+    }
   }
 
   function onDecorUp(ev: PointerEvent) {
@@ -2360,10 +2561,18 @@ export function createMeadowStage(options: {
     const drag = decorDrag
     decorDrag = null
     if (drag.decor.el.hasPointerCapture(ev.pointerId)) drag.decor.el.releasePointerCapture(ev.pointerId)
+    const overBasket = basketHot && drag.moved >= TAP_SLOP
     if (drag.moved < TAP_SLOP) {
+      hideBasket()
       tapDecor(drag.decor)
       return
     }
+    if (overBasket) {
+      stowDecor(drag.decor)
+      hideBasket()
+      return
+    }
+    hideBasket()
     options.onSaveDecor(drag.decor.id, Math.round(drag.decor.x * 10) / 10, Math.round(drag.decor.y * 10) / 10)
   }
 
@@ -2397,7 +2606,19 @@ export function createMeadowStage(options: {
     }
     if (hitGuides) el.classList.add('is-hit-guide')
     field.appendChild(el)
-    const decor: Decor = { id: def.id, def, el, x: item.x, y: item.y, px: 0, py: 0, spin: 0, motion: null, squashUntil: 0 }
+    const decor: Decor = {
+      id: def.id,
+      def,
+      el,
+      x: item.x,
+      y: item.y,
+      px: 0,
+      py: 0,
+      spin: 0,
+      motion: null,
+      squashUntil: 0,
+      stowing: false,
+    }
     decors.set(def.id, decor)
     layoutDecor(decor)
     if (drop) el.addEventListener('animationend', () => el.classList.remove('is-dropping'), { once: true })
@@ -2410,6 +2631,16 @@ export function createMeadowStage(options: {
   measure()
   options.animals.forEach((seed, index) => add(seed, index))
   options.decorations.forEach((item) => addDecoration(item, false))
+  basketEl = document.createElement('div')
+  basketEl.className = 'meadow-basket'
+  basketEl.setAttribute('aria-hidden', 'true')
+  const ring = document.createElement('i')
+  ring.className = 'basket-ring'
+  const fit = document.createElement('div')
+  fit.className = 'basket-fit'
+  fit.innerHTML = basketMarkup()
+  basketEl.append(ring, fit)
+  field.appendChild(basketEl)
   resize.observe(field)
   raf = requestAnimationFrame(frame)
 
@@ -2436,5 +2667,5 @@ export function createMeadowStage(options: {
     syncAccessory(actor, true)
   }
 
-  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood, noteHearts, setAccessory, addDecoration }
+  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood, noteHearts, setAccessory, addDecoration, popOut }
 }

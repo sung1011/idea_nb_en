@@ -13,6 +13,10 @@ import {
   saveMeadowDecor,
   saveMeadowHearts,
   saveMeadowLayout,
+  restoreMeadowAnimal,
+  restoreMeadowDecoration,
+  storeMeadowAnimal,
+  storeMeadowDecoration,
 } from '../composables/useProgress'
 import { speak } from '../composables/useSpeech'
 import hatchOverlay from './hatchOverlay.vue'
@@ -39,6 +43,7 @@ import {
   type MeadowFoodId,
 } from './meadowConfig'
 import { createMeadowStage, type MeadowStage } from './meadowStage'
+import basketSheet from './basketSheet.vue'
 import shopSheet from './shopSheet.vue'
 
 const router = useRouter()
@@ -48,6 +53,7 @@ const fieldEl = ref<HTMLElement | null>(null)
 const hatchId = ref<string | null>(null)
 const cardId = ref<MeadowAnimalId | null>(null)
 const shopOpen = ref(false)
+const basketOpen = ref(false)
 const starsLeft = computed(() => meadowStarsAvailable(persistState.lifetime.totalStars, persistState.meadow.spentStars))
 const bannerText = ref('')
 const bannerQueue: string[] = []
@@ -80,6 +86,7 @@ const showEmpty = computed(
 
 function seeds() {
   return persistState.meadow.owned.flatMap((row) => {
+    if (row.storedAt > 0) return []
     const def = animalById(row.id)
     return def
       ? [{
@@ -131,9 +138,14 @@ function mountStage() {
     onHeartGain: (id, gain) => awardHearts(id, gain),
     hungerNow: () => meadowEffectiveNow(persistState.meadow),
     onFedClock: (id) => feedMeadowAnimal(id),
-    decorations: persistState.meadow.decorations.map((item) => ({ ...item })),
+    decorations: persistState.meadow.decorations.filter((item) => !item.stored).map((item) => ({ ...item })),
     onDecorLine: (line) => sayDecor(line),
     onSaveDecor: (id, x, y) => saveMeadowDecor(id, x, y),
+    onStoreAnimal: (id, x, y) => {
+      storeMeadowAnimal(id, x, y)
+      if (cardId.value === id) cardId.value = null
+    },
+    onStoreDecor: (id) => storeMeadowDecoration(id),
   })
 }
 
@@ -334,6 +346,35 @@ function wear(accessory: MeadowAccessoryId) {
   stage?.setAccessory(id, accessory)
 }
 
+const storedCount = computed(
+  () =>
+    persistState.meadow.owned.filter((item) => item.storedAt > 0).length +
+    persistState.meadow.decorations.filter((item) => item.stored).length,
+)
+
+function onTakePet(id: MeadowAnimalId) {
+  const row = persistState.meadow.owned.find((item) => item.id === id)
+  const def = animalById(id)
+  if (!row || !def || !restoreMeadowAnimal(id)) return
+  basketOpen.value = false
+  stage?.popOut({
+    id: row.id,
+    name: def.name,
+    x: row.x,
+    y: row.y,
+    hearts: row.hearts,
+    accessory: row.accessory,
+    lastFedAt: row.lastFedAt,
+  })
+}
+
+function onTakeDecor(id: string) {
+  const row = restoreMeadowDecoration(id)
+  if (!row) return
+  basketOpen.value = false
+  stage?.addDecoration(row, true)
+}
+
 function onBought(row: MeadowDecorSave) {
   shopOpen.value = false
   playHeartChime()
@@ -398,6 +439,14 @@ function onHatched() {
             <span class="flower f3"></span>
           </div>
           <div ref="fieldEl" class="field"></div>
+          <button class="meadow-keep" type="button" aria-label="收纳篮" @click="basketOpen = true">
+            <svg viewBox="0 0 88 80" aria-hidden="true">
+              <path d="M16 30c8-16 48-16 56 0" fill="#f3d7a2" stroke="#6b3e22" stroke-width="3.2" stroke-linejoin="round" />
+              <path d="M14 32h60l-6 34c-1 6-10 10-24 10s-23-4-24-10z" fill="#f6e0b8" stroke="#6b3e22" stroke-width="3.2" stroke-linejoin="round" />
+              <path d="M22 48h44M24 58h40" fill="none" stroke="#d09a55" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+            <span v-if="storedCount > 0" class="keep-badge">{{ storedCount }}</span>
+          </button>
           <div v-if="showEmpty" class="empty">
             <div class="sils" aria-hidden="true">
               <img v-for="animal in roster" :key="animal.id" :src="meadowSrc(animal.id)" alt="" />
@@ -463,6 +512,7 @@ function onHatched() {
 
       <hatch-overlay v-if="hatchAnimal" :key="hatchAnimal.chapterId" :animal="hatchAnimal" @done="onHatched" />
       <shop-sheet v-if="shopOpen" @close="shopOpen = false" @bought="onBought" />
+      <basket-sheet v-if="basketOpen" @close="basketOpen = false" @take-pet="onTakePet" @take-decor="onTakeDecor" />
     </div>
   </Teleport>
 </template>
@@ -568,6 +618,40 @@ function onHatched() {
 .field {
   position: absolute;
   inset: 0;
+}
+
+.meadow-keep {
+  position: absolute;
+  z-index: 7;
+  right: 10px;
+  bottom: 10px;
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  border-radius: 18px;
+  background: #fff8ee;
+  box-shadow: 0 4px 0 #e7c48a;
+}
+
+.meadow-keep svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.keep-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e07a3d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 22px;
 }
 
 .decor {
@@ -1856,6 +1940,84 @@ function onHatched() {
   50% {
     transform: scale(1.25);
   }
+}
+
+@keyframes meadow-stow {
+  to {
+    transform: translate(var(--stow-x), var(--stow-y)) scale(0.12);
+    opacity: 0;
+  }
+}
+
+.meadow-basket {
+  position: absolute;
+  z-index: 48;
+  right: 4px;
+  bottom: 4px;
+  width: 112px;
+  height: 104px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(36px) scale(0.7);
+  transition:
+    transform 0.32s cubic-bezier(0.2, 1.45, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.meadow-basket.is-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.basket-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: 130%;
+  height: 42%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 214, 90, 0.95) 0%, rgba(255, 186, 60, 0.4) 52%, rgba(255, 186, 60, 0) 74%);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.86);
+  pointer-events: none;
+}
+
+.meadow-basket.is-open .basket-ring {
+  opacity: 1;
+  animation: meadow-ring-breathe 1.6s ease-in-out infinite;
+}
+
+.basket-fit {
+  height: 100%;
+  transform-origin: 50% 80%;
+  transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.meadow-basket.is-open .basket-fit {
+  transform: scale(1.08);
+}
+
+.basket-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.basket-lid {
+  transform-origin: 18px 32px;
+  transition: transform 0.28s cubic-bezier(0.2, 1.4, 0.36, 1);
+}
+
+.meadow-basket.is-open .basket-lid {
+  transform: translateY(-10px) rotate(-34deg);
+}
+
+.meadow-actor.is-stowing,
+.meadow-decor.is-stowing {
+  z-index: 60;
+  pointer-events: none;
+  animation: meadow-stow 0.42s ease-in forwards;
 }
 
 @media (orientation: landscape) {
