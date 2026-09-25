@@ -377,10 +377,10 @@ const SYLLABUS: ChapterSeed[] = [
     titleEn: 'Word Family, C and P',
     emoji: '🖼️',
     lessons: [
-      { titleZh: '词族肖像', titleEn: 'Word Family portrait', type: 'wordFamily' },
-      { titleZh: '字母 C · find', titleEn: 'Letter C · find', type: 'letterSight', letter: 'C', sightWords: ['find'] },
-      { titleZh: '字母 P · all out', titleEn: 'Letter P · all out', type: 'letterSight', letter: 'P', sightWords: ['all', 'out'] },
-      { titleZh: '好多好多', titleEn: 'A lot, A lot', type: 'story' },
+      { titleZh: '词族肖像', titleEn: 'Word Family portrait', type: 'wordFamily', sentence: 'Is it a pig?' },
+      { titleZh: '字母 C · find', titleEn: 'Letter C · find', type: 'letterSight', letter: 'C', sightWords: ['find'], sentence: 'Find the cat.' },
+      { titleZh: '字母 P · all out', titleEn: 'Letter P · all out', type: 'letterSight', letter: 'P', sightWords: ['all', 'out'], sentence: 'The pup is out.' },
+      { titleZh: '好多好多', titleEn: 'A lot, A lot', type: 'story', sentence: 'A lot of dots!' },
     ],
   },
   {
@@ -576,6 +576,48 @@ const PLAYABLE_LESSONS: Record<string, LessonWordPack[]> = {
         { word: 'bun', line: 'I like to eat a bun.' },
         { word: 'egg', line: 'I like to eat an egg.' },
         { word: 'fish', line: 'I like to eat fish.' },
+      ],
+    },
+  ],
+  ch3: [
+    {
+      words: ['pig', 'fig', 'twig', 'wig'],
+      spell: ['pig', 'fig', 'twig'],
+      pages: [
+        { word: 'pig', line: 'Is it a pig?' },
+        { word: 'fig', line: 'Is it a fig?' },
+        { word: 'twig', line: 'Is it a twig?' },
+        { word: 'wig', line: 'Is it a wig?' },
+      ],
+    },
+    {
+      words: ['cat', 'cab', 'cot', 'cup'],
+      spell: ['cat', 'cab', 'cot'],
+      pages: [
+        { word: 'cat', line: 'Find the cat.' },
+        { word: 'cab', line: 'Find the cab.' },
+        { word: 'cot', line: 'Find the cot.' },
+        { word: 'cup', line: 'Find the cup.' },
+      ],
+    },
+    {
+      words: ['pup', 'pen', 'pin', 'pad'],
+      spell: ['pup', 'pen', 'pin'],
+      pages: [
+        { word: 'pup', line: 'The pup is out.' },
+        { word: 'pen', line: 'The pen is out.' },
+        { word: 'pin', line: 'The pin is out.' },
+        { word: 'pad', line: 'All the pads are out.' },
+      ],
+    },
+    {
+      words: ['dot', 'hat', 'sock', 'rock'],
+      spell: ['dot', 'hat', 'sock'],
+      pages: [
+        { word: 'dot', line: 'A lot of dots!' },
+        { word: 'hat', line: 'A lot of hats!' },
+        { word: 'sock', line: 'A lot of socks!' },
+        { word: 'rock', line: 'A lot of rocks!' },
       ],
     },
   ],

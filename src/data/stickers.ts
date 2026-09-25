@@ -28,7 +28,7 @@ export const LEGACY_CHAPTER_STICKERS: StickerDef[] = [
 export const RISE_CHAPTER_STICKERS: StickerDef[] = [
   { id: 'rise1', label: '字母朋友徽章', emoji: '🔤' },
   { id: 'rise2', label: '小豹来了徽章', emoji: '🐆' },
-  { id: 'rise3', label: '词族徽章', emoji: '🖼️' },
+  { id: 'rise3', label: '词族和字母徽章', emoji: '🖼️' },
   { id: 'rise4', label: '母鸡徽章', emoji: '🐔' },
   { id: 'rise5', label: '小屋徽章', emoji: '🏡' },
   { id: 'rise6', label: '丹和卡姆徽章', emoji: '👦' },
