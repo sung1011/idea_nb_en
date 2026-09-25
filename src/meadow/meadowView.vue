@@ -5,7 +5,17 @@ import bigButton from '../components/bigButton.vue'
 import { dateKey, hatchMeadowEgg, locationForNextMainline, persistState, saveMeadowLayout } from '../composables/useProgress'
 import { speak } from '../composables/useSpeech'
 import hatchOverlay from './hatchOverlay.vue'
-import { animalByChapter, animalById, meadowIsOpen, meadowRoster, meadowSrc, type MeadowAnimalId } from './meadowConfig'
+import { playBoing } from './meadowAudio'
+import {
+  animalByChapter,
+  animalById,
+  MEADOW_FOODS,
+  meadowIsOpen,
+  meadowRoster,
+  meadowSrc,
+  type MeadowAnimalId,
+  type MeadowFoodId,
+} from './meadowConfig'
 import { createMeadowStage, type MeadowStage } from './meadowStage'
 
 const router = useRouter()
@@ -13,8 +23,23 @@ const route = useRoute()
 const roster = meadowRoster()
 const fieldEl = ref<HTMLElement | null>(null)
 const hatchId = ref<string | null>(null)
+const foods = MEADOW_FOODS
 let stage: MeadowStage | null = null
 let hatchTimer = 0
+let speechQueue: string[] = []
+let speaking = false
+const ghosts: HTMLImageElement[] = []
+
+type FoodDrag = {
+  id: MeadowFoodId
+  name: string
+  file: string
+  pointerId: number
+  slot: HTMLElement
+  ghost: HTMLImageElement
+}
+
+let foodDrag: FoodDrag | null = null
 
 const meadowOpen = computed(() => meadowIsOpen(persistState.meadow, dateKey()))
 const ownedIds = computed(() => new Set(persistState.meadow.owned.map((item) => item.id)))
@@ -35,9 +60,7 @@ function mountStage() {
   stage = createMeadowStage({
     field: fieldEl.value,
     animals: seeds(),
-    onSpeak: (line) => {
-      void speak(line)
-    },
+    onSpeak: (line) => say(line),
     onSave: (spots) => saveMeadowLayout(spots),
   })
 }
@@ -76,7 +99,103 @@ onUnmounted(() => {
   window.clearTimeout(hatchTimer)
   stage?.destroy()
   stage = null
+  foodDrag = null
+  for (const ghost of ghosts) ghost.remove()
+  ghosts.length = 0
 })
+
+function say(line: string) {
+  speechQueue.push(line)
+  if (speaking) return
+  speaking = true
+  const pump = () => {
+    const next = speechQueue.shift()
+    if (!next) {
+      speaking = false
+      return
+    }
+    void speak(next).finally(pump)
+  }
+  pump()
+}
+
+function placeGhost(ghost: HTMLImageElement, x: number, y: number, scale: number) {
+  ghost.style.left = `${x}px`
+  ghost.style.top = `${y}px`
+  ghost.style.transform = `translate(-50%, -62%) scale(${scale})`
+}
+
+function makeGhost(file: string, x: number, y: number) {
+  const ghost = document.createElement('img')
+  ghost.className = 'food-ghost'
+  ghost.alt = ''
+  ghost.draggable = false
+  ghost.src = meadowSrc(file)
+  placeGhost(ghost, x, y, 1.18)
+  document.body.appendChild(ghost)
+  ghosts.push(ghost)
+  return ghost
+}
+
+function dropGhost(ghost: HTMLImageElement) {
+  const index = ghosts.indexOf(ghost)
+  if (index >= 0) ghosts.splice(index, 1)
+  ghost.remove()
+}
+
+function flyGhost(ghost: HTMLImageElement, x: number, y: number, scale: number, arc: boolean) {
+  const fromX = Number.parseFloat(ghost.style.left)
+  const fromY = Number.parseFloat(ghost.style.top)
+  const dx = x - fromX
+  const dy = y - fromY
+  const end = `translate(calc(-50% + ${dx}px), calc(-62% + ${dy}px)) scale(${scale})`
+  const frames: Keyframe[] = arc
+    ? [
+        { transform: 'translate(-50%, -62%) scale(1.18)' },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-62% + ${dy - 16}px)) scale(${scale + 0.08})`, offset: 0.7 },
+        { transform: end },
+      ]
+    : [{ transform: 'translate(-50%, -62%) scale(1.18)' }, { transform: end }]
+  const anim = ghost.animate(frames, {
+    duration: arc ? 420 : 280,
+    easing: arc ? 'cubic-bezier(0.2, 1.35, 0.36, 1)' : 'ease-in',
+  })
+  void anim.finished.finally(() => dropGhost(ghost))
+}
+
+function onFoodDown(id: MeadowFoodId, name: string, file: string, event: PointerEvent) {
+  if (foodDrag || event.button !== 0) return
+  const slot = event.currentTarget
+  if (!(slot instanceof HTMLElement)) return
+  event.preventDefault()
+  slot.setPointerCapture(event.pointerId)
+  const ghost = makeGhost(file, event.clientX, event.clientY)
+  foodDrag = { id, name, file, pointerId: event.pointerId, slot, ghost }
+  say(name)
+  stage?.hoverFood(event.clientX, event.clientY)
+}
+
+function onFoodMove(event: PointerEvent) {
+  if (!foodDrag || foodDrag.pointerId !== event.pointerId) return
+  placeGhost(foodDrag.ghost, event.clientX, event.clientY, 1.18)
+  stage?.hoverFood(event.clientX, event.clientY)
+}
+
+function onFoodUp(event: PointerEvent) {
+  if (!foodDrag || foodDrag.pointerId !== event.pointerId) return
+  const drag = foodDrag
+  foodDrag = null
+  if (drag.slot.hasPointerCapture(event.pointerId)) drag.slot.releasePointerCapture(event.pointerId)
+  stage?.clearFoodHover()
+  const dropped = stage?.dropFood(drag.id, event.clientX, event.clientY) ?? { result: 'miss' as const }
+  if (dropped.result === 'eaten') {
+    flyGhost(drag.ghost, dropped.mouth.x, dropped.mouth.y, 0.15, false)
+    return
+  }
+  if (dropped.result === 'miss') playBoing()
+  const home = drag.slot.getBoundingClientRect()
+  flyGhost(drag.ghost, home.left + home.width / 2, home.top + home.height / 2, 0.72, true)
+}
 
 function goHome() {
   void router.push('/')
@@ -140,6 +259,21 @@ function onHatched() {
             </div>
             <p>完成第1章，就能孵出第一只小动物！</p>
           </div>
+        </div>
+        <div class="tray" aria-label="食物">
+          <button
+            v-for="food in foods"
+            :key="food.id"
+            class="food"
+            type="button"
+            :aria-label="food.name"
+            @pointerdown="onFoodDown(food.id, food.name, food.file, $event)"
+            @pointermove="onFoodMove"
+            @pointerup="onFoodUp"
+            @pointercancel="onFoodUp"
+          >
+            <img :src="meadowSrc(food.file)" alt="" draggable="false" />
+          </button>
         </div>
         <div class="dock">
           <button
@@ -297,6 +431,34 @@ function onHatched() {
   font-size: 20px;
   font-weight: 750;
   line-height: 1.35;
+}
+
+.tray {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 6px 8px 4px;
+  background: rgba(255, 247, 224, 0.9);
+}
+
+.food {
+  flex: 1 1 0;
+  min-width: 48px;
+  height: 58px;
+  padding: 2px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 0 rgba(214, 164, 72, 0.28);
+  touch-action: none;
+}
+
+.food img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .dock {
@@ -465,6 +627,43 @@ function onHatched() {
   to {
     transform: translate(-50%, -58px) scale(1.15);
     opacity: 0;
+  }
+}
+
+.food-ghost {
+  position: fixed;
+  z-index: 70;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.meadow-crumb {
+  position: absolute;
+  z-index: 46;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #e2b56a;
+  box-shadow: 0 0 0 2px rgba(255, 248, 230, 0.7);
+  pointer-events: none;
+  animation: meadow-crumb 0.55s ease-out forwards;
+}
+
+@keyframes meadow-crumb {
+  to {
+    transform: translate(var(--dx), var(--dy)) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@media (orientation: landscape) {
+  .food {
+    flex-basis: 52px;
+    width: 52px;
+    height: 52px;
   }
 }
 </style>

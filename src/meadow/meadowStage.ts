@@ -1,5 +1,13 @@
-import { introLine, meadowSrc, type MeadowAnimalId } from './meadowConfig'
-import { playPetChirp } from './meadowAudio'
+import {
+  introLine,
+  isFavoriteFood,
+  meadowSrc,
+  onFeed,
+  yumLine,
+  type MeadowAnimalId,
+  type MeadowFoodId,
+} from './meadowConfig'
+import { playChomp, playPetChirp, playSleepySigh } from './meadowAudio'
 
 export type MeadowActorSeed = {
   id: MeadowAnimalId
@@ -14,7 +22,7 @@ export type MeadowSpot = {
   y: number
 }
 
-type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag'
+type Mode = 'idle' | 'walk' | 'sit' | 'look' | 'nap' | 'hop' | 'pet' | 'drag' | 'eat'
 
 type Actor = {
   id: MeadowAnimalId
@@ -37,6 +45,14 @@ type Actor = {
   hopUntil: number
   introNext: boolean
   lean: number
+  /** Recent successful bites. In memory only. Cleared when a full nap starts. */
+  fedAt: number[]
+  fullUntil: number
+  eatStart: number
+  eatUntil: number
+  favoriteBite: boolean
+  wiggleUntil: number
+  pendingFull: boolean
 }
 
 type Session = {
@@ -53,11 +69,21 @@ type Session = {
   lastHeart: number
 }
 
+export type FeedMouth = { x: number; y: number }
+
+export type FeedDrop =
+  | { result: 'eaten'; animalId: MeadowAnimalId; favorite: boolean; mouth: FeedMouth }
+  | { result: 'sleepy'; mouth: FeedMouth }
+  | { result: 'miss' }
+
 export type MeadowStage = {
   destroy: () => void
   setPaused: (paused: boolean) => void
   callToCenter: (id: string) => void
   upsert: (animal: MeadowActorSeed) => void
+  hoverFood: (clientX: number, clientY: number) => void
+  clearFoodHover: () => void
+  dropFood: (foodId: MeadowFoodId, clientX: number, clientY: number) => FeedDrop
 }
 
 const HOLD_MS = 350
@@ -89,6 +115,7 @@ export function createMeadowStage(options: {
   let session: Session | null = null
   let raf = 0
   let lastFrame = performance.now()
+  let foodHover: { x: number; y: number } | null = null
 
   const resize = new ResizeObserver(() => measure())
 
@@ -160,6 +187,17 @@ export function createMeadowStage(options: {
     } else if (actor.mode === 'nap') {
       sx = 1.1
       sy = 0.82
+      if (now < actor.wiggleUntil) rot = Math.sin(now / 55) * 10
+    } else if (actor.mode === 'eat') {
+      const span = Math.max(1, actor.eatUntil - actor.eatStart)
+      const p = clamp((now - actor.eatStart) / span, 0, 1)
+      const wave = Math.abs(Math.sin(p * Math.PI * 3))
+      sx = 1 + 0.14 * wave
+      sy = 1 - 0.24 * wave
+      if (actor.favoriteBite) {
+        lift = Math.sin(p * Math.PI) * 20
+        rot = Math.sin(p * Math.PI * 2) * 18
+      }
     } else if (actor.mode === 'sit') {
       const wave = Math.sin(now / 280)
       sx = 1 - wave * 0.03
@@ -251,6 +289,7 @@ export function createMeadowStage(options: {
   }
 
   function spawnHeart(actor: Actor) {
+    if (!field.isConnected) return
     const heart = document.createElement('span')
     heart.className = 'meadow-heart'
     heart.textContent = '♥'
@@ -403,6 +442,13 @@ export function createMeadowStage(options: {
       hopUntil: 0,
       introNext: true,
       lean: 1,
+      fedAt: [],
+      fullUntil: 0,
+      eatStart: 0,
+      eatUntil: 0,
+      favoriteBite: false,
+      wiggleUntil: 0,
+      pendingFull: false,
     }
     pin(actor, seed.x, seed.y)
     el.addEventListener('pointerdown', (ev) => onPointerDown(actor, ev))
@@ -413,8 +459,39 @@ export function createMeadowStage(options: {
     paint(actor, performance.now())
   }
 
+  function resting(actor: Actor, now: number) {
+    return actor.mode === 'nap' || now < actor.fullUntil
+  }
+
+  function settleFull(actor: Actor, now: number) {
+    if (now >= actor.fullUntil) return
+    if (actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'hop' || actor.mode === 'eat') return
+    actor.mode = 'nap'
+    actor.poseUntil = actor.fullUntil
+  }
+
+  function finishEat(actor: Actor, now: number) {
+    actor.favoriteBite = false
+    if (actor.pendingFull) {
+      actor.pendingFull = false
+      actor.fullUntil = now + 20000
+      actor.mode = 'nap'
+      actor.poseUntil = actor.fullUntil
+      return
+    }
+    if (now < actor.fullUntil) {
+      actor.mode = 'nap'
+      actor.poseUntil = actor.fullUntil
+      return
+    }
+    actor.mode = 'idle'
+    schedule(actor, now)
+  }
+
   function tick(actor: Actor, dt: number, now: number) {
-    const busy = actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'hop'
+    settleFull(actor, now)
+    const busy = actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'hop' || actor.mode === 'eat'
+    if (actor.mode === 'eat' && now >= actor.eatUntil) finishEat(actor, now)
     if (!busy && !paused) {
       if (actor.mode === 'walk') {
         const tx = (actor.walkTx / 100) * fieldW
@@ -446,9 +523,30 @@ export function createMeadowStage(options: {
     paint(actor, now)
   }
 
+  function attract(now: number) {
+    if (!foodHover || paused) return
+    let best: Actor | null = null
+    let bestD = 170
+    for (const actor of actors.values()) {
+      if (resting(actor, now)) continue
+      if (actor.mode === 'pet' || actor.mode === 'drag' || actor.mode === 'eat' || actor.mode === 'hop') continue
+      const d = Math.hypot(actor.px - foodHover.x, actor.py - foodHover.y)
+      if (d < bestD && d > 40) {
+        best = actor
+        bestD = d
+      }
+    }
+    if (!best || !foodHover) return
+    best.mode = 'walk'
+    best.walkTx = clamp((foodHover.x / fieldW) * 100, 12, 88)
+    best.walkTy = clamp((foodHover.y / fieldH) * 100, 24, 90)
+    best.hopUntil = 0
+  }
+
   function frame(now: number) {
     const dt = Math.min(0.05, (now - lastFrame) / 1000)
     lastFrame = now
+    attract(now)
     for (const actor of actors.values()) tick(actor, dt, now)
     if (dirty && now - lastSave > 2000) flush()
     raf = requestAnimationFrame(frame)
@@ -475,7 +573,8 @@ export function createMeadowStage(options: {
 
   function callToCenter(id: string) {
     const actor = actors.get(id)
-    if (!actor || actor.mode === 'drag' || actor.mode === 'pet') return
+    if (!actor || actor.mode === 'drag' || actor.mode === 'pet' || actor.mode === 'eat') return
+    if (performance.now() < actor.fullUntil) return
     const now = performance.now()
     wake(actor, now)
     actor.mode = 'walk'
@@ -497,7 +596,101 @@ export function createMeadowStage(options: {
     flush()
     for (const actor of actors.values()) actor.el.remove()
     actors.clear()
-    field.querySelectorAll('.meadow-heart').forEach((node) => node.remove())
+    field.querySelectorAll('.meadow-heart, .meadow-crumb').forEach((node) => node.remove())
+  }
+
+  function hitActor(clientX: number, clientY: number): Actor | null {
+    let best: Actor | null = null
+    let bestD = Infinity
+    for (const actor of actors.values()) {
+      const rect = actor.el.getBoundingClientRect()
+      const pad = 22
+      if (clientX < rect.left - pad || clientX > rect.right + pad || clientY < rect.top - pad || clientY > rect.bottom + pad) {
+        continue
+      }
+      const cx = (rect.left + rect.right) / 2
+      const cy = (rect.top + rect.bottom) / 2
+      const d = Math.hypot(clientX - cx, clientY - cy)
+      if (!best || d < bestD - 6 || (Math.abs(d - bestD) <= 6 && actor.py > best.py)) {
+        best = actor
+        bestD = d
+      }
+    }
+    return best
+  }
+
+  function mouthOf(actor: Actor): FeedMouth {
+    const rect = actor.el.getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.42 }
+  }
+
+  function spawnCrumbs(actor: Actor) {
+    for (let i = 0; i < 5; i += 1) {
+      const crumb = document.createElement('i')
+      crumb.className = 'meadow-crumb'
+      const angle = -Math.PI / 2 + (i - 2) * 0.45
+      const dist = 28 + Math.random() * 22
+      crumb.style.left = `${actor.px}px`
+      crumb.style.top = `${actor.py - sprite * 0.55}px`
+      crumb.style.setProperty('--dx', `${Math.cos(angle) * dist}px`)
+      crumb.style.setProperty('--dy', `${Math.sin(angle) * dist}px`)
+      field.appendChild(crumb)
+      crumb.addEventListener('animationend', () => crumb.remove())
+    }
+  }
+
+  function noteBite(actor: Actor, now: number) {
+    actor.fedAt = actor.fedAt.filter((at) => now - at < 120000)
+    actor.fedAt.push(now)
+    if (actor.fedAt.length >= 3) {
+      actor.pendingFull = true
+      actor.fedAt = []
+    }
+  }
+
+  function hoverFood(clientX: number, clientY: number) {
+    const rect = field.getBoundingClientRect()
+    foodHover = { x: clientX - rect.left, y: clientY - rect.top }
+  }
+
+  function clearFoodHover() {
+    foodHover = null
+  }
+
+  function dropFood(foodId: MeadowFoodId, clientX: number, clientY: number): FeedDrop {
+    clearFoodHover()
+    const actor = hitActor(clientX, clientY)
+    if (!actor) return { result: 'miss' }
+    const now = performance.now()
+    const mouth = mouthOf(actor)
+    if (actor.mode === 'eat') return { result: 'miss' }
+    if (resting(actor, now)) {
+      actor.wiggleUntil = now + 700
+      if (actor.mode !== 'pet' && actor.mode !== 'drag' && actor.mode !== 'hop') {
+        actor.mode = 'nap'
+        actor.poseUntil = Math.max(actor.poseUntil, now + 700, actor.fullUntil)
+      }
+      playSleepySigh()
+      return { result: 'sleepy', mouth }
+    }
+    const favorite = isFavoriteFood(actor.id, foodId)
+    const fieldRect = field.getBoundingClientRect()
+    actor.face = clientX - fieldRect.left > actor.px ? -1 : 1
+    actor.mode = 'eat'
+    actor.eatStart = now
+    actor.eatUntil = now + (favorite ? 820 : 680)
+    actor.favoriteBite = favorite
+    lastUserAt = now
+    noteBite(actor, now)
+    spawnHeart(actor)
+    if (favorite) {
+      for (let i = 0; i < 5; i += 1) window.setTimeout(() => spawnHeart(actor), 70 * (i + 1))
+    }
+    spawnCrumbs(actor)
+    playChomp()
+    onSpeak(yumLine(foodId, favorite))
+    onFeed(actor.id, foodId, favorite)
+    return { result: 'eaten', animalId: actor.id, favorite, mouth }
   }
 
   measure()
@@ -505,5 +698,5 @@ export function createMeadowStage(options: {
   resize.observe(field)
   raf = requestAnimationFrame(frame)
 
-  return { destroy, setPaused, callToCenter, upsert }
+  return { destroy, setPaused, callToCenter, upsert, hoverFood, clearFoodHover, dropFood }
 }

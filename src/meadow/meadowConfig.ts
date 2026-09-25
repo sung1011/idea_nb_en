@@ -30,7 +30,7 @@ export type MeadowAnimalSave = {
   /** Feet position, percent of the play field. */
   x: number
   y: number
-  /** Reserved for phase 2. Unused in phase 1. */
+  /** Reserved for phase 3. Unused while feeding. */
   hearts: number
 }
 
@@ -202,11 +202,56 @@ export function meadowIsOpen(meadow: MeadowSave, day: string): boolean {
   return meadow.clearsDate === day && meadow.clearsToday > 0
 }
 
+export const MEADOW_FOODS = [
+  { id: 'fish', name: 'fish', file: 'food-fish' },
+  { id: 'egg', name: 'egg', file: 'food-egg' },
+  { id: 'bun', name: 'bun', file: 'food-bun' },
+  { id: 'ham', name: 'ham', file: 'food-ham' },
+  { id: 'fig', name: 'fig', file: 'food-fig' },
+  { id: 'cake', name: 'cake', file: 'food-cake' },
+] as const
+
+export type MeadowFoodId = (typeof MEADOW_FOODS)[number]['id']
+
+/** Phase 3 wears these. Files live in `public/meadow/` already. */
+export const MEADOW_ACCESSORIES = [
+  { id: 'hat', file: 'acc-hat' },
+  { id: 'bow', file: 'acc-bow' },
+  { id: 'scarf', file: 'acc-scarf' },
+] as const
+
+const FAVORITE_FOOD: Record<MeadowAnimalId, MeadowFoodId> = {
+  bunny: 'fig',
+  leopard: 'ham',
+  pig: 'cake',
+  hen: 'bun',
+  fox: 'egg',
+  bear: 'fish',
+  yak: 'fig',
+  frog: 'fish',
+  duck: 'bun',
+  ox: 'fig',
+  bird: 'cake',
+  panda: 'bun',
+}
+
+export function favoriteFood(animalId: MeadowAnimalId): MeadowFoodId {
+  return FAVORITE_FOOD[animalId]
+}
+
+export function isFavoriteFood(animalId: MeadowAnimalId, foodId: string): boolean {
+  return FAVORITE_FOOD[animalId] === foodId
+}
+
+export function yumLine(foodName: string, favorite: boolean): string {
+  return favorite ? `Yum! I love ${foodName}!` : 'Yum!'
+}
+
 /**
- * Phase 2 will feed an animal from here.
- * Phase 1 never calls it.
+ * Phase 3 can add hearts from here.
+ * Feeding calls this after a successful bite. It does not write progress.
  */
-export function onFeed(_animalId: string): void {}
+export function onFeed(_animalId: string, _foodId: string, _isFavorite: boolean): void {}
 
 /**
  * Phase 3 will start play-fighting from here.
