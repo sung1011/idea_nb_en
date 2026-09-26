@@ -11,6 +11,7 @@ const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAI
 type ManifestClips = Record<string, string>
 
 let clips: ManifestClips | null = null
+let manifestReady: Promise<void> | null = null
 let audio: HTMLAudioElement | null = null
 let unlocked = false
 let seq = 0
@@ -41,16 +42,19 @@ function clipUrl(file: string): string {
   return `${base}${file.replace(/^\//, '')}`
 }
 
-function loadManifest(): void {
-  const url = clipUrl('audio/manifest.json')
-  void fetch(url)
-    .then((res) => (res.ok ? res.json() : null))
-    .then((data: { clips?: ManifestClips } | null) => {
-      clips = data && data.clips && typeof data.clips === 'object' ? data.clips : {}
-    })
-    .catch(() => {
-      clips = {}
-    })
+function loadManifest(): Promise<void> {
+  if (!manifestReady) {
+    const url = clipUrl('audio/manifest.json')
+    manifestReady = fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { clips?: ManifestClips } | null) => {
+        clips = data && data.clips && typeof data.clips === 'object' ? data.clips : {}
+      })
+      .catch(() => {
+        clips = {}
+      })
+  }
+  return manifestReady
 }
 
 function element(): HTMLAudioElement {
@@ -83,7 +87,7 @@ function unlockAudio(): void {
 }
 
 if (typeof window !== 'undefined') {
-  loadManifest()
+  void loadManifest()
   window.addEventListener('pointerdown', unlockAudio, { capture: true })
 }
 
@@ -146,12 +150,15 @@ export function speak(text: string, lang = 'en-US', rate = 0.86): Promise<void> 
   if (!line) return Promise.resolve()
   return new Promise((resolve) => {
     currentResolve = resolve
-    const file = clips?.[speechLookupKey(line, lang)]
-    if (!file) {
-      systemSpeak(line, lang, rate, token)
-      return
-    }
-    playClip(file, line, lang, rate, token)
+    void loadManifest().then(() => {
+      if (seq !== token) return
+      const file = clips?.[speechLookupKey(line, lang)]
+      if (!file) {
+        systemSpeak(line, lang, rate, token)
+        return
+      }
+      playClip(file, line, lang, rate, token)
+    })
   })
 }
 

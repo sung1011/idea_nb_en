@@ -1,6 +1,7 @@
 import { CHAPTERS } from '../src/data/chapters'
 import { MATH_LESSONS, countPieces } from '../src/data/mathLessons'
-import { families, wordZh } from '../src/data/phonicsFamily'
+import { families, getCurrentFamily, wordZh } from '../src/data/phonicsFamily'
+import { bookCoverLine, findOpeningLine } from '../src/data/spokenLines'
 import { finishPhrases, softPhrases, stepPhrases } from '../src/data/praisePhrases'
 import { sentenceForWord, shortSentences } from '../src/data/shortSentences'
 import { gateBookBlendHint } from '../src/data/todayTasks'
@@ -35,16 +36,6 @@ export const dynamicFallbacks = [
     where: '音族热身',
     example: 'k、qu、ch',
     why: '音素不是单词，不生成',
-  },
-  {
-    where: '找一找开场',
-    example: 'Find the cap, map, nap',
-    why: '三个词临时拼在一起，组合不固定',
-  },
-  {
-    where: '小书封面',
-    example: '小书：《字母 O · I》',
-    why: '课名拼进句子，每次书名不同',
   },
 ] as const
 
@@ -160,6 +151,16 @@ addClip('zero', 'en-US')
 addClip('Look!', 'en-US')
 addClip('Read a word!', 'en-US')
 addClip(gateBookBlendHint(), 'zh-CN')
+
+for (const chapter of CHAPTERS) {
+  if (chapter.kidTitle) addClip(bookCoverLine(chapter.kidTitle), 'zh-CN')
+  for (const lesson of chapter.lessons) {
+    if (lesson.words.length) addClip(findOpeningLine(lesson.words), 'en-US')
+    if (lesson.titleZh) addClip(bookCoverLine(lesson.titleZh), 'zh-CN')
+  }
+}
+addClip(findOpeningLine(getCurrentFamily().targets.slice(0, 3)), 'en-US')
+addClip(bookCoverLine('小小书'), 'zh-CN')
 
 for (const word of words) addWord(word)
 

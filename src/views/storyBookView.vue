@@ -12,6 +12,7 @@ import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, lessonKidTitle } from '../data/ch
 import { levelWordList } from '../data/gateWords'
 import { preloadWordCards } from '../data/phonicsFamily'
 import { sentenceForWord } from '../data/shortSentences'
+import { bookCoverLine } from '../data/spokenLines'
 import {
   gateBookBlendHint,
   gateBookCoverHint,
@@ -159,7 +160,7 @@ function markPageHeard(word: string) {
 async function hearTitle() {
   if (locked.value) return
   playPop()
-  await speakZh(`小书：《${bookTitle.value}》`)
+  await speakZh(bookCoverLine(bookTitle.value))
 }
 
 async function hearWord(word: string) {

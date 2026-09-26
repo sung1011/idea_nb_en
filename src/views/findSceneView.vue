@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import findSceneStage from '../components/findSceneStage.vue'
 import starBar from '../components/starBar.vue'
 import { tweenCelebrate } from '../composables/useMotion'
@@ -8,12 +8,25 @@ import { usePlayMode } from '../composables/usePlayMode'
 import { pickPraise, playNudge, playPop, playSuccess, speak, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import wordPic from '../components/wordPic.vue'
-import { sampleWords } from '../data/phonicsFamily'
+import { getLesson, getLevel } from '../data/chapters'
+import { getCurrentFamily } from '../data/phonicsFamily'
+import { findOpeningLine, findTargetWords } from '../data/spokenLines'
 
 const router = useRouter()
+const route = useRoute()
 const { afterGate, backPath, backLabel } = usePlayMode()
 
-const targets = sampleWords(3)
+function lessonWordsFromQuery(): string[] {
+  const raw = route.query.level
+  const id = Array.isArray(raw) ? raw[0] : raw
+  if (typeof id !== 'string' || !id) return []
+  const lesson = getLesson(getLevel(id)?.lessonId) ?? getLesson(id)
+  return lesson?.words ?? []
+}
+
+const fromLesson = lessonWordsFromQuery()
+const targets = fromLesson.length ? findTargetWords(fromLesson) : findTargetWords(getCurrentFamily().targets.slice(0, 3))
+const openingLine = findOpeningLine(targets)
 const found = ref<string[]>([])
 const celebrating = ref(false)
 const prompt = ref(`Find ${targets.join(', ')}!`)
@@ -52,7 +65,7 @@ function onMiss() {
 }
 
 onMounted(() => {
-  void speak(`Find the ${targets.join(', ')}`)
+  void speak(openingLine)
 })
 
 onUnmounted(() => {
