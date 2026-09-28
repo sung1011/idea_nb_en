@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listChapters, DEFAULT_COMPLETED_CHAPTERS } from '../data/chapters'
+import { appVersionLabel, checkForAppUpdate, noteSettingsOpen } from '../composables/usePwaUpdate'
 import { playPop } from '../composables/useSfx'
 import { decorHitZonesVisible, setDecorHitZonesVisible } from '../meadow/meadowConfig'
 import {
@@ -25,6 +26,10 @@ const pickedLessonId = ref(getFrontierLesson().id)
 const router = useRouter()
 const chapters = listChapters()
 const openingChapters = DEFAULT_COMPLETED_CHAPTERS
+const versionLabel = appVersionLabel()
+const checking = ref(false)
+const toast = ref('')
+let toastTimer = 0
 const lessonGroups = computed(() =>
   chapters.map((chapter, index) => ({
     label: `第${index + 1}章 ${chapter.kidTitle}`,
@@ -51,6 +56,7 @@ watch(step, () => {
 })
 
 watch(open, (value) => {
+  noteSettingsOpen(value)
   if (value) {
     step.value = 'main'
     window.addEventListener('keydown', onKey)
@@ -60,8 +66,31 @@ watch(open, (value) => {
 })
 
 onUnmounted(() => {
+  noteSettingsOpen(false)
   window.removeEventListener('keydown', onKey)
+  window.clearTimeout(toastTimer)
 })
+
+function showToast(message: string) {
+  toast.value = message
+  window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    toast.value = ''
+  }, 2200)
+}
+
+async function checkUpdate() {
+  if (checking.value) return
+  playPop()
+  checking.value = true
+  try {
+    const result = await checkForAppUpdate()
+    if (result === 'updated') return
+    showToast('已经是最新版本')
+  } finally {
+    checking.value = false
+  }
+}
 
 function close() {
   open.value = false
@@ -145,6 +174,7 @@ function applyLesson() {
 
 <template>
   <Teleport to="body">
+    <p v-if="toast" class="update-toast" role="status">{{ toast }}</p>
     <div
       v-if="open"
       class="settings-mask"
@@ -184,6 +214,8 @@ function applyLesson() {
           <big-button variant="primary" @click="askLesson">设置当前课</big-button>
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
           <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>
+          <p class="version">当前版本 {{ versionLabel }}</p>
+          <big-button variant="soft" :disabled="checking" @click="checkUpdate">检查更新</big-button>
           <big-button variant="soft" @click="close">先不了</big-button>
         </template>
         <template v-else-if="step === 'pickLesson'">
@@ -310,6 +342,32 @@ function applyLesson() {
 .pick-label {
   font-size: 14px;
   font-weight: 750;
+}
+
+.version {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 80;
+  margin: 0;
+  max-width: min(320px, calc(100% - 32px));
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #fffdf6;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+  text-align: center;
+  box-shadow: 0 8px 0 rgba(45, 58, 74, 0.16);
+  transform: translate3d(-50%, 0, 0);
 }
 
 .settings-card {

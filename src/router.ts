@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { noteNavigation } from './composables/usePwaUpdate'
 import animalIslandView from './views/animalIslandView.vue'
 import chapterFinaleView from './views/chapterFinaleView.vue'
 import dayCompleteView from './views/dayCompleteView.vue'
@@ -51,4 +52,8 @@ export const router = createRouter({
 
 router.beforeEach((to) => {
   if (to.query.review === '1') return { path: '/' }
+})
+
+router.afterEach((to) => {
+  noteNavigation(to.path)
 })
