@@ -676,9 +676,22 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   for (const lesson of listLessons()) {
     const everyLevelCleared =
       lesson.levels.length > 0 && lesson.levels.every((level) => incoming[level.id] === 'cleared')
-    const wantCleared = prevCleared && (flagged.has(lesson.id) || everyLevelCleared)
+    const olderPlays = lesson.levels.filter((level) => level.play !== 'trainDelivery')
+    const olderPlaysCleared =
+      olderPlays.length > 0 && olderPlays.every((level) => incoming[level.id] === 'cleared')
+    const wantCleared = prevCleared && (flagged.has(lesson.id) || everyLevelCleared || olderPlaysCleared)
     if (wantCleared) {
-      for (const level of lesson.levels) nextLevels[level.id] = 'cleared'
+      let opened = false
+      for (const level of lesson.levels) {
+        if (incoming[level.id] === 'cleared') {
+          nextLevels[level.id] = 'cleared'
+          continue
+        }
+        if (!opened) {
+          nextLevels[level.id] = 'unlocked'
+          opened = true
+        }
+      }
       clearedLessonIds.push(lesson.id)
       prevCleared = true
       continue
@@ -761,14 +774,64 @@ function syncRewardsFromClearedLessons(data: PersistShape) {
   }
 }
 
+function levelOrderKey(id: string): { lessonId: string; order: number } | null {
+  const match = /^(ch\d+-k\d+)-([1-9]\d*)$/.exec(id)
+  if (!match) return null
+  return { lessonId: match[1], order: Number(match[2]) }
+}
+
+/** Old 5-level lessons, before 小火车送货 was inserted after the flash card. */
+function saveNeedsTrainShift(raw: Record<string, unknown>): boolean {
+  let hasFive = false
+  let hasSix = false
+  for (const id of Object.keys(raw)) {
+    const parsed = levelOrderKey(id)
+    if (!parsed || !isKnownLessonId(parsed.lessonId)) continue
+    if (parsed.order === 5) hasFive = true
+    if (parsed.order === 6) hasSix = true
+  }
+  return hasFive && !hasSix
+}
+
+function shiftIdForTrain(id: string): string {
+  const parsed = levelOrderKey(id)
+  if (!parsed || !isKnownLessonId(parsed.lessonId)) return id
+  if (parsed.order <= 1 || parsed.order > 5) return id
+  return `${parsed.lessonId}-${parsed.order + 1}`
+}
+
+function shiftLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
+  if (!saveNeedsTrainShift(raw)) return raw
+  const next: Record<string, unknown> = {}
+  for (const [id, status] of Object.entries(raw)) {
+    next[shiftIdForTrain(id)] = status
+  }
+  return next
+}
+
+function shiftIdList(ids: string[], rawLevels: Record<string, unknown>): string[] {
+  if (!saveNeedsTrainShift(rawLevels)) return ids
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const id of ids) {
+    const shifted = shiftIdForTrain(id)
+    if (seen.has(shifted)) continue
+    seen.add(shifted)
+    out.push(shifted)
+  }
+  return out
+}
+
 function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): ChapterSave {
   // v2–v5 chapter ids (chN-1…) do not match lesson ids (chN-kM-x). Reset the path; keep stars outside.
   if (persistVersion < 6 || !raw || typeof raw !== 'object') return emptyChapterSave()
   const parsed = raw as Partial<ChapterSave>
   if (!parsed.levels || typeof parsed.levels !== 'object') return emptyChapterSave()
 
+  const rawLevels = parsed.levels as Record<string, unknown>
+  const shiftedLevels = shiftLevelMap(rawLevels)
   const levels: Record<string, LevelStatus> = emptyAllLevels()
-  for (const [id, status] of Object.entries(parsed.levels as Record<string, unknown>)) {
+  for (const [id, status] of Object.entries(shiftedLevels)) {
     if (!isLevelStatus(status) || !isKnownLevelId(id)) continue
     levels[id] = status
   }
@@ -777,8 +840,9 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
     parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {}
   const firstClearAt: Record<string, string> = {}
   for (const [id, when] of Object.entries(rawAt)) {
-    if (!isKnownLevelId(id) || typeof when !== 'string' || !when) continue
-    firstClearAt[id] = when
+    const shifted = shiftIdList([id], rawLevels)[0] ?? id
+    if (!isKnownLevelId(shifted) || typeof when !== 'string' || !when) continue
+    firstClearAt[shifted] = when
   }
   const currentLessonId =
     typeof parsed.currentLessonId === 'string' && isKnownLessonId(parsed.currentLessonId)
@@ -797,7 +861,9 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
         ? parsed.highestUnlocked
         : first.id,
     levels,
-    firstClearStars: asStringArray(parsed.firstClearStars).filter((id) => isKnownLevelId(id)),
+    firstClearStars: shiftIdList(asStringArray(parsed.firstClearStars), rawLevels).filter((id) =>
+      isKnownLevelId(id),
+    ),
     chapterStickers: asStringArray(parsed.chapterStickers),
     firstClearAt,
     celebrated: Boolean(parsed.celebrated),
@@ -899,6 +965,7 @@ function nextMainlineLevel(save: ChapterSave): LevelDef | null {
   for (const lesson of listLessons()) {
     const prior = listLessons()[lesson.index - 2]
     if (prior && !isLessonClearedInSave(save, prior.id)) return null
+    if (isLessonClearedInSave(save, lesson.id)) continue
     if (lesson.levels.length === 0) {
       if (!isLessonClearedInSave(save, lesson.id)) return null
       continue

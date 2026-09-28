@@ -3,6 +3,7 @@ import { RISE_CHAPTER_STICKERS } from './stickers'
 
 export type PlayKind =
   | 'flashFlip'
+  | 'trainDelivery'
   | 'whackWord'
   | 'soundSpell'
   | 'wordFish'
@@ -59,6 +60,7 @@ export const DEFAULT_COMPLETED_CHAPTERS = 2
 
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
+  trainDelivery: '/train-delivery',
   whackWord: '/whack-word',
   soundSpell: '/sound-spell',
   wordFish: '/sound-fish',
@@ -72,6 +74,7 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
 
 const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
+  trainDelivery: { titleEn: 'Train Delivery', titleZh: '小火车送货' },
   whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
   soundSpell: { titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
   wordFish: { titleEn: 'Word Fish', titleZh: '读词钓鱼' },
@@ -165,12 +168,37 @@ function uniqueWords(list: Array<string | undefined>): string[] {
   return out
 }
 
+/**
+ * Flash card first, then 小火车送货.
+ * The next two modes slot in after the train, before the lesson's older plays.
+ */
+function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
+  const flashAt = specs.findIndex((spec) => spec.play === 'flashFlip' || spec.play === 'numberFlash')
+  if (flashAt < 0) return specs
+  const flash = specs[flashAt]
+  const early: LessonLevelSpec[] = []
+  if (!specs.some((spec) => spec.play === 'trainDelivery')) {
+    early.push({
+      play: 'trainDelivery',
+      notes: 'load the word crates',
+      focusWord: flash.focusWord,
+      words: flash.words,
+      appearWords: flash.appearWords,
+      numbers: flash.numbers,
+    })
+  }
+  if (!early.length) return specs
+  const next = specs.slice()
+  next.splice(flashAt + 1, 0, ...early)
+  return next
+}
+
 export function buildLessonLevels(
   chapterId: string,
   lessonId: string,
   specs: LessonLevelSpec[],
 ): LevelDef[] {
-  return specs.map((spec, index) => {
+  return withEarlyPlays(specs).map((spec, index) => {
     const meta = PLAY_META[spec.play]
     const order = index + 1
     return {
