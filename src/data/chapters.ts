@@ -4,6 +4,7 @@ import { RISE_CHAPTER_STICKERS } from './stickers'
 export type PlayKind =
   | 'flashFlip'
   | 'trainDelivery'
+  | 'monsterFeeding'
   | 'whackWord'
   | 'soundSpell'
   | 'wordFish'
@@ -61,6 +62,7 @@ export const DEFAULT_COMPLETED_CHAPTERS = 2
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
   trainDelivery: '/train-delivery',
+  monsterFeeding: '/monster-feeding',
   whackWord: '/whack-word',
   soundSpell: '/sound-spell',
   wordFish: '/sound-fish',
@@ -75,6 +77,7 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
 const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
   trainDelivery: { titleEn: 'Train Delivery', titleZh: '小火车送货' },
+  monsterFeeding: { titleEn: 'Monster Feeding', titleZh: '怪兽吃饭' },
   whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
   soundSpell: { titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
   wordFish: { titleEn: 'Word Fish', titleZh: '读词钓鱼' },
@@ -169,13 +172,14 @@ function uniqueWords(list: Array<string | undefined>): string[] {
 }
 
 /**
- * Flash card first, then 小火车送货.
- * The next two modes slot in after the train, before the lesson's older plays.
+ * Flash card first, then 小火车送货, then 怪兽吃饭.
+ * 泡泡射击 slots in after the monster, before the lesson's older plays.
  */
 function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
   const flashAt = specs.findIndex((spec) => spec.play === 'flashFlip' || spec.play === 'numberFlash')
   if (flashAt < 0) return specs
   const flash = specs[flashAt]
+  const story = specs.find((spec) => spec.storyPages?.length)
   const early: LessonLevelSpec[] = []
   if (!specs.some((spec) => spec.play === 'trainDelivery')) {
     early.push({
@@ -185,6 +189,17 @@ function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
       words: flash.words,
       appearWords: flash.appearWords,
       numbers: flash.numbers,
+    })
+  }
+  if (!specs.some((spec) => spec.play === 'monsterFeeding')) {
+    early.push({
+      play: 'monsterFeeding',
+      notes: 'feed the monster the word it asks for',
+      focusWord: flash.focusWord,
+      words: flash.words,
+      appearWords: flash.appearWords,
+      numbers: flash.numbers,
+      storyPages: story?.storyPages,
     })
   }
   if (!early.length) return specs

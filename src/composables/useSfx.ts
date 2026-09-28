@@ -113,3 +113,17 @@ export function playSuccess() {
 export function playToot() {
   tootHowl.play()
 }
+
+const burpHowl = makeHowl(
+  [
+    { freq: 196, startMs: 0, durMs: 160 },
+    { freq: 140, startMs: 120, durMs: 180 },
+    { freq: 92, startMs: 260, durMs: 220 },
+  ],
+  520,
+  0.34,
+)
+
+export function playBurp() {
+  burpHowl.play()
+}

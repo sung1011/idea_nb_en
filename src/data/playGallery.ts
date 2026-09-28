@@ -24,6 +24,7 @@ export type ChapterPracticeItem = PlayItem & {
 export const PLAY_KIND_EMOJI: Record<PlayKind, string> = {
   flashFlip: '🃏',
   trainDelivery: '🚂',
+  monsterFeeding: '👾',
   whackWord: '🐹',
   soundSpell: '🔤',
   wordFish: '🐠',
@@ -38,6 +39,7 @@ export const PLAY_KIND_EMOJI: Record<PlayKind, string> = {
 export const playItems: PlayItem[] = [
   { id: 'flashFlip', emoji: '🃏', name: 'Flash Flip', zh: '闪卡翻翻', path: '/flash-flip' },
   { id: 'trainDelivery', emoji: '🚂', name: 'Train Delivery', zh: '小火车送货', path: '/train-delivery' },
+  { id: 'monsterFeeding', emoji: '👾', name: 'Monster Feeding', zh: '怪兽吃饭', path: '/monster-feeding' },
   { id: 'whackWord', emoji: '🐹', name: 'Whack Word', zh: '地鼠词', path: '/whack-word' },
   { id: 'soundFish', emoji: '🐠', name: 'Word Fish', zh: '读词钓鱼', path: '/sound-fish' },
   { id: 'echoCave', emoji: '🎤', name: 'Echo Cave', zh: '回声跟读', path: '/echo-cave' },

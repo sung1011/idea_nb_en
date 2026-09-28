@@ -676,7 +676,9 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   for (const lesson of listLessons()) {
     const everyLevelCleared =
       lesson.levels.length > 0 && lesson.levels.every((level) => incoming[level.id] === 'cleared')
-    const olderPlays = lesson.levels.filter((level) => level.play !== 'trainDelivery')
+    const olderPlays = lesson.levels.filter(
+      (level) => level.play !== 'trainDelivery' && level.play !== 'monsterFeeding',
+    )
     const olderPlaysCleared =
       olderPlays.length > 0 && olderPlays.every((level) => incoming[level.id] === 'cleared')
     const wantCleared = prevCleared && (flagged.has(lesson.id) || everyLevelCleared || olderPlaysCleared)
@@ -780,46 +782,57 @@ function levelOrderKey(id: string): { lessonId: string; order: number } | null {
   return { lessonId: match[1], order: Number(match[2]) }
 }
 
-/** Old 5-level lessons, before 小火车送货 was inserted after the flash card. */
-function saveNeedsTrainShift(raw: Record<string, unknown>): boolean {
-  let hasFive = false
-  let hasSix = false
+function saveHasOrder(raw: Record<string, unknown>, order: number): boolean {
   for (const id of Object.keys(raw)) {
     const parsed = levelOrderKey(id)
     if (!parsed || !isKnownLessonId(parsed.lessonId)) continue
-    if (parsed.order === 5) hasFive = true
-    if (parsed.order === 6) hasSix = true
+    if (parsed.order === order) return true
   }
-  return hasFive && !hasSix
+  return false
 }
 
-function shiftIdForTrain(id: string): string {
+/** Old 5-level lessons, before 小火车送货 was inserted after the flash card. */
+function saveNeedsTrainShift(raw: Record<string, unknown>): boolean {
+  return saveHasOrder(raw, 5) && !saveHasOrder(raw, 6)
+}
+
+/** Lessons from after the train insert, before 怪兽吃饭 was inserted after the train. */
+function saveNeedsMonsterShift(raw: Record<string, unknown>): boolean {
+  return saveHasOrder(raw, 6) && !saveHasOrder(raw, 7)
+}
+
+function shiftIdSpan(id: string, fromOrder: number, toOrder: number): string {
   const parsed = levelOrderKey(id)
   if (!parsed || !isKnownLessonId(parsed.lessonId)) return id
-  if (parsed.order <= 1 || parsed.order > 5) return id
+  if (parsed.order < fromOrder || parsed.order > toOrder) return id
   return `${parsed.lessonId}-${parsed.order + 1}`
 }
 
-function shiftLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
-  if (!saveNeedsTrainShift(raw)) return raw
+function shiftLevelMap(raw: Record<string, unknown>, fromOrder: number, toOrder: number): Record<string, unknown> {
   const next: Record<string, unknown> = {}
   for (const [id, status] of Object.entries(raw)) {
-    next[shiftIdForTrain(id)] = status
+    next[shiftIdSpan(id, fromOrder, toOrder)] = status
   }
   return next
 }
 
-function shiftIdList(ids: string[], rawLevels: Record<string, unknown>): string[] {
-  if (!saveNeedsTrainShift(rawLevels)) return ids
-  const seen = new Set<string>()
-  const out: string[] = []
-  for (const id of ids) {
-    const shifted = shiftIdForTrain(id)
-    if (seen.has(shifted)) continue
-    seen.add(shifted)
-    out.push(shifted)
+/** Train insert, then monster insert. Each step sees the map the previous step wrote. */
+function migrateLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
+  let map = raw
+  if (saveNeedsTrainShift(map)) map = shiftLevelMap(map, 2, 5)
+  if (saveNeedsMonsterShift(map)) map = shiftLevelMap(map, 3, 6)
+  return map
+}
+
+function migrateLevelId(id: string, rawLevels: Record<string, unknown>): string {
+  let map = rawLevels
+  let next = id
+  if (saveNeedsTrainShift(map)) {
+    next = shiftIdSpan(next, 2, 5)
+    map = shiftLevelMap(map, 2, 5)
   }
-  return out
+  if (saveNeedsMonsterShift(map)) next = shiftIdSpan(next, 3, 6)
+  return next
 }
 
 function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): ChapterSave {
@@ -829,7 +842,7 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
   if (!parsed.levels || typeof parsed.levels !== 'object') return emptyChapterSave()
 
   const rawLevels = parsed.levels as Record<string, unknown>
-  const shiftedLevels = shiftLevelMap(rawLevels)
+  const shiftedLevels = migrateLevelMap(rawLevels)
   const levels: Record<string, LevelStatus> = emptyAllLevels()
   for (const [id, status] of Object.entries(shiftedLevels)) {
     if (!isLevelStatus(status) || !isKnownLevelId(id)) continue
@@ -840,7 +853,7 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
     parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {}
   const firstClearAt: Record<string, string> = {}
   for (const [id, when] of Object.entries(rawAt)) {
-    const shifted = shiftIdList([id], rawLevels)[0] ?? id
+    const shifted = migrateLevelId(id, rawLevels)
     if (!isKnownLevelId(shifted) || typeof when !== 'string' || !when) continue
     firstClearAt[shifted] = when
   }
@@ -861,9 +874,9 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
         ? parsed.highestUnlocked
         : first.id,
     levels,
-    firstClearStars: shiftIdList(asStringArray(parsed.firstClearStars), rawLevels).filter((id) =>
-      isKnownLevelId(id),
-    ),
+    firstClearStars: asStringArray(parsed.firstClearStars)
+      .map((id) => migrateLevelId(id, rawLevels))
+      .filter((id, index, list) => isKnownLevelId(id) && list.indexOf(id) === index),
     chapterStickers: asStringArray(parsed.chapterStickers),
     firstClearAt,
     celebrated: Boolean(parsed.celebrated),

@@ -1,6 +1,7 @@
 import { CHAPTERS } from '../src/data/chapters'
 import { MATH_LESSONS, countPieces } from '../src/data/mathLessons'
 import { families, wordZh } from '../src/data/phonicsFamily'
+import { monsterOrderLine } from '../src/data/monsterOrders'
 import { bookCoverLine } from '../src/data/spokenLines'
 import { finishPhrases, softPhrases, stepPhrases } from '../src/data/praisePhrases'
 import { sentenceForWord, shortSentences } from '../src/data/shortSentences'
@@ -92,10 +93,12 @@ for (const chapter of CHAPTERS) {
       for (const page of level.storyPages ?? []) {
         noteWord(page.word)
         addClip(page.line, 'en-US')
+        addClip(monsterOrderLine(page.line, page.word), 'en-US')
       }
       for (const item of level.numbers ?? []) {
         noteWord(item.word)
         addClip(item.sentence, 'en-US')
+        addClip(monsterOrderLine(item.sentence, item.word), 'en-US')
         addClip(item.zh, 'zh-CN')
       }
     }
