@@ -5,6 +5,7 @@ export type PlayKind =
   | 'flashFlip'
   | 'trainDelivery'
   | 'monsterFeeding'
+  | 'bubbleShot'
   | 'whackWord'
   | 'soundSpell'
   | 'wordFish'
@@ -63,6 +64,7 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
   trainDelivery: '/train-delivery',
   monsterFeeding: '/monster-feeding',
+  bubbleShot: '/bubble-shot',
   whackWord: '/whack-word',
   soundSpell: '/sound-spell',
   wordFish: '/sound-fish',
@@ -78,6 +80,7 @@ const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
   trainDelivery: { titleEn: 'Train Delivery', titleZh: '小火车送货' },
   monsterFeeding: { titleEn: 'Monster Feeding', titleZh: '怪兽吃饭' },
+  bubbleShot: { titleEn: 'Bubble Shot', titleZh: '泡泡射击' },
   whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
   soundSpell: { titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
   wordFish: { titleEn: 'Word Fish', titleZh: '读词钓鱼' },
@@ -172,8 +175,8 @@ function uniqueWords(list: Array<string | undefined>): string[] {
 }
 
 /**
- * Flash card first, then 小火车送货, then 怪兽吃饭.
- * 泡泡射击 slots in after the monster, before the lesson's older plays.
+ * Flash card first, then 小火车送货, then 怪兽吃饭, then 泡泡射击.
+ * These sit before the lesson's older plays.
  */
 function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
   const flashAt = specs.findIndex((spec) => spec.play === 'flashFlip' || spec.play === 'numberFlash')
@@ -200,6 +203,16 @@ function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
       appearWords: flash.appearWords,
       numbers: flash.numbers,
       storyPages: story?.storyPages,
+    })
+  }
+  if (!specs.some((spec) => spec.play === 'bubbleShot')) {
+    early.push({
+      play: 'bubbleShot',
+      notes: 'shoot the bubble that matches the word',
+      focusWord: flash.focusWord,
+      words: flash.words,
+      appearWords: flash.appearWords,
+      numbers: flash.numbers,
     })
   }
   if (!early.length) return specs

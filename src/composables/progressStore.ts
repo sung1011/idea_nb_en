@@ -677,7 +677,8 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
     const everyLevelCleared =
       lesson.levels.length > 0 && lesson.levels.every((level) => incoming[level.id] === 'cleared')
     const olderPlays = lesson.levels.filter(
-      (level) => level.play !== 'trainDelivery' && level.play !== 'monsterFeeding',
+      (level) =>
+        level.play !== 'trainDelivery' && level.play !== 'monsterFeeding' && level.play !== 'bubbleShot',
     )
     const olderPlaysCleared =
       olderPlays.length > 0 && olderPlays.every((level) => incoming[level.id] === 'cleared')
@@ -801,6 +802,11 @@ function saveNeedsMonsterShift(raw: Record<string, unknown>): boolean {
   return saveHasOrder(raw, 6) && !saveHasOrder(raw, 7)
 }
 
+/** Lessons from after the monster insert, before 泡泡射击 was inserted after the monster. */
+function saveNeedsBubbleShift(raw: Record<string, unknown>): boolean {
+  return saveHasOrder(raw, 7) && !saveHasOrder(raw, 8)
+}
+
 function shiftIdSpan(id: string, fromOrder: number, toOrder: number): string {
   const parsed = levelOrderKey(id)
   if (!parsed || !isKnownLessonId(parsed.lessonId)) return id
@@ -816,11 +822,12 @@ function shiftLevelMap(raw: Record<string, unknown>, fromOrder: number, toOrder:
   return next
 }
 
-/** Train insert, then monster insert. Each step sees the map the previous step wrote. */
+/** Train, then monster, then bubble. Each step sees the map the previous step wrote. */
 function migrateLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
   let map = raw
   if (saveNeedsTrainShift(map)) map = shiftLevelMap(map, 2, 5)
   if (saveNeedsMonsterShift(map)) map = shiftLevelMap(map, 3, 6)
+  if (saveNeedsBubbleShift(map)) map = shiftLevelMap(map, 4, 7)
   return map
 }
 
@@ -831,7 +838,11 @@ function migrateLevelId(id: string, rawLevels: Record<string, unknown>): string 
     next = shiftIdSpan(next, 2, 5)
     map = shiftLevelMap(map, 2, 5)
   }
-  if (saveNeedsMonsterShift(map)) next = shiftIdSpan(next, 3, 6)
+  if (saveNeedsMonsterShift(map)) {
+    next = shiftIdSpan(next, 3, 6)
+    map = shiftLevelMap(map, 3, 6)
+  }
+  if (saveNeedsBubbleShift(map)) next = shiftIdSpan(next, 4, 7)
   return next
 }
 

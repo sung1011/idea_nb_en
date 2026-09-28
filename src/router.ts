@@ -10,6 +10,7 @@ import soundFishView from './views/soundFishView.vue'
 import soundSpellView from './views/soundSpellView.vue'
 import stickerAlbumView from './views/stickerAlbumView.vue'
 import storyBookView from './views/storyBookView.vue'
+import bubbleShotView from './views/bubbleShotView.vue'
 import monsterFeedingView from './views/monsterFeedingView.vue'
 import trainDeliveryView from './views/trainDeliveryView.vue'
 import whackWordView from './views/whackWordView.vue'
@@ -35,6 +36,7 @@ export const router = createRouter({
     { path: '/flash-flip', name: 'flashFlip', component: flashFlipView },
     { path: '/train-delivery', name: 'trainDelivery', component: trainDeliveryView },
     { path: '/monster-feeding', name: 'monsterFeeding', component: monsterFeedingView },
+    { path: '/bubble-shot', name: 'bubbleShot', component: bubbleShotView },
     { path: '/whack-word', name: 'whackWord', component: whackWordView },
     { path: '/sound-spell', name: 'soundSpell', component: soundSpellView },
     { path: '/story-book', name: 'storyBook', component: storyBookView },
