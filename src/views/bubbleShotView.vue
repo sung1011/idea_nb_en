@@ -31,17 +31,14 @@ const {
 } = useChapterLevel('bubbleShot')
 
 const HITS = 6
-const MIN_BUBBLES = 4
-const MAX_BUBBLES = 6
-const START_BUBBLES = 5
+const MIN_BUBBLES = 2
+const MAX_BUBBLES = 3
+const START_BUBBLES = 3
 
 const SLOTS = [
-  { x: 2, y: 2 },
-  { x: 34, y: 0 },
-  { x: 64, y: 4 },
-  { x: 8, y: 34 },
-  { x: 40, y: 30 },
-  { x: 66, y: 38 },
+  { left: '0px', top: '0px' },
+  { left: 'calc(100% - var(--bubble))', top: '0px' },
+  { left: 'calc(50% - var(--bubble) / 2)', top: 'calc(100% - var(--bubble))' },
 ]
 
 type FloatBubble = {
@@ -170,8 +167,8 @@ function spawn(word: string) {
     slot,
     dur: 3.4 + Math.random() * 2.2,
     delay: -Math.random() * 2.4,
-    dx: 8 + Math.random() * 12,
-    dy: 6 + Math.random() * 12,
+    dx: 4 + Math.random() * 6,
+    dy: 3 + Math.random() * 5,
     wobble: false,
     popping: false,
     holding: false,
@@ -211,7 +208,7 @@ function fillStart() {
 
 function slotStyle(bubble: FloatBubble) {
   const spot = SLOTS[bubble.slot] ?? SLOTS[0]
-  return { left: `${spot.x}%`, top: `${spot.y}%` }
+  return { left: spot.left, top: spot.top }
 }
 
 function driftStyle(bubble: FloatBubble) {
@@ -378,7 +375,7 @@ onUnmounted(() => {
                   :value="numeralFor(bubble.word) ?? 0"
                   size="sm"
                 />
-                <word-pic v-else :word="bubble.word" :size="40" />
+                <word-pic v-else :word="bubble.word" :size="76" />
               </span>
               <span v-if="bubble.popping" class="stars" aria-hidden="true">
                 <i>⭐</i>
@@ -407,7 +404,7 @@ onUnmounted(() => {
           <span class="pics">
             <template v-for="word in sentenceWords" :key="word">
               <number-clay v-if="numeralFor(word) != null" :value="numeralFor(word) ?? 0" size="sm" />
-              <word-pic v-else :word="word" :size="48" />
+              <word-pic v-else :word="word" :size="72" />
             </template>
           </span>
         </span>
@@ -454,7 +451,9 @@ onUnmounted(() => {
 
 <style scoped>
 .bubble-shot {
-  gap: 8px;
+  --bubble: 148px;
+  gap: 4px;
+  padding-bottom: 12px;
 }
 
 .gate-tag {
@@ -483,7 +482,7 @@ onUnmounted(() => {
 .play {
   position: relative;
   flex: 1;
-  min-height: 460px;
+  min-height: 0;
   touch-action: none;
 }
 
@@ -492,18 +491,18 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   top: 0;
-  bottom: 132px;
+  bottom: 118px;
 }
 
 .slot {
   position: absolute;
-  width: 76px;
-  height: 76px;
+  width: var(--bubble);
+  height: var(--bubble);
 }
 
 .floater {
-  width: 76px;
-  height: 76px;
+  width: var(--bubble);
+  height: var(--bubble);
   animation: drift var(--dur) ease-in-out infinite alternate;
   animation-delay: var(--delay);
   will-change: transform;
@@ -515,8 +514,8 @@ onUnmounted(() => {
 
 .bubble {
   position: relative;
-  width: 76px;
-  height: 76px;
+  width: var(--bubble);
+  height: var(--bubble);
   padding: 0;
   border: 0;
   background: transparent;
@@ -535,10 +534,10 @@ onUnmounted(() => {
 
 .face {
   position: absolute;
-  left: 22%;
-  top: 22%;
-  width: 56%;
-  height: 56%;
+  left: 14%;
+  top: 14%;
+  width: 72%;
+  height: 72%;
   border-radius: 50%;
   overflow: hidden;
   display: grid;
@@ -547,7 +546,7 @@ onUnmounted(() => {
 }
 
 .numeral {
-  transform: scale(0.5);
+  transform: scale(0.92);
 }
 
 .wobble {
@@ -606,7 +605,7 @@ onUnmounted(() => {
   left: 50%;
   top: 8%;
   z-index: 6;
-  width: min(300px, 86%);
+  width: min(380px, 100%);
   aspect-ratio: 1;
   padding: 0;
   border: 0;
@@ -630,10 +629,10 @@ onUnmounted(() => {
 
 .giant-face {
   position: absolute;
-  left: 18%;
-  top: 22%;
-  width: 64%;
-  height: 56%;
+  left: 14%;
+  top: 18%;
+  width: 72%;
+  height: 64%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -645,9 +644,9 @@ onUnmounted(() => {
 
 .line {
   color: #1e3a5f;
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .pics {
@@ -660,8 +659,8 @@ onUnmounted(() => {
 .projectile {
   position: absolute;
   z-index: 5;
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   pointer-events: none;
   transition: none;
 }
