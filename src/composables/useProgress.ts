@@ -205,7 +205,6 @@ export function useProgress() {
         gates: {
           flashFlip: Boolean(persistState.gates.flashFlip),
           whackWord: Boolean(persistState.gates.whackWord),
-          dragSort: Boolean(persistState.gates.dragSort),
           soundFish: Boolean(persistState.gates.soundFish),
           echoCave: Boolean(persistState.gates.echoCave),
         },

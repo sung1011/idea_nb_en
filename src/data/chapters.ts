@@ -4,7 +4,6 @@ import { RISE_CHAPTER_STICKERS } from './stickers'
 export type PlayKind =
   | 'flashFlip'
   | 'whackWord'
-  | 'dragSort'
   | 'soundSpell'
   | 'wordFish'
   | 'echo'
@@ -18,17 +17,15 @@ export type PlayKind =
 export const LEGACY_SIX_PLAY_ORDER: PlayKind[] = [
   'flashFlip',
   'whackWord',
-  'dragSort',
   'wordFish',
   'echo',
   'chapterFinale',
 ]
 
-/** Persist v4 8-level path. v6 does not remap these ids onto lessons. */
+/** Persist v4 8-level path. v6 does not remap these ids onto lessons. Drag Sort is gone. */
 export const V4_EIGHT_PLAY_ORDER: PlayKind[] = [
   'flashFlip',
   'whackWord',
-  'dragSort',
   'soundSpell',
   'wordFish',
   'echo',
@@ -63,7 +60,6 @@ export const DEFAULT_COMPLETED_CHAPTERS = 2
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
   whackWord: '/whack-word',
-  dragSort: '/drag-sort',
   soundSpell: '/sound-spell',
   wordFish: '/sound-fish',
   echo: '/echo-cave',
@@ -77,7 +73,6 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
 const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
   whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
-  dragSort: { titleEn: 'Drag Sort', titleZh: '拖一拖' },
   soundSpell: { titleEn: 'Sound Spell', titleZh: '听音拼一拼' },
   wordFish: { titleEn: 'Word Fish', titleZh: '读词钓鱼' },
   echo: { titleEn: 'Echo', titleZh: '回声跟读' },
@@ -340,12 +335,11 @@ export function buildStoryLevels(
   ])
 }
 
-/** Word builder / family: sort, spell, fish, review. */
+/** Word builder / family: spell, fish, review. */
 export function buildWordFamilyLevels(
   chapterId: string,
   lessonId: string,
   input: {
-    sort: string[]
     spell: string[]
     fish: string[]
     review: string[]
@@ -353,7 +347,6 @@ export function buildWordFamilyLevels(
   },
 ): LevelDef[] {
   return buildLessonLevels(chapterId, lessonId, [
-    { play: 'dragSort', notes: 'sort by family', words: uniqueWords(input.sort) },
     {
       play: 'soundSpell',
       notes: 'spell family words',
@@ -1273,7 +1266,6 @@ export function getNextMainlineLevelDef(levelId: string): LevelDef | null {
 export function playKindToGate(play: PlayKind): string | null {
   if (play === 'flashFlip') return 'flashFlip'
   if (play === 'whackWord') return 'whackWord'
-  if (play === 'dragSort') return 'dragSort'
   if (play === 'wordFish') return 'soundFish'
   if (play === 'echo') return 'echoCave'
   return null

@@ -126,10 +126,6 @@ export function gateWhackSub(themeHint: string): string {
   return themeHint ? `听单词，点对的地鼠 · ${themeHint}` : '听单词，点对的地鼠'
 }
 
-export function gateDragSub(themeHint: string): string {
-  return themeHint ? `拖到对应的图 · ${themeHint}` : ''
-}
-
 export function gateSpellSub(themeHint: string): string {
   return themeHint ? `听单词，用字母块拼出来 · ${themeHint}` : '听单词，用字母块拼出来'
 }

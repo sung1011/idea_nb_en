@@ -56,11 +56,11 @@ const PERSIST_VERSION = 6
 export const ISLAND_DAY_CAP = 7
 const SHANGHAI_TZ = 'Asia/Shanghai'
 
-export type DailyGateId = 'flashFlip' | 'whackWord' | 'dragSort' | 'soundFish' | 'echoCave'
+export type DailyGateId = 'flashFlip' | 'whackWord' | 'soundFish' | 'echoCave'
 export type GateId = DailyGateId
 export type WarmupKind = 'flashFlip' | 'whackWord'
 
-export type ChainStep = 'warmup' | 'drag' | 'fish' | 'echo' | 'complete'
+export type ChainStep = 'warmup' | 'fish' | 'echo' | 'complete'
 
 export type TodayProgress = {
   starsEarned: number
@@ -209,23 +209,16 @@ type LegacyAtlas = {
 const MAIN_TASK_ID = MAIN_TASK_CHAPTER_1
 const DEFAULT_STARS_GOAL = Math.max(1, lessonLevelTotal(DEFAULT_LESSON_ID))
 
-export const ALL_GATES: DailyGateId[] = [
-  'flashFlip',
-  'whackWord',
-  'dragSort',
-  'soundFish',
-  'echoCave',
-]
+export const ALL_GATES: DailyGateId[] = ['flashFlip', 'whackWord', 'soundFish', 'echoCave']
 
 /** @deprecated Prefer DAILY_CHAIN; kept for callers that still count phonics gates. */
 export const GATE_ORDER: DailyGateId[] = ['soundFish', 'echoCave']
 
-export const DAILY_CHAIN: Exclude<ChainStep, 'complete'>[] = ['warmup', 'drag', 'fish', 'echo']
+export const DAILY_CHAIN: Exclude<ChainStep, 'complete'>[] = ['warmup', 'fish', 'echo']
 
 export const GATE_ROUTES: Record<DailyGateId, string> = {
   flashFlip: '/flash-flip',
   whackWord: '/whack-word',
-  dragSort: '/drag-sort',
   soundFish: '/sound-fish',
   echoCave: '/echo-cave',
 }
@@ -233,17 +226,15 @@ export const GATE_ROUTES: Record<DailyGateId, string> = {
 export const GATE_TO_LEVEL: Record<GateId, string> = {
   flashFlip: defaultLevelIdForPlay('flashFlip'),
   whackWord: defaultLevelIdForPlay('whackWord'),
-  dragSort: defaultLevelIdForPlay('dragSort'),
   soundFish: defaultLevelIdForPlay('wordFish'),
   echoCave: defaultLevelIdForPlay('echo'),
 }
 
-const CHAIN_STEPS: ChainStep[] = ['warmup', 'drag', 'fish', 'echo', 'complete']
+const CHAIN_STEPS: ChainStep[] = ['warmup', 'fish', 'echo', 'complete']
 
 const GATE_CHAIN_NEXT: Record<GateId, ChainStep> = {
-  flashFlip: 'drag',
-  whackWord: 'drag',
-  dragSort: 'fish',
+  flashFlip: 'fish',
+  whackWord: 'fish',
   soundFish: 'echo',
   echoCave: 'complete',
 }
@@ -343,8 +334,6 @@ export function routeForChainStep(step: ChainStep, day = dateKey()): string {
   switch (step) {
     case 'warmup':
       return GATE_ROUTES[warmupKindForDate(day)]
-    case 'drag':
-      return GATE_ROUTES.dragSort
     case 'fish':
       return GATE_ROUTES.soundFish
     case 'echo':
@@ -463,7 +452,6 @@ export function isChainStepDone(
   gates: Record<string, boolean>,
 ): boolean {
   if (step === 'warmup') return isWarmupDone(gates)
-  if (step === 'drag') return Boolean(gates.dragSort)
   if (step === 'fish') return Boolean(gates.soundFish)
   return Boolean(gates.echoCave)
 }
@@ -498,7 +486,6 @@ function emptyGates(): Record<DailyGateId, boolean> {
   return {
     flashFlip: false,
     whackWord: false,
-    dragSort: false,
     soundFish: false,
     echoCave: false,
   }
@@ -625,6 +612,7 @@ function clampIslandDays(value: unknown): number {
 }
 
 function normalizeChainStep(value: unknown, fallback: ChainStep = 'warmup'): ChainStep {
+  if (value === 'drag') return 'fish'
   return typeof value === 'string' && CHAIN_STEPS.includes(value as ChainStep)
     ? (value as ChainStep)
     : fallback
@@ -729,6 +717,7 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   save.currentChapterId = getLesson(save.currentLessonId)?.chapterId ?? DEFAULT_CHAPTER_ID
 
   const knownIds = new Set(listAllLevels().map((item) => item.id))
+  // Stale ids from removed modes are dropped here. Lifetime stars stay put.
   save.firstClearStars = (save.firstClearStars ?? []).filter((id) => knownIds.has(id))
   save.chapterStickers = (save.chapterStickers ?? []).filter((id) => Boolean(getChapter(id)))
   const firstClearAt: Record<string, string> = {}
@@ -820,7 +809,6 @@ function chainStepForLevel(level: LevelDef | null, complete: boolean): ChainStep
   if (complete) return 'complete'
   if (!level) return 'complete'
   if (level.play === 'flashFlip' || level.play === 'whackWord') return 'warmup'
-  if (level.play === 'dragSort') return 'drag'
   if (level.play === 'wordFish') return 'fish'
   if (level.play === 'echo') return 'echo'
   return 'complete'

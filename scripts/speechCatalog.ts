@@ -1,7 +1,7 @@
 import { CHAPTERS } from '../src/data/chapters'
 import { MATH_LESSONS, countPieces } from '../src/data/mathLessons'
-import { families, getCurrentFamily, wordZh } from '../src/data/phonicsFamily'
-import { bookCoverLine, findOpeningLine } from '../src/data/spokenLines'
+import { families, wordZh } from '../src/data/phonicsFamily'
+import { bookCoverLine } from '../src/data/spokenLines'
 import { finishPhrases, softPhrases, stepPhrases } from '../src/data/praisePhrases'
 import { sentenceForWord, shortSentences } from '../src/data/shortSentences'
 import { gateBookBlendHint } from '../src/data/todayTasks'
@@ -27,11 +27,6 @@ export type CatalogClip = {
  * Isolated phonemes are omitted on purpose. The other rows are built at runtime.
  */
 export const dynamicFallbacks = [
-  {
-    where: '唱一唱逐个字母',
-    example: 'c / a / t',
-    why: '单字母音素，沿用系统语音',
-  },
   {
     where: '音族热身',
     example: 'k、qu、ch',
@@ -155,11 +150,9 @@ addClip(gateBookBlendHint(), 'zh-CN')
 for (const chapter of CHAPTERS) {
   if (chapter.kidTitle) addClip(bookCoverLine(chapter.kidTitle), 'zh-CN')
   for (const lesson of chapter.lessons) {
-    if (lesson.words.length) addClip(findOpeningLine(lesson.words), 'en-US')
     if (lesson.titleZh) addClip(bookCoverLine(lesson.titleZh), 'zh-CN')
   }
 }
-addClip(findOpeningLine(getCurrentFamily().targets.slice(0, 3)), 'en-US')
 addClip(bookCoverLine('小小书'), 'zh-CN')
 
 for (const word of words) addWord(word)
