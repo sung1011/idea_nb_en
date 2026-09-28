@@ -112,6 +112,11 @@ export type ChapterSave = {
   celebrated: boolean
   /** Chapter ids whose finale page already played the first-clear party. */
   celebratedChapters: string[]
+  /**
+   * 小火车送货 has been removed. Set after that id drop (and on every new save)
+   * so a later load does not treat the 7-level map as a pre-bubble save.
+   */
+  removedTrain: boolean
 }
 
 export type LessonStatus = 'locked' | 'soon' | 'unlocked' | 'cleared'
@@ -514,6 +519,7 @@ function emptyChapterSave(chapterId = DEFAULT_CHAPTER_ID): ChapterSave {
     firstClearAt: {},
     celebrated: false,
     celebratedChapters: [],
+    removedTrain: true,
   }
 }
 
@@ -678,7 +684,7 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
       lesson.levels.length > 0 && lesson.levels.every((level) => incoming[level.id] === 'cleared')
     const olderPlays = lesson.levels.filter(
       (level) =>
-        level.play !== 'trainDelivery' && level.play !== 'monsterFeeding' && level.play !== 'bubbleShot',
+        level.play !== 'monsterFeeding' && level.play !== 'bubbleShot',
     )
     const olderPlaysCleared =
       olderPlays.length > 0 && olderPlays.every((level) => incoming[level.id] === 'cleared')
@@ -743,6 +749,7 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   save.firstClearAt = firstClearAt
   save.celebratedChapters = (save.celebratedChapters ?? []).filter((id) => Boolean(getChapter(id)))
   save.celebrated = save.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
+  save.removedTrain = true
   return save
 }
 
@@ -807,6 +814,29 @@ function saveNeedsBubbleShift(raw: Record<string, unknown>): boolean {
   return saveHasOrder(raw, 7) && !saveHasOrder(raw, 8)
 }
 
+/** 8-level lessons that still have 小火车送货 at order 2. */
+function saveNeedsTrainDrop(raw: Record<string, unknown>): boolean {
+  return saveHasOrder(raw, 8)
+}
+
+function dropTrainId(id: string): string | null {
+  const parsed = levelOrderKey(id)
+  if (!parsed || !isKnownLessonId(parsed.lessonId)) return id
+  if (parsed.order === 2) return null
+  if (parsed.order >= 3 && parsed.order <= 8) return `${parsed.lessonId}-${parsed.order - 1}`
+  return id
+}
+
+function dropTrainLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {}
+  for (const [id, status] of Object.entries(raw)) {
+    const shifted = dropTrainId(id)
+    if (!shifted) continue
+    next[shifted] = status
+  }
+  return next
+}
+
 function shiftIdSpan(id: string, fromOrder: number, toOrder: number): string {
   const parsed = levelOrderKey(id)
   if (!parsed || !isKnownLessonId(parsed.lessonId)) return id
@@ -822,12 +852,13 @@ function shiftLevelMap(raw: Record<string, unknown>, fromOrder: number, toOrder:
   return next
 }
 
-/** Train, then monster, then bubble. Each step sees the map the previous step wrote. */
+/** Insert train, monster, then bubble, then drop the train. Each step sees the previous map. */
 function migrateLevelMap(raw: Record<string, unknown>): Record<string, unknown> {
   let map = raw
   if (saveNeedsTrainShift(map)) map = shiftLevelMap(map, 2, 5)
   if (saveNeedsMonsterShift(map)) map = shiftLevelMap(map, 3, 6)
   if (saveNeedsBubbleShift(map)) map = shiftLevelMap(map, 4, 7)
+  if (saveNeedsTrainDrop(map)) map = dropTrainLevelMap(map)
   return map
 }
 
@@ -842,7 +873,11 @@ function migrateLevelId(id: string, rawLevels: Record<string, unknown>): string 
     next = shiftIdSpan(next, 3, 6)
     map = shiftLevelMap(map, 3, 6)
   }
-  if (saveNeedsBubbleShift(map)) next = shiftIdSpan(next, 4, 7)
+  if (saveNeedsBubbleShift(map)) {
+    next = shiftIdSpan(next, 4, 7)
+    map = shiftLevelMap(map, 4, 7)
+  }
+  if (saveNeedsTrainDrop(map)) next = dropTrainId(next) ?? ''
   return next
 }
 
@@ -853,7 +888,8 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
   if (!parsed.levels || typeof parsed.levels !== 'object') return emptyChapterSave()
 
   const rawLevels = parsed.levels as Record<string, unknown>
-  const shiftedLevels = migrateLevelMap(rawLevels)
+  const trainAlreadyGone = parsed.removedTrain === true
+  const shiftedLevels = trainAlreadyGone ? rawLevels : migrateLevelMap(rawLevels)
   const levels: Record<string, LevelStatus> = emptyAllLevels()
   for (const [id, status] of Object.entries(shiftedLevels)) {
     if (!isLevelStatus(status) || !isKnownLevelId(id)) continue
@@ -864,7 +900,7 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
     parsed.firstClearAt && typeof parsed.firstClearAt === 'object' ? { ...parsed.firstClearAt } : {}
   const firstClearAt: Record<string, string> = {}
   for (const [id, when] of Object.entries(rawAt)) {
-    const shifted = migrateLevelId(id, rawLevels)
+    const shifted = trainAlreadyGone ? id : migrateLevelId(id, rawLevels)
     if (!isKnownLevelId(shifted) || typeof when !== 'string' || !when) continue
     firstClearAt[shifted] = when
   }
@@ -886,12 +922,13 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
         : first.id,
     levels,
     firstClearStars: asStringArray(parsed.firstClearStars)
-      .map((id) => migrateLevelId(id, rawLevels))
+      .map((id) => (trainAlreadyGone ? id : migrateLevelId(id, rawLevels)))
       .filter((id, index, list) => isKnownLevelId(id) && list.indexOf(id) === index),
     chapterStickers: asStringArray(parsed.chapterStickers),
     firstClearAt,
     celebrated: Boolean(parsed.celebrated),
     celebratedChapters: asStringArray(parsed.celebratedChapters),
+    removedTrain: true,
   })
 }
 
@@ -1187,6 +1224,7 @@ function writeChapter(target: ChapterSave, source: ChapterSave) {
   target.celebrated = source.celebrated
   if (!Array.isArray(target.celebratedChapters)) target.celebratedChapters = []
   target.celebratedChapters.splice(0, target.celebratedChapters.length, ...source.celebratedChapters)
+  target.removedTrain = source.removedTrain === true
 }
 
 function writeMeadow(target: MeadowSave, source: MeadowSave) {
@@ -1386,6 +1424,7 @@ function maxedChapterSave(day: string): ChapterSave {
     firstClearAt,
     celebrated: celebratedChapters.includes(DEFAULT_CHAPTER_ID),
     celebratedChapters,
+    removedTrain: true,
   })
 }
 

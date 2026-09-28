@@ -97,21 +97,8 @@ export function playNudge() {
   nudgeHowl.play()
 }
 
-const tootHowl = makeHowl(
-  [
-    { freq: 740, startMs: 0, durMs: 90, kind: 'triangle' },
-    { freq: 520, startMs: 80, durMs: 150, kind: 'triangle' },
-  ],
-  250,
-  0.3,
-)
-
 export function playSuccess() {
   successHowl.play()
-}
-
-export function playToot() {
-  tootHowl.play()
 }
 
 const burpHowl = makeHowl(

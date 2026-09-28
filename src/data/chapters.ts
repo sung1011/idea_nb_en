@@ -3,7 +3,6 @@ import { RISE_CHAPTER_STICKERS } from './stickers'
 
 export type PlayKind =
   | 'flashFlip'
-  | 'trainDelivery'
   | 'monsterFeeding'
   | 'bubbleShot'
   | 'whackWord'
@@ -62,7 +61,6 @@ export const DEFAULT_COMPLETED_CHAPTERS = 2
 
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
-  trainDelivery: '/train-delivery',
   monsterFeeding: '/monster-feeding',
   bubbleShot: '/bubble-shot',
   whackWord: '/whack-word',
@@ -78,7 +76,6 @@ export const PLAY_ROUTES: Record<PlayKind, string> = {
 
 const PLAY_META: Record<PlayKind, { titleEn: string; titleZh: string }> = {
   flashFlip: { titleEn: 'Flash Flip', titleZh: '闪卡翻翻' },
-  trainDelivery: { titleEn: 'Train Delivery', titleZh: '小火车送货' },
   monsterFeeding: { titleEn: 'Monster Feeding', titleZh: '怪兽吃饭' },
   bubbleShot: { titleEn: 'Bubble Shot', titleZh: '泡泡射击' },
   whackWord: { titleEn: 'Whack Word', titleZh: '地鼠词' },
@@ -175,7 +172,7 @@ function uniqueWords(list: Array<string | undefined>): string[] {
 }
 
 /**
- * Flash card first, then 小火车送货, then 怪兽吃饭, then 泡泡射击.
+ * Flash card first, then 怪兽吃饭, then 泡泡射击.
  * These sit before the lesson's older plays.
  */
 function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
@@ -184,16 +181,6 @@ function withEarlyPlays(specs: LessonLevelSpec[]): LessonLevelSpec[] {
   const flash = specs[flashAt]
   const story = specs.find((spec) => spec.storyPages?.length)
   const early: LessonLevelSpec[] = []
-  if (!specs.some((spec) => spec.play === 'trainDelivery')) {
-    early.push({
-      play: 'trainDelivery',
-      notes: 'load the word crates',
-      focusWord: flash.focusWord,
-      words: flash.words,
-      appearWords: flash.appearWords,
-      numbers: flash.numbers,
-    })
-  }
   if (!specs.some((spec) => spec.play === 'monsterFeeding')) {
     early.push({
       play: 'monsterFeeding',

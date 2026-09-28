@@ -13,7 +13,6 @@ import stickerAlbumView from './views/stickerAlbumView.vue'
 import storyBookView from './views/storyBookView.vue'
 import bubbleShotView from './views/bubbleShotView.vue'
 import monsterFeedingView from './views/monsterFeedingView.vue'
-import trainDeliveryView from './views/trainDeliveryView.vue'
 import whackWordView from './views/whackWordView.vue'
 import sentenceAtlasView from './views/sentenceAtlasView.vue'
 import wordAtlasView from './views/wordAtlasView.vue'
@@ -35,7 +34,6 @@ export const router = createRouter({
     { path: '/sound-fish', name: 'soundFish', component: soundFishView },
     { path: '/echo-cave', name: 'echoCave', component: echoCaveView },
     { path: '/flash-flip', name: 'flashFlip', component: flashFlipView },
-    { path: '/train-delivery', name: 'trainDelivery', component: trainDeliveryView },
     { path: '/monster-feeding', name: 'monsterFeeding', component: monsterFeedingView },
     { path: '/bubble-shot', name: 'bubbleShot', component: bubbleShotView },
     { path: '/whack-word', name: 'whackWord', component: whackWordView },
