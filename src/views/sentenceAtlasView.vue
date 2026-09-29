@@ -73,7 +73,7 @@ function onLeave() {
             >
               <span class="thumb">
                 <number-clay v-if="row.numeral != null" :value="row.numeral" size="sm" />
-                <word-pic v-else :word="row.word" :size="48" />
+                <word-pic v-else wide :word="row.word" />
               </span>
               <span class="copy">
                 <b>{{ row.sentence }}</b>
@@ -145,7 +145,7 @@ function onLeave() {
   background: #fff;
   box-shadow: 0 6px 0 rgba(45, 58, 74, 0.1);
   display: grid;
-  grid-template-columns: 52px 1fr;
+  grid-template-columns: 136px 1fr;
   gap: 10px;
   align-items: center;
   text-align: left;
@@ -156,14 +156,20 @@ function onLeave() {
 }
 
 .thumb {
-  width: 48px;
-  height: 48px;
+  width: 136px;
+  aspect-ratio: 16 / 9;
+  height: auto;
   display: grid;
   place-items: center;
 }
 
+.thumb :deep(.word-pic) {
+  width: 100%;
+  height: 100%;
+}
+
 .thumb :deep(.number-clay) {
-  transform: scale(0.62);
+  transform: scale(0.9);
 }
 
 .copy {
@@ -197,5 +203,15 @@ function onLeave() {
 .locked .copy b,
 .locked .copy small {
   color: #8b97a3;
+}
+
+@media (min-width: 768px) {
+  .sentence-row {
+    grid-template-columns: 220px 1fr;
+  }
+
+  .thumb {
+    width: 220px;
+  }
 }
 </style>

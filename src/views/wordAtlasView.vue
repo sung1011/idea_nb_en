@@ -75,7 +75,7 @@ function onLeave() {
           >
             <span class="pic">
               <number-clay v-if="item.numeral != null" :value="item.numeral" size="sm" />
-              <word-pic v-else :word="item.word" :size="64" />
+              <word-pic v-else wide :word="item.word" />
             </span>
             <template v-if="item.unlocked">
               <span class="word">{{ item.word }}</span>
@@ -125,7 +125,7 @@ function onLeave() {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
@@ -147,16 +147,22 @@ function onLeave() {
 }
 
 .pic {
-  width: 64px;
-  height: 64px;
-  font-size: 42px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  font-size: 48px;
   line-height: 1;
   display: grid;
   place-items: center;
 }
 
+.pic :deep(.word-pic) {
+  width: 100%;
+  height: 100%;
+}
+
 .pic :deep(.number-clay) {
-  transform: scale(0.72);
+  transform: scale(1);
 }
 
 .word {

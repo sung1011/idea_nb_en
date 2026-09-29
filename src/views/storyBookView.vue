@@ -396,6 +396,7 @@ onUnmounted(() => {
 <style scoped>
 .book {
   gap: 12px;
+  padding-bottom: max(20px, calc(12px + env(safe-area-inset-bottom)));
 }
 
 .gate-tag {
@@ -513,6 +514,13 @@ onUnmounted(() => {
   background: transparent;
 }
 
+@media (min-width: 768px) {
+  .pic-btn :deep(.word-pic) {
+    width: 160px;
+    height: 160px;
+  }
+}
+
 .cvc {
   display: flex;
   flex-wrap: wrap;
@@ -599,15 +607,20 @@ onUnmounted(() => {
 }
 
 .focus-word {
-  display: inline;
-  margin: 0 1px;
-  padding: 0 4px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  margin: 2px;
+  padding: 4px 10px;
+  border-radius: 12px;
   background: #fff3c4;
   box-shadow: inset 0 -3px 0 rgba(244, 180, 0, 0.28);
   color: #9a3412;
   font: inherit;
   font-weight: 800;
+  vertical-align: middle;
 }
 
 .speaker {

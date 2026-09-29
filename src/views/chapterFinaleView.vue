@@ -92,7 +92,7 @@ async function finish() {
       </template>
       <template v-else>
         <div v-for="word in words" :key="word" class="word">
-          <word-pic :word="word" :size="72" />
+          <word-pic wide :word="word" />
           <b>{{ word }}</b>
         </div>
       </template>
@@ -138,9 +138,14 @@ async function finish() {
 
 .words {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 8px;
+}
+
+.word :deep(.word-pic) {
+  width: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 .word {

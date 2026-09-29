@@ -40,7 +40,7 @@ body,
 }
 
 body {
-  background: #0e2a3a;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 46%, var(--sand) 100%);
 }
 
 button {
@@ -56,11 +56,17 @@ button:disabled {
 
 .app-shell {
   min-height: 100dvh;
-  max-width: 430px;
+  max-width: 640px;
   margin: 0 auto;
   background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 46%, var(--sand) 100%);
   overflow: hidden;
   position: relative;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --touch: 88px;
+  }
 }
 
 .screen {

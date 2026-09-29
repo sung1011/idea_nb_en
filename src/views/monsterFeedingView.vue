@@ -424,4 +424,23 @@ onUnmounted(() => {
   35% { opacity: 1; }
   100% { transform: translate3d(0, -78px, 0) scale(1.25); opacity: 0; }
 }
+
+@media (min-width: 768px) {
+  .monster {
+    width: min(420px, 70%);
+  }
+
+  .stage {
+    max-height: 320px;
+  }
+
+  .food {
+    min-height: 200px;
+  }
+
+  .food :deep(.word-pic) {
+    width: 168px;
+    height: 168px;
+  }
+}
 </style>

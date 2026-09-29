@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import {
@@ -50,6 +50,8 @@ const router = useRouter()
 const route = useRoute()
 const roster = meadowRoster()
 const fieldEl = ref<HTMLElement | null>(null)
+const dockEl = ref<HTMLElement | null>(null)
+const dockMore = ref(false)
 const hatchId = ref<string | null>(null)
 const cardId = ref<MeadowAnimalId | null>(null)
 const shopOpen = ref(false)
@@ -167,9 +169,20 @@ function onVisibility() {
   if (document.visibilityState === 'hidden') flushMeadowClock()
 }
 
+function syncDockMore() {
+  const el = dockEl.value
+  if (!el) {
+    dockMore.value = false
+    return
+  }
+  dockMore.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+}
+
 onMounted(async () => {
   document.addEventListener('visibilitychange', onVisibility)
+  window.addEventListener('resize', syncDockMore)
   await nextTick()
+  syncDockMore()
   mountStage()
   if (!meadowOpen.value) return
   const welcome = route.query.welcome === '1'
@@ -184,8 +197,15 @@ onMounted(async () => {
   }
 })
 
+watch(meadowOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  syncDockMore()
+})
+
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibility)
+  window.removeEventListener('resize', syncDockMore)
   window.clearTimeout(hatchTimer)
   window.clearTimeout(bannerTimer)
   flushMeadowClock()
@@ -494,19 +514,22 @@ function onHatched() {
             </button>
           </div>
         </div>
-        <div class="dock">
-          <button
-            v-for="animal in roster"
-            :key="animal.id"
-            class="slot"
-            :class="{ locked: !ownedIds.has(animal.id) }"
-            type="button"
-            :aria-label="ownedIds.has(animal.id) ? animal.name : `第${animal.chapterNo}章`"
-            @click="onDock(animal.id)"
-          >
-            <img :class="{ sil: !ownedIds.has(animal.id) }" :src="meadowSrc(animal.id)" alt="" draggable="false" />
-            <span v-if="!ownedIds.has(animal.id)" class="slot-label">第{{ animal.chapterNo }}章</span>
-          </button>
+        <div class="dock-wrap">
+          <div ref="dockEl" class="dock" @scroll.passive="syncDockMore">
+            <button
+              v-for="animal in roster"
+              :key="animal.id"
+              class="slot"
+              :class="{ locked: !ownedIds.has(animal.id) }"
+              type="button"
+              :aria-label="ownedIds.has(animal.id) ? animal.name : `第${animal.chapterNo}章`"
+              @click="onDock(animal.id)"
+            >
+              <img :class="{ sil: !ownedIds.has(animal.id) }" :src="meadowSrc(animal.id)" alt="" draggable="false" />
+              <span v-if="!ownedIds.has(animal.id)" class="slot-label">第{{ animal.chapterNo }}章</span>
+            </button>
+          </div>
+          <span v-if="dockMore" class="dock-more" aria-hidden="true">›</span>
         </div>
       </template>
 
@@ -732,6 +755,7 @@ function onHatched() {
   background: rgba(255, 253, 246, 0.9);
   text-align: center;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .empty p {
@@ -857,9 +881,14 @@ function onHatched() {
   box-shadow: 0 3px 0 #f2a3bf;
 }
 
-.dock {
+.dock-wrap {
   position: relative;
   z-index: 5;
+  flex-shrink: 0;
+}
+
+.dock {
+  position: relative;
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -867,10 +896,38 @@ function onHatched() {
   background: rgba(255, 255, 255, 0.62);
 }
 
+.dock-more {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  display: grid;
+  place-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.88) 46%, #f6fbf7 100%);
+  color: #2d3a4a;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.dock-more::before {
+  content: '';
+  position: absolute;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 0 rgba(45, 58, 74, 0.12);
+}
+
 .slot {
-  flex: 0 0 68px;
-  width: 68px;
-  height: 76px;
+  flex: 0 0 84px;
+  width: 84px;
+  height: 84px;
   padding: 4px 4px 2px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.88);
@@ -894,15 +951,18 @@ function onHatched() {
 }
 
 .slot-label {
+  max-width: 100%;
   font-size: 15px;
   font-weight: 750;
   color: var(--muted);
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .gate {
   margin: auto 16px;
   width: min(100% - 32px, 420px);
+  min-width: 0;
   padding: 18px 16px 16px;
   border-radius: 28px;
   background: rgba(255, 253, 246, 0.95);
@@ -910,6 +970,7 @@ function onHatched() {
   display: grid;
   gap: 12px;
   text-align: center;
+  overflow: hidden;
 }
 
 .gate p {
@@ -922,8 +983,16 @@ function onHatched() {
 .sils {
   display: flex;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: 2px 16px 2px 2px;
+  scroll-padding-inline-end: 16px;
+}
+
+.sils::after {
+  content: '';
+  flex: 0 0 8px;
 }
 
 .sils img {

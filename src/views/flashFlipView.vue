@@ -291,7 +291,7 @@ onUnmounted(() => {
           @keydown.enter.prevent="onTap(choice.word, $event)"
           @keydown.space.prevent="onTap(choice.word, $event)"
         >
-          <word-pic :word="choice.word" :size="64" />
+          <word-pic wide :word="choice.word" />
           <div class="name">
             <small>{{ choice.word }}</small>
             <div v-if="wordZh(choice.word)" class="zh-row">
@@ -478,8 +478,16 @@ onUnmounted(() => {
 }
 
 .target :deep(.word-pic) {
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+@media (min-width: 768px) {
+  .face :deep(.word-pic) {
+    width: 220px;
+    height: 220px;
+  }
 }
 
 .target.cheer {

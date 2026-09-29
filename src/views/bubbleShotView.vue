@@ -36,9 +36,9 @@ const MAX_BUBBLES = 3
 const START_BUBBLES = 3
 
 const SLOTS = [
-  { left: '0px', top: '0px' },
-  { left: 'calc(100% - var(--bubble))', top: '0px' },
-  { left: 'calc(50% - var(--bubble) / 2)', top: 'calc(100% - var(--bubble))' },
+  { gridColumn: '1', gridRow: '1' },
+  { gridColumn: '2', gridRow: '1' },
+  { gridColumn: '1 / -1', gridRow: '2' },
 ]
 
 type FloatBubble = {
@@ -64,7 +64,10 @@ type Shot = {
 
 const art = (file: string) => `${import.meta.env.BASE_URL}bubble/${file}.webp`
 
-const pool = takeRunWords(4).slice(0, 4)
+const pool: string[] = []
+for (const word of takeRunWords(4).slice(0, 4)) {
+  if (!pool.some((item) => item.toLowerCase() === word.toLowerCase())) pool.push(word)
+}
 if (!pool.length) pool.push('hop')
 
 const numberByWord = new Map(
@@ -149,26 +152,26 @@ function sayTarget() {
   void speak(target.value)
 }
 
-function pickWord(allowDup: boolean): string {
-  if (allowDup && bubbles.value.length && Math.random() < 0.3) {
-    const host = bubbles.value[Math.floor(Math.random() * bubbles.value.length)]
-    if (host) return host.word
-  }
-  return pool[Math.floor(Math.random() * pool.length)] ?? target.value
+function pickWord(): string | null {
+  const used = new Set(bubbles.value.map((item) => item.word.toLowerCase()))
+  const free = pool.filter((word) => !used.has(word.toLowerCase()))
+  if (!free.length) return null
+  return free[Math.floor(Math.random() * free.length)] ?? null
 }
 
 function spawn(word: string) {
+  if (bubbles.value.some((item) => item.word.toLowerCase() === word.toLowerCase())) return
   const used = new Set(bubbles.value.map((item) => item.slot))
   let slot = SLOTS.findIndex((_, index) => !used.has(index))
-  if (slot < 0) slot = Math.floor(Math.random() * SLOTS.length)
+  if (slot < 0) return
   bubbles.value.push({
     id: nextId,
     word,
     slot,
     dur: 3.4 + Math.random() * 2.2,
     delay: -Math.random() * 2.4,
-    dx: 4 + Math.random() * 6,
-    dy: 3 + Math.random() * 5,
+    dx: (Math.random() * 2 - 1) * 4,
+    dy: (Math.random() * 2 - 1) * 4,
     wobble: false,
     popping: false,
     holding: false,
@@ -177,20 +180,25 @@ function spawn(word: string) {
 }
 
 function ensureTarget() {
-  if (bubbles.value.some((item) => item.word === target.value)) return
+  if (bubbles.value.some((item) => item.word.toLowerCase() === target.value.toLowerCase())) return
   if (bubbles.value.length < MAX_BUBBLES) {
     spawn(target.value)
     return
   }
-  const spare = bubbles.value.find((item) => item.word !== target.value)
-  if (spare) spare.word = target.value
-  else spawn(target.value)
+  const spare = bubbles.value.find((item) => item.word.toLowerCase() !== target.value.toLowerCase())
+  if (spare && !bubbles.value.some((item) => item.word.toLowerCase() === target.value.toLowerCase())) {
+    spare.word = target.value
+  }
 }
 
 function trimField() {
-  while (bubbles.value.length < MIN_BUBBLES && phase.value === 'play') spawn(pickWord(true))
+  while (bubbles.value.length < MIN_BUBBLES && phase.value === 'play') {
+    const word = pickWord()
+    if (!word) break
+    spawn(word)
+  }
   while (bubbles.value.length > MAX_BUBBLES) {
-    const extra = bubbles.value.findIndex((item) => item.word !== target.value)
+    const extra = bubbles.value.findIndex((item) => item.word.toLowerCase() !== target.value.toLowerCase())
     if (extra < 0) break
     const removed = bubbles.value[extra]
     if (removed) bubbleEls.delete(removed.id)
@@ -202,13 +210,17 @@ function trimField() {
 function fillStart() {
   target.value = pool[Math.floor(Math.random() * pool.length)] ?? pool[0] ?? 'hop'
   spawn(target.value)
-  while (bubbles.value.length < START_BUBBLES) spawn(pickWord(true))
+  while (bubbles.value.length < START_BUBBLES) {
+    const word = pickWord()
+    if (!word) break
+    spawn(word)
+  }
   trimField()
 }
 
 function slotStyle(bubble: FloatBubble) {
   const spot = SLOTS[bubble.slot] ?? SLOTS[0]
-  return { left: spot.left, top: spot.top }
+  return { gridColumn: spot.gridColumn, gridRow: spot.gridRow }
 }
 
 function driftStyle(bubble: FloatBubble) {
@@ -300,7 +312,8 @@ async function onHit(bubble: FloatBubble) {
   const choices = pool.filter((word) => word !== avoid)
   const nextPool = choices.length ? choices : pool
   target.value = nextPool[Math.floor(Math.random() * nextPool.length)] ?? avoid
-  spawn(pickWord(true))
+  const nextWord = pickWord()
+  if (nextWord) spawn(nextWord)
   trimField()
   locked.value = false
   sayTarget()
@@ -456,6 +469,12 @@ onUnmounted(() => {
   padding-bottom: 12px;
 }
 
+@media (min-width: 768px) {
+  .bubble-shot {
+    --bubble: 196px;
+  }
+}
+
 .gate-tag {
   margin: 6px 0 0;
   font-weight: 700;
@@ -492,10 +511,17 @@ onUnmounted(() => {
   right: 0;
   top: 0;
   bottom: 118px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  padding: 6px;
+  overflow: hidden;
 }
 
 .slot {
-  position: absolute;
+  position: relative;
   width: var(--bubble);
   height: var(--bubble);
 }
@@ -680,6 +706,13 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+@media (min-width: 768px) {
+  .shooter {
+    width: 290px;
+    height: 196px;
+  }
+}
+
 .pet {
   position: absolute;
   left: 16px;
@@ -695,6 +728,18 @@ onUnmounted(() => {
   left: 58px;
   bottom: 6px;
   width: 136px;
+}
+
+@media (min-width: 768px) {
+  .pet {
+    width: 168px;
+    height: 168px;
+  }
+
+  .gun-wrap {
+    left: 76px;
+    width: 180px;
+  }
 }
 
 .gun {

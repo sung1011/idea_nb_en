@@ -7,23 +7,23 @@ const props = withDefaults(
     word: string
     size?: number
     decorative?: boolean
+    wide?: boolean
   }>(),
   {
     decorative: true,
+    wide: false,
   },
 )
 
 const failed = ref(false)
 const src = computed(() => wordImage(props.word))
-const sizeStyle = computed(() =>
-  props.size
-    ? {
-        width: `${props.size}px`,
-        height: `${props.size}px`,
-        fontSize: `${Math.round(props.size * 0.72)}px`,
-      }
-    : undefined,
-)
+const sizeStyle = computed(() => {
+  if (props.wide || !props.size) return undefined
+  return {
+    '--pic': `${props.size}px`,
+    fontSize: `${Math.round(props.size * 0.72)}px`,
+  }
+})
 
 watch(
   () => props.word,
@@ -34,7 +34,7 @@ watch(
 </script>
 
 <template>
-  <span class="word-pic" :class="{ sized: Boolean(size) }" :style="sizeStyle">
+  <span class="word-pic" :class="{ sized: Boolean(size) && !wide, wide }" :style="sizeStyle">
     <img
       v-if="src && !failed"
       :src="src"
@@ -54,6 +54,17 @@ watch(
   line-height: 1;
 }
 
+.word-pic.sized {
+  width: var(--pic);
+  height: var(--pic);
+}
+
+.word-pic.wide {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
 .word-pic img {
   display: block;
   width: 100%;
@@ -62,7 +73,7 @@ watch(
   pointer-events: none;
 }
 
-.word-pic:not(.sized) img {
+.word-pic:not(.sized):not(.wide) img {
   width: 1em;
   height: 1em;
 }
