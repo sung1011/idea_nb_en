@@ -212,9 +212,9 @@ onUnmounted(() => {
 
     <div class="cards">
       <div
-        v-for="word in rounds"
-        :key="word"
-        class="card"
+        v-for="(word, index) in rounds"
+        :key="`${word}-${index}`"
+        class="food"
         :class="{ gone: eaten.includes(word), pop: pop === word, lifting: pulling === word }"
         :style="cardStyle(word)"
         :data-card="word"
@@ -226,8 +226,10 @@ onUnmounted(() => {
         @pointerup="onUp($event, word)"
         @pointercancel="onUp($event, word)"
       >
-        <number-clay v-if="numeralFor(word) != null" :value="numeralFor(word) ?? 0" size="sm" />
-        <word-pic v-else :word="word" :size="72" />
+        <template v-if="!eaten.includes(word)">
+          <number-clay v-if="numeralFor(word) != null" :value="numeralFor(word) ?? 0" size="md" />
+          <word-pic v-else :word="word" :size="112" />
+        </template>
       </div>
     </div>
 
@@ -248,7 +250,11 @@ onUnmounted(() => {
 
 <style scoped>
 .feed {
-  gap: 8px;
+  gap: 6px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .gate-tag {
@@ -276,7 +282,9 @@ onUnmounted(() => {
 
 .stage {
   position: relative;
-  height: 280px;
+  flex: 1 1 160px;
+  min-height: 140px;
+  max-height: 240px;
   display: grid;
   place-items: center;
   touch-action: none;
@@ -341,17 +349,17 @@ onUnmounted(() => {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  min-height: 96px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  flex-shrink: 0;
   touch-action: none;
 }
 
-.card {
+.food {
   display: grid;
   place-items: center;
-  min-height: 88px;
-  border-radius: 22px;
+  min-height: 156px;
+  border-radius: 24px;
   background: #fff7e8;
   box-shadow: 0 6px 0 #f3d7a4;
   touch-action: none;
@@ -359,18 +367,22 @@ onUnmounted(() => {
   cursor: grab;
 }
 
-.card.lifting {
+.food.lifting {
+  position: relative;
   z-index: 5;
   cursor: grabbing;
   transition: none;
 }
 
-.card.gone {
-  visibility: hidden;
+.food.gone {
+  background: rgba(255, 247, 232, 0.45);
+  box-shadow: none;
+  border: 3px dashed #e4b56a;
   pointer-events: none;
+  cursor: default;
 }
 
-.card.pop {
+.food.pop {
   animation: popback 0.42s ease;
 }
 

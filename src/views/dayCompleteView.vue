@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
-import todayStarBar from '../components/todayStarBar.vue'
 import { hatchMeadowEgg, persistState, useProgress } from '../composables/useProgress'
 import hatchOverlay from '../meadow/hatchOverlay.vue'
 import { animalByChapter } from '../meadow/meadowConfig'
@@ -60,6 +59,10 @@ const stickerLine = computed(() => {
   return `第${chapterNo.value}章徽章是「${name}」，想再玩就点已过的关`
 })
 
+const chapterStars = computed(() =>
+  chapter.value.levels.filter((level) => level.firstClearStarGranted).length,
+)
+
 const chapterLine = computed(() => {
   if (chapter.value.complete) return `第${chapterNo.value}章「${kidTitle.value}」通关啦`
   return `第${chapterNo.value}章 ${chapter.value.clearedCount}/${chapter.value.levelTotal} 关`
@@ -94,7 +97,7 @@ function enterMeadow() {
       <star-bar />
     </header>
 
-    <div class="center grow party">
+    <div class="center party">
       <div class="burst-wrap">
         <span class="spark s1" aria-hidden="true">✨</span>
         <span class="spark s2" aria-hidden="true">⭐</span>
@@ -105,7 +108,10 @@ function enterMeadow() {
       <h1 class="title-xl">Day Complete</h1>
       <p class="zh">{{ titleZh }}</p>
       <p class="sub">{{ leadLine }}</p>
-      <today-star-bar class="today-loot" size="large" :celebrate-on-gain="false" />
+      <div class="chapter-stars" :aria-label="`这一章的星星 ${chapterStars} / ${chapter.levelTotal}`">
+        <p class="chapter-stars-label">这一章的星星</p>
+        <b>{{ chapterStars }} / {{ chapter.levelTotal }}</b>
+      </div>
       <chapter-level-lights class="chapter-loot" :chapter-id="chapterId" :celebrate-on-gain="false" />
 
       <div
@@ -134,31 +140,51 @@ function enterMeadow() {
       </div>
     </div>
 
-    <big-button @click="router.push('/')">回家</big-button>
-    <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
+    <div class="complete-actions">
+      <big-button @click="router.push('/')">回家</big-button>
+      <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
+    </div>
     <hatch-overlay v-if="showHatch && hatchAnimal" :animal="hatchAnimal" @done="enterMeadow" />
   </section>
 </template>
 
 <style scoped>
+.complete :deep(.title-xl) {
+  font-size: 28px;
+}
+
 .complete {
-  gap: 12px;
+  gap: 8px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .party {
-  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+
+.complete-actions {
+  flex-shrink: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .burst-wrap {
   position: relative;
-  width: 140px;
-  height: 120px;
+  width: 120px;
+  height: 88px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .burst {
-  font-size: 76px;
+  font-size: 56px;
   line-height: 1;
 }
 
@@ -197,9 +223,27 @@ function enterMeadow() {
   font-weight: 650;
 }
 
-.today-loot {
+.chapter-stars {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 22px;
+  background: #fff6d0;
+  box-shadow: 0 6px 0 rgba(244, 180, 0, 0.2);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.chapter-stars-label {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.chapter-stars b {
+  font-size: 28px;
+  line-height: 1.1;
 }
 
 .chapter-loot {

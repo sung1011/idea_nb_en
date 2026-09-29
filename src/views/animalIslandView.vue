@@ -2,12 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
-import chapterLevelLights from '../components/chapterLevelLights.vue'
 import chapterLessonList from '../components/chapterLessonList.vue'
 import chapterLevelList from '../components/chapterLevelList.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
-import { tweenCelebrate, tweenPulse, tweenShake } from '../composables/useMotion'
+import { tweenPulse, tweenShake } from '../composables/useMotion'
 import { useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
 import {
@@ -86,6 +85,16 @@ const chapterRows = computed(() => {
   })
 })
 
+const lobbySub = computed(() => {
+  if (selectedLesson.value) {
+    return `第${getChapterNumber(selectedLesson.value.chapterId)}章 · 第${selectedLesson.value.order}课 · ${selectedLesson.value.syllabusRange}`
+  }
+  if (selectedChapter.value) {
+    return `第${getChapterNumber(selectedChapter.value.id)}章 · ${selectedChapter.value.syllabusRange}`
+  }
+  return '十二章课表，从第 1 课开始'
+})
+
 const startLabel = computed(() => {
   if (lesson.value?.status === 'soon') return comingSoonCopy()
   if (!nextLevel.value) return '看章节奖励'
@@ -98,7 +107,6 @@ const startLabel = computed(() => {
   )
 })
 
-const hostEl = ref<HTMLElement | null>(null)
 const nextRowEl = ref<HTMLElement | null>(null)
 const lockHint = ref('')
 const hintTimer = ref<number | null>(null)
@@ -150,7 +158,6 @@ function goNext() {
 }
 
 onMounted(() => {
-  void tweenCelebrate(hostEl.value)
   if (nextRowEl.value) void tweenPulse(nextRowEl.value)
 })
 
@@ -178,41 +185,21 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div class="hero center">
-      <p class="eyebrow">Animals Island</p>
-      <h1 class="title-xl">{{ selectedKidTitle || '动物岛' }}</h1>
-      <p class="sub">
-        {{
-          selectedLesson
-            ? `第${getChapterNumber(selectedLesson.chapterId)}章 · 第${selectedLesson.order}课 · ${selectedLesson.syllabusRange}`
-            : selectedChapter
-              ? `第${getChapterNumber(selectedChapter.id)}章 · ${selectedChapter.syllabusRange}`
-              : '十二章课表，从 L49 的第 1 课开始'
-        }}
-      </p>
-    </div>
-
-    <div class="island-wrap">
-      <div class="sun" aria-hidden="true" />
-      <div class="balloon b1" aria-hidden="true">🎈</div>
-      <div class="balloon b2" aria-hidden="true">🎉</div>
-      <div class="sea" aria-hidden="true">
-        <div class="wave" />
+    <div class="lobby-bar">
+      <div class="mini-island" aria-hidden="true">
+        <span class="mini-palm">🌴</span>
+        <span class="mini-cat">🐱</span>
+        <span class="mini-land"></span>
       </div>
-      <div class="island">
-        <div ref="hostEl" class="guide floaty">🐱</div>
-        <div class="prop hat" aria-hidden="true">🎩</div>
-        <div class="palm">🌴</div>
+      <div class="lobby-copy">
+        <h1>{{ selectedKidTitle || '动物岛' }}</h1>
+        <p>{{ lobbySub }}</p>
       </div>
     </div>
 
-    <p class="host-line center">
-      {{ selectedLesson ? `现在玩「${selectedKidTitle}」` : selectedChapter ? `选一课 · ${selectedKidTitle}` : '先选一章，再选一课' }}
-    </p>
-
+    <div class="lobby-body" :class="{ 'lesson-open': Boolean(selectedLessonId) }">
     <template v-if="selectedLessonId">
-      <chapter-level-lights class="island-level-lights" :lesson-id="selectedLessonId" />
-      <chapter-level-list :chapter-id="selectedChapterId" :lesson-id="selectedLessonId" />
+      <chapter-level-list class="level-fill" :chapter-id="selectedChapterId" :lesson-id="selectedLessonId" />
     </template>
 
     <template v-else-if="selectedChapterId">
@@ -271,14 +258,24 @@ onBeforeUnmount(() => {
       贴纸相册
     </button>
     <button class="gallery-link" type="button" @click="router.push('/play-gallery')">玩法一览</button>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .island-lobby {
-  gap: 10px;
+  gap: 8px;
+  height: 100dvh;
   max-height: 100dvh;
-  overflow-y: auto;
+  overflow: hidden;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.top-row,
+.lobby-bar,
+.album-btn,
+.gallery-link {
+  flex-shrink: 0;
 }
 
 .top-tools {
@@ -287,105 +284,88 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.eyebrow {
-  margin: 8px 0 0;
-  font-size: 15px;
-  color: var(--muted);
-}
-
-.island-wrap {
-  position: relative;
-  height: 168px;
-  margin: 2px 0 4px;
-}
-
-.sun {
-  position: absolute;
-  right: 18px;
-  top: 8px;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: #ffe27a;
-  box-shadow: 0 0 0 8px rgba(255, 226, 122, 0.35);
-}
-
-.balloon {
-  position: absolute;
-  font-size: 28px;
-}
-
-.b1 {
-  left: 16px;
-  top: 18px;
-}
-
-.b2 {
-  right: 72px;
-  top: 42px;
-}
-
-.sea {
-  position: absolute;
-  left: -18px;
-  right: -18px;
-  bottom: 18px;
-  height: 54px;
+.lobby-bar {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   overflow: hidden;
 }
 
-.wave {
-  width: 200%;
-  height: 54px;
-  background: radial-gradient(circle at 25px 0, var(--ocean) 24px, transparent 25px) repeat-x;
-  background-size: 50px 54px;
-  animation: wave 4s linear infinite;
-  opacity: 0.85;
+.mini-island {
+  position: relative;
+  width: 68px;
+  height: 60px;
+  flex: 0 0 68px;
+  overflow: hidden;
 }
 
-.island {
+.mini-land {
   position: absolute;
-  left: 50%;
-  bottom: 28px;
-  width: 230px;
-  height: 92px;
-  margin-left: -115px;
-  background: radial-gradient(ellipse at 50% 40%, #98e09a, var(--island) 70%);
+  left: 2px;
+  right: 6px;
+  bottom: 4px;
+  height: 26px;
   border-radius: 50%;
-  box-shadow: 0 16px 0 rgba(45, 138, 122, 0.18);
+  background: radial-gradient(ellipse at 50% 40%, #98e09a, var(--island) 72%);
+  box-shadow: 0 6px 0 rgba(45, 138, 122, 0.16);
 }
 
-.guide {
+.mini-cat {
   position: absolute;
-  left: 50%;
-  top: -46px;
-  margin-left: -28px;
-  font-size: 56px;
-  filter: drop-shadow(0 6px 0 rgba(244, 180, 0, 0.25));
+  left: 14px;
+  bottom: 16px;
+  font-size: 28px;
+  line-height: 1;
 }
 
-.prop.hat {
+.mini-palm {
   position: absolute;
-  left: 28px;
-  top: 28px;
+  right: 0;
+  bottom: 18px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.lobby-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.lobby-copy h1 {
+  margin: 0;
   font-size: 22px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.palm {
-  position: absolute;
-  right: 16px;
-  top: -38px;
-  font-size: 36px;
-}
-
-.host-line {
-  margin: 0 0 4px;
-  font-size: 14px;
+.lobby-copy p {
+  margin: 2px 0 0;
+  font-size: 15px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.island-level-lights {
-  margin: 2px 0 4px;
+.lobby-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-body.lesson-open {
+  overflow: hidden;
+}
+
+.level-fill {
+  flex: 1;
+  min-height: 0;
 }
 
 .chapter-card {

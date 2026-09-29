@@ -205,12 +205,16 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .chapter-levels {
-  display: grid;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
 }
 
 .progress-card {
-  margin-top: auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .progress-title {
@@ -327,6 +331,7 @@ onBeforeUnmount(() => {
 }
 
 .start-btn {
-  margin-top: 14px;
+  flex-shrink: 0;
+  margin-top: 0;
 }
 </style>
