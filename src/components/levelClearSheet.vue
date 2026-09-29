@@ -75,7 +75,7 @@ const showNext = computed(() => Boolean(props.hasNext) && !props.fromPractice)
 
 .eyebrow {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
 }

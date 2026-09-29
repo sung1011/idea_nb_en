@@ -155,7 +155,7 @@ async function finish() {
 }
 
 .zh {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   color: #8a7564;
 }

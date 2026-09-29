@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
 
 .range-line {
   margin: 2px 0 10px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
   color: var(--muted);
 }
@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
 }
 
 .lesson-copy small {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 650;
   color: var(--muted);
 }
@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
 }
 
 .lesson-mark {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 750;
   white-space: nowrap;
 }
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
 
 .parent-line {
   margin: 8px 0 0;
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 14px;
+  color: #3d5164;
 }
 </style>

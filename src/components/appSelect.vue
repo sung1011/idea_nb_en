@@ -388,9 +388,9 @@ onUnmounted(() => {
 
 .group-label {
   margin: 8px 10px 2px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
-  color: var(--muted);
+  color: #3d5164;
 }
 
 .option {

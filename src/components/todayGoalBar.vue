@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProgress } from '../composables/useProgress'
 import { playTap } from '../composables/useSfx'
-import { getChapterNumber, getLesson } from '../data/chapters'
+import { chapterKidTitle, getChapterNumber, getLesson } from '../data/chapters'
 import {
   comingSoonCopy,
   focusWordHint,
@@ -11,8 +11,6 @@ import {
   nextLevelCopy,
   nextLevelCtaCopy,
 } from '../data/todayTasks'
-import todayStarBar from './todayStarBar.vue'
-
 const router = useRouter()
 const { today, lesson, nextLevel, nextRoute, ensureTodayTask } = useProgress()
 ensureTodayTask()
@@ -21,6 +19,12 @@ const chapterNo = computed(() => getChapterNumber(lesson.value?.chapterId ?? '')
 const lessonNo = computed(() => lesson.value?.order ?? 1)
 const soon = computed(() => lesson.value?.status === 'soon')
 const done = computed(() => !nextLevel.value && lesson.value?.status === 'cleared')
+const chapterLine = computed(() => {
+  const id = lesson.value?.chapterId ?? ''
+  const no = getChapterNumber(id)
+  if (!no) return '动物岛'
+  return `第${no}章 · ${chapterKidTitle(id)}`
+})
 const progressText = computed(() =>
   lessonProgressCopy(chapterNo.value, lessonNo.value, lesson.value?.clearedCount ?? 0, lesson.value?.levelTotal ?? 0, {
     soon: soon.value,
@@ -57,6 +61,8 @@ function goNext() {
 
 <template>
   <div class="goal-bar" :class="{ done }" data-chapter-goal-bar aria-live="polite">
+    <p class="today-kicker">今天玩</p>
+    <p class="today-chapter">{{ chapterLine }}</p>
     <div class="goal-main">
       <span class="goal-mark" aria-hidden="true">{{ done ? '✓' : '🎯' }}</span>
       <div class="goal-copy">
@@ -65,7 +71,6 @@ function goNext() {
         <p v-if="focusLine" class="goal-focus">{{ focusLine }}</p>
       </div>
     </div>
-    <today-star-bar class="goal-stars" size="compact" />
     <button class="goal-cta" type="button" data-next-level-cta @click="goNext">
       {{ ctaLabel }}
     </button>
@@ -128,27 +133,35 @@ function goNext() {
   color: var(--ink);
 }
 
-.goal-focus {
-  margin: 4px 0 0;
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--muted);
+.today-kicker {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #9a5b12;
 }
 
-.goal-stars {
-  width: 100%;
-  margin-top: 10px;
+.today-chapter {
+  margin: 2px 0 8px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.goal-focus {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
 }
 
 .goal-cta {
   width: 100%;
-  margin-top: 10px;
-  min-height: 52px;
+  margin-top: 12px;
+  min-height: 64px;
   padding: 0 16px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffc56d 0%, var(--btn) 100%);
   color: var(--btn-ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   box-shadow: 0 6px 0 #d97706;
 }
@@ -159,7 +172,7 @@ function goNext() {
 
 .goal-ok {
   margin: 8px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ok);
 }

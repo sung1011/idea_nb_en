@@ -159,7 +159,7 @@ onMounted(() => {
 
 .chapter-lights.crowded .cell {
   min-height: 32px;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .cell {
@@ -199,7 +199,7 @@ onMounted(() => {
 .chapter-lights-teaser {
   margin: 8px 0 0;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ok);
 }

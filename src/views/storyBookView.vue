@@ -406,7 +406,7 @@ onUnmounted(() => {
 
 .replay-hint {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   color: #b45309;
 }
@@ -474,7 +474,7 @@ onUnmounted(() => {
 
 .page-mark {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
 }

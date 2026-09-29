@@ -288,7 +288,7 @@ function applyLesson() {
 
 .eyebrow {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
 }
@@ -347,9 +347,9 @@ function applyLesson() {
 .version {
   margin: 4px 0 0;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
-  color: var(--muted);
+  color: #3d5164;
 }
 
 .update-toast {

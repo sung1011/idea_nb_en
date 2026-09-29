@@ -210,7 +210,7 @@ onUnmounted(() => {
 
 .replay-hint {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   color: #c2410c;
 }
@@ -277,7 +277,7 @@ onUnmounted(() => {
   background: #e7f6e3;
   color: #1f6b45;
   box-shadow: 0 3px 0 #7dcea0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;

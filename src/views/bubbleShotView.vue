@@ -476,7 +476,7 @@ onUnmounted(() => {
 
 .replay-hint {
   color: #15803d;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .play {

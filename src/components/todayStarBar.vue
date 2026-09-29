@@ -162,7 +162,7 @@ watch(earned, async (next, prev) => {
 }
 
 .today-stars.compact .today-stars-label {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .today-stars.compact .today-stars-row {

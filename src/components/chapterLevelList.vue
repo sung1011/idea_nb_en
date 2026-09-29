@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
 
 .range-line {
   margin: 2px 0 10px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
   color: var(--muted);
 }
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
 }
 
 .gate-copy small {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 650;
   color: var(--muted);
 }
@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 750;
   white-space: nowrap;
 }
@@ -326,8 +326,8 @@ onBeforeUnmount(() => {
 
 .parent-line {
   margin: 8px 0 0;
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 14px;
+  color: #3d5164;
 }
 
 .start-btn {

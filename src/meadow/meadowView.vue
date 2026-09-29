@@ -649,7 +649,7 @@ function onHatched() {
   border-radius: 999px;
   background: #e07a3d;
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 22px;
 }
@@ -894,7 +894,7 @@ function onHatched() {
 }
 
 .slot-label {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 750;
   color: var(--muted);
   line-height: 1.1;
@@ -1153,7 +1153,7 @@ function onHatched() {
 
 .meadow-meter .bit {
   position: relative;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
   color: #ffd0dc;
 }

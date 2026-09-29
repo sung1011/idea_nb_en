@@ -161,7 +161,7 @@ function openPlay(path: string, levelId?: string) {
 
 .play-copy small {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .go {

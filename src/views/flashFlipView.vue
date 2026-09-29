@@ -337,7 +337,7 @@ onUnmounted(() => {
 
 .replay-hint {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   color: #7c3aed;
 }
@@ -419,7 +419,7 @@ onUnmounted(() => {
   background: #e7f6e3;
   color: #1f6b45;
   box-shadow: 0 3px 0 #7dcea0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1;
   display: inline-flex;
@@ -466,7 +466,7 @@ onUnmounted(() => {
 }
 
 .target .zh {
-  font-size: 11px;
+  font-size: 15px;
   line-height: 1.1;
   font-weight: 650;
   color: #8a7564;

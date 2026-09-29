@@ -277,7 +277,7 @@ function enterMeadow() {
 
 .sticker-kicker {
   margin: 8px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
 }
@@ -327,7 +327,7 @@ function enterMeadow() {
 .loot-item small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
   text-align: center;
 }

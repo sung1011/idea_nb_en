@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import atlasChapterHead from '../components/atlasChapterHead.vue'
+import chapterJump from '../components/chapterJump.vue'
 import numberClay from '../components/numberClay.vue'
 import starBar from '../components/starBar.vue'
 import wordPic from '../components/wordPic.vue'
@@ -52,6 +53,8 @@ function onLeave() {
 
     <p class="progress-line center">已打开 {{ unlockedCount }} / {{ total }}</p>
 
+    <chapter-jump :chapters="chapters" />
+
     <div class="book">
       <section v-for="group in chapters" :key="group.chapterId" class="chapter" :data-chapter="group.chapterId">
         <atlas-chapter-head :chapter-no="group.chapterNo" :animal-id="group.animalId" :animal-zh="group.animalZh" />
@@ -87,6 +90,13 @@ function onLeave() {
 <style scoped>
 .atlas {
   gap: 10px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-y: auto;
+}
+
+.atlas > * {
+  flex-shrink: 0;
 }
 
 .eyebrow {
@@ -105,6 +115,10 @@ function onLeave() {
   gap: 18px;
   margin-top: 4px;
   padding-bottom: 12px;
+}
+
+.chapter {
+  scroll-margin-top: 88px;
 }
 
 .lesson {
@@ -165,7 +179,7 @@ function onLeave() {
 }
 
 .copy small {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
   color: #8a7564;
 }

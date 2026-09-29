@@ -157,7 +157,7 @@ onMounted(() => {
 .island-days-teaser {
   margin: 8px 0 0;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ok);
 }
