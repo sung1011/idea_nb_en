@@ -6,7 +6,7 @@ import starBar from '../components/starBar.vue'
 import { claimChapterStoryStar, isChapterStoryUnlocked } from '../composables/useProgress'
 import { speakStoryLine, warmChapterStoryAudio } from '../composables/useSpeech'
 import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, getChapter, getChapterNumber } from '../data/chapters'
-import { getChapterStory, storyAudioFile } from '../data/chapterStories'
+import { getChapterStory, storyAudioFile, storyImageFile } from '../data/chapterStories'
 
 const CLAY = ['#ffe8c2', '#d7f3c8', '#cfe9ff', '#ffe0ea', '#fff3b0', '#e4d9ff', '#d4f4ef', '#ffd7c2']
 
@@ -28,6 +28,7 @@ const pages = computed(() => (unlocked.value ? story.value?.pages ?? [] : []))
 const page = computed(() => pages.value[pageIndex.value])
 const pageCount = computed(() => pages.value.length)
 const isLast = computed(() => pageCount.value > 0 && pageIndex.value >= pageCount.value - 1)
+const sceneSrc = computed(() => storyImageFile(chapterNo.value, pageIndex.value + 1))
 
 watch(chapterId, () => {
   pageIndex.value = 0
@@ -106,8 +107,14 @@ function goNext() {
       <h1 class="title-lg">{{ titleZh }}</h1>
       <p class="title-en">{{ titleEn }}</p>
 
-      <div class="scene" :style="{ background: clayColor(page.sceneHint, pageIndex) }" aria-hidden="true">
-        <span class="scene-emoji">{{ sceneEmoji(page.sceneHint) }}</span>
+      <div
+        class="scene"
+        :class="{ art: Boolean(sceneSrc) }"
+        :style="sceneSrc ? undefined : { background: clayColor(page.sceneHint, pageIndex) }"
+        aria-hidden="true"
+      >
+        <img v-if="sceneSrc" class="scene-art" :src="sceneSrc" alt="" decoding="async" />
+        <span v-else class="scene-emoji">{{ sceneEmoji(page.sceneHint) }}</span>
       </div>
 
       <button class="line en" type="button" @click="hearEn">{{ page.en }}</button>
@@ -148,7 +155,20 @@ function goNext() {
   border-radius: 28px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   box-shadow: 0 8px 0 rgba(45, 58, 74, 0.08);
+}
+
+.scene.art {
+  aspect-ratio: 16 / 9;
+  background: #f3ead8;
+}
+
+.scene-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .scene-emoji {

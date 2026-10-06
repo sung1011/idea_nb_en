@@ -297,3 +297,15 @@ export function getChapterStory(chapterId: string): ChapterStory | undefined {
 export function storyAudioFile(chapterNo: number, pageNo: number, lang: 'en' | 'zh'): string {
   return `audio/story-ch${chapterNo}-p${pageNo}-${lang}.mp3`
 }
+
+/** Cream story panels that currently exist under `public/story/`. Missing chapters stay on the emoji placeholder. */
+const STORY_IMAGE_PAGES: Readonly<Record<number, readonly number[]>> = {
+  1: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+}
+
+export function storyImageFile(chapterNo: number, pageNo: number): string | undefined {
+  const pages = STORY_IMAGE_PAGES[chapterNo]
+  if (!pages?.includes(pageNo)) return undefined
+  const page = String(pageNo).padStart(2, '0')
+  return `${import.meta.env.BASE_URL}story/ch${chapterNo}/p${page}.webp`
+}
