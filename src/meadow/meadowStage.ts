@@ -256,6 +256,9 @@ export function createMeadowStage(options: {
   onSaveDecor: (id: string, x: number, y: number) => void
   onStoreAnimal: (id: MeadowAnimalId, x: number, y: number) => void
   onStoreDecor: (id: string) => void
+  /** True when this chapter's story can be opened. */
+  storyReady?: (chapterId: string) => boolean
+  onStory?: (chapterId: string) => void
 }): MeadowStage {
   const { field, onSpeak, onSave } = options
   const actors = new Map<string, Actor>()
@@ -782,13 +785,29 @@ export function createMeadowStage(options: {
     host.append(label)
   }
 
-  function showBubble(actor: Actor, item: MeadowBubbleItem) {
+  function showBubble(actor: Actor, item: MeadowBubbleItem, chapterId = '') {
     dismissBubble(actor, false)
     const host = document.createElement('button')
     host.type = 'button'
     host.className = 'meadow-bubble'
     host.setAttribute('aria-label', item.speak)
     bubbleFace(item, host)
+    if (chapterId && options.storyReady?.(chapterId)) {
+      const story = document.createElement('span')
+      story.className = 'meadow-bubble-story'
+      story.textContent = '听故事'
+      story.setAttribute('role', 'button')
+      story.addEventListener('pointerdown', (event) => {
+        event.stopPropagation()
+        event.preventDefault()
+      })
+      story.addEventListener('pointerup', (event) => {
+        event.stopPropagation()
+        event.preventDefault()
+        options.onStory?.(chapterId)
+      })
+      host.append(story)
+    }
     host.addEventListener('pointerdown', (event) => {
       event.stopPropagation()
       event.preventDefault()
@@ -816,8 +835,8 @@ export function createMeadowStage(options: {
     hop(actor, now, 450)
     const chapterId = animalById(actor.id)?.chapterId
     const bubble = chapterId ? pickMeadowBubble(chapterId, actor.lastBubbleKey) : null
-    if (bubble) {
-      showBubble(actor, bubble)
+    if (bubble && chapterId) {
+      showBubble(actor, bubble, chapterId)
       onSpeak(bubble.speak, true)
       return
     }

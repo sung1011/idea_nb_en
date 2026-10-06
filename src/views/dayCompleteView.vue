@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import chapterLevelLights from '../components/chapterLevelLights.vue'
-import { hatchMeadowEgg, persistState, useProgress } from '../composables/useProgress'
+import { hatchMeadowEgg, isChapterStoryUnlocked, persistState, useProgress } from '../composables/useProgress'
 import hatchOverlay from '../meadow/hatchOverlay.vue'
 import { animalByChapter } from '../meadow/meadowConfig'
 import { tweenCelebrate, tweenPopUp } from '../composables/useMotion'
@@ -83,6 +83,12 @@ onUnmounted(() => {
   window.clearTimeout(hatchTimer)
 })
 
+const storyOpen = computed(() => claim.ready && isChapterStoryUnlocked(chapterId.value))
+
+function hearStory() {
+  void router.push(`/chapter-story/${chapterId.value}`)
+}
+
 function enterMeadow() {
   if (!hatchAnimal) return
   hatchMeadowEgg(hatchAnimal.chapterId)
@@ -141,7 +147,8 @@ function enterMeadow() {
     </div>
 
     <div class="complete-actions">
-      <big-button @click="router.push('/')">回家</big-button>
+      <big-button v-if="storyOpen" @click="hearStory">听本章故事</big-button>
+      <big-button :variant="storyOpen ? 'soft' : 'primary'" @click="router.push('/')">回家</big-button>
       <button class="album-link" type="button" @click="router.push('/sticker-album')">看贴纸相册</button>
     </div>
     <hatch-overlay v-if="showHatch && hatchAnimal" :animal="hatchAnimal" @done="enterMeadow" />

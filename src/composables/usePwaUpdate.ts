@@ -101,7 +101,7 @@ function readHashPath(): string {
 }
 
 function isSafeScreen(): boolean {
-  return settingsOpen || SAFE_PATHS.has(currentPath)
+  return settingsOpen || SAFE_PATHS.has(currentPath) || currentPath.startsWith('/chapter-story')
 }
 
 function requestReload() {

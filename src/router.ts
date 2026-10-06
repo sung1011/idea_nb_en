@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { noteNavigation } from './composables/usePwaUpdate'
 import animalIslandView from './views/animalIslandView.vue'
 import chapterFinaleView from './views/chapterFinaleView.vue'
+import chapterStoryView from './views/chapterStoryView.vue'
 import dayCompleteView from './views/dayCompleteView.vue'
 import echoCaveView from './views/echoCaveView.vue'
 import flashFlipView from './views/flashFlipView.vue'
@@ -42,6 +43,7 @@ export const router = createRouter({
     { path: '/day-complete', name: 'dayComplete', component: dayCompleteView },
     { path: '/star-meadow', name: 'starMeadow', component: meadowView },
     { path: '/chapter-finale', name: 'chapterFinale', component: chapterFinaleView },
+    { path: '/chapter-story/:chapterId', name: 'chapterStory', component: chapterStoryView },
     { path: '/number-flash', name: 'numberFlash', component: numberFlashView },
     { path: '/number-tap', name: 'numberTap', component: numberTapView },
     { path: '/number-count', name: 'numberCount', component: numberCountView },

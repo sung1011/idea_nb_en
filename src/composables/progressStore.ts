@@ -117,6 +117,12 @@ export type ChapterSave = {
    * so a later load does not treat the 7-level map as a pre-bubble save.
    */
   removedTrain: boolean
+  /** Chapter ids whose story the child has finished once. */
+  storyReadChapters: string[]
+  /** Chapter ids that already paid the one-time story star. */
+  storyStarsClaimed: string[]
+  /** Parent switch: every chapter story can be opened before its four lessons are cleared. */
+  storiesUnlockedAll: boolean
 }
 
 export type LessonStatus = 'locked' | 'soon' | 'unlocked' | 'cleared'
@@ -520,6 +526,9 @@ function emptyChapterSave(chapterId = DEFAULT_CHAPTER_ID): ChapterSave {
     celebrated: false,
     celebratedChapters: [],
     removedTrain: true,
+    storyReadChapters: [],
+    storyStarsClaimed: [],
+    storiesUnlockedAll: false,
   }
 }
 
@@ -750,6 +759,9 @@ function repairChapterInvariants(save: ChapterSave): ChapterSave {
   save.celebratedChapters = (save.celebratedChapters ?? []).filter((id) => Boolean(getChapter(id)))
   save.celebrated = save.celebratedChapters.includes(DEFAULT_CHAPTER_ID)
   save.removedTrain = true
+  save.storyReadChapters = (save.storyReadChapters ?? []).filter((id) => Boolean(getChapter(id)))
+  save.storyStarsClaimed = (save.storyStarsClaimed ?? []).filter((id) => Boolean(getChapter(id)))
+  save.storiesUnlockedAll = save.storiesUnlockedAll === true
   return save
 }
 
@@ -929,6 +941,9 @@ function normalizeChapterSave(raw: unknown, persistVersion = PERSIST_VERSION): C
     celebrated: Boolean(parsed.celebrated),
     celebratedChapters: asStringArray(parsed.celebratedChapters),
     removedTrain: true,
+    storyReadChapters: asStringArray(parsed.storyReadChapters).filter((id) => Boolean(getChapter(id))),
+    storyStarsClaimed: asStringArray(parsed.storyStarsClaimed).filter((id) => Boolean(getChapter(id))),
+    storiesUnlockedAll: parsed.storiesUnlockedAll === true,
   })
 }
 
@@ -1225,6 +1240,11 @@ function writeChapter(target: ChapterSave, source: ChapterSave) {
   if (!Array.isArray(target.celebratedChapters)) target.celebratedChapters = []
   target.celebratedChapters.splice(0, target.celebratedChapters.length, ...source.celebratedChapters)
   target.removedTrain = source.removedTrain === true
+  if (!Array.isArray(target.storyReadChapters)) target.storyReadChapters = []
+  target.storyReadChapters.splice(0, target.storyReadChapters.length, ...source.storyReadChapters)
+  if (!Array.isArray(target.storyStarsClaimed)) target.storyStarsClaimed = []
+  target.storyStarsClaimed.splice(0, target.storyStarsClaimed.length, ...source.storyStarsClaimed)
+  target.storiesUnlockedAll = source.storiesUnlockedAll === true
 }
 
 function writeMeadow(target: MeadowSave, source: MeadowSave) {
@@ -1425,6 +1445,9 @@ function maxedChapterSave(day: string): ChapterSave {
     celebrated: celebratedChapters.includes(DEFAULT_CHAPTER_ID),
     celebratedChapters,
     removedTrain: true,
+    storyReadChapters: [],
+    storyStarsClaimed: [],
+    storiesUnlockedAll: false,
   })
 }
 
@@ -1706,6 +1729,36 @@ export function isChapterUnlocked(chapterId: string): boolean {
 
 export function isChapterCleared(chapterId: string): boolean {
   return isChapterClearedInSave(persistState.chapter, chapterId)
+}
+
+/** A finished chapter (all 4 lessons) opens its story. The parent switch opens every story. */
+export function isChapterStoryUnlocked(chapterId: string): boolean {
+  if (!getChapter(chapterId)) return false
+  if (persistState.chapter.storiesUnlockedAll) return true
+  return isChapterClearedInSave(persistState.chapter, chapterId)
+}
+
+export function setStoriesUnlockedAll(open: boolean): void {
+  persistState.chapter.storiesUnlockedAll = open
+  persist()
+}
+
+/**
+ * Mark the story finished and pay one star the first time.
+ * Later finishes stay warm and do not change the wallet again.
+ */
+export function claimChapterStoryStar(chapterId: string): boolean {
+  if (!isChapterStoryUnlocked(chapterId)) return false
+  const save = persistState.chapter
+  if (!save.storyReadChapters.includes(chapterId)) save.storyReadChapters.push(chapterId)
+  if (save.storyStarsClaimed.includes(chapterId)) {
+    persist()
+    return false
+  }
+  save.storyStarsClaimed.push(chapterId)
+  persistState.lifetime.totalStars += 1
+  persist()
+  return true
 }
 
 export function getNextLevel(chapterId?: string): LevelDef | null {

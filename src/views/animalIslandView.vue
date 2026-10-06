@@ -7,7 +7,7 @@ import chapterLevelList from '../components/chapterLevelList.vue'
 import settingsButton from '../components/settingsButton.vue'
 import starBar from '../components/starBar.vue'
 import { tweenPulse, tweenShake } from '../composables/useMotion'
-import { useProgress } from '../composables/useProgress'
+import { isChapterStoryUnlocked, useProgress } from '../composables/useProgress'
 import { playNudge, playTap } from '../composables/useSfx'
 import {
   CHAPTER_LOBBY_EMOJI,
@@ -77,6 +77,7 @@ const chapterRows = computed(() => {
       emoji: CHAPTER_LOBBY_EMOJI[item.id] ?? '🏝️',
       unlocked,
       complete: progress.complete,
+      storyOpen: isChapterStoryUnlocked(item.id),
       clearedLessons: progress.clearedLessons,
       lessonTotal: progress.lessonTotal,
       syllabusRange: item.syllabusRange,
@@ -109,6 +110,7 @@ const startLabel = computed(() => {
 
 const nextRowEl = ref<HTMLElement | null>(null)
 const lockHint = ref('')
+const storyHint = ref('')
 const hintTimer = ref<number | null>(null)
 
 function clearHintTimer() {
@@ -138,6 +140,21 @@ function goChapters() {
     return
   }
   void router.replace({ path: '/animal-island' })
+}
+
+function openStory(row: (typeof chapterRows.value)[number]) {
+  if (!row.storyOpen) {
+    playNudge()
+    storyHint.value = '四课都玩完，就能听这一章的故事。'
+    clearHintTimer()
+    hintTimer.value = window.setTimeout(() => {
+      storyHint.value = ''
+      hintTimer.value = null
+    }, 2200)
+    return
+  }
+  playTap()
+  void router.push(`/chapter-story/${row.id}`)
 }
 
 function openChapter(row: (typeof chapterRows.value)[number], event: MouseEvent) {
@@ -210,7 +227,7 @@ onBeforeUnmount(() => {
       <div class="card chapter-card">
         <p class="progress-title">选一章开始玩</p>
         <div class="chapters" role="list">
-          <button
+          <div
             v-for="row in chapterRows"
             :key="row.id"
             :ref="(el) => bindNextRow(el as Element | null, row.isNext)"
@@ -220,32 +237,46 @@ onBeforeUnmount(() => {
               locked: !row.unlocked,
               next: row.isNext,
             }"
-            type="button"
             role="listitem"
             :data-chapter-entry="row.id"
             :data-chapter-unlocked="row.unlocked ? '1' : '0'"
             :data-next-chapter="row.isNext ? '1' : '0'"
-            :aria-label="`${row.kidTitle}，${row.unlocked ? `${row.syllabusRange} ${row.clearedLessons}/${row.lessonTotal} 课` : CHAPTER_LOCK_HINT}`"
-            @click="openChapter(row, $event)"
           >
-            <span class="chapter-emoji" aria-hidden="true">{{ row.unlocked ? row.emoji : '🔒' }}</span>
-            <span class="chapter-copy">
-              <b class="chapter-name">第{{ row.order }}章 · {{ row.kidTitle }}</b>
-              <small>
-                {{
-                  row.unlocked
-                    ? `${row.syllabusRange} · ${row.clearedLessons}/${row.lessonTotal} 课`
-                    : CHAPTER_LOCK_HINT
-                }}
-              </small>
-            </span>
-            <span class="chapter-mark">
-              {{ row.complete ? '通关啦' : row.isNext ? '现在玩' : row.unlocked ? '去玩' : '未开' }}
-            </span>
-          </button>
+            <button
+              class="chapter-main"
+              type="button"
+              :aria-label="`${row.kidTitle}，${row.unlocked ? `${row.syllabusRange} ${row.clearedLessons}/${row.lessonTotal} 课` : CHAPTER_LOCK_HINT}`"
+              @click="openChapter(row, $event)"
+            >
+              <span class="chapter-emoji" aria-hidden="true">{{ row.unlocked ? row.emoji : '🔒' }}</span>
+              <span class="chapter-copy">
+                <b class="chapter-name">第{{ row.order }}章 · {{ row.kidTitle }}</b>
+                <small>
+                  {{
+                    row.unlocked
+                      ? `${row.syllabusRange} · ${row.clearedLessons}/${row.lessonTotal} 课`
+                      : CHAPTER_LOCK_HINT
+                  }}
+                </small>
+              </span>
+              <span class="chapter-mark">
+                {{ row.complete ? '通关啦' : row.isNext ? '现在玩' : row.unlocked ? '去玩' : '未开' }}
+              </span>
+            </button>
+            <button
+              class="story-chip"
+              :class="{ locked: !row.storyOpen }"
+              type="button"
+              :data-story-chip="row.id"
+              :aria-label="row.storyOpen ? `听第${row.order}章故事` : `第${row.order}章故事还锁着`"
+              @click="openStory(row)"
+            >
+              {{ row.storyOpen ? '故事' : '🔒' }}
+            </button>
+          </div>
         </div>
-        <p class="lock-hint" :class="{ show: Boolean(lockHint) }" aria-live="polite">
-          {{ lockHint || '　' }}
+        <p class="lock-hint" :class="{ show: Boolean(lockHint || storyHint) }" aria-live="polite">
+          {{ storyHint || lockHint || '　' }}
         </p>
         <p class="parent-line">通关一章里的四课，下一章就会打开。</p>
       </div>
@@ -385,15 +416,49 @@ onBeforeUnmount(() => {
 
 .chapter {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: center;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+  gap: 8px;
   min-height: 56px;
-  padding: 10px 12px;
+  padding: 8px;
   border-radius: 16px;
   background: #f3f7fb;
   font-weight: 650;
   color: inherit;
   text-align: left;
+}
+
+.chapter-main {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 4px 6px;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-weight: 650;
+}
+
+.story-chip {
+  align-self: center;
+  min-width: 56px;
+  min-height: 48px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 rgba(45, 58, 74, 0.12);
+}
+
+.story-chip.locked {
+  background: #e7edf3;
+  color: #6b7c8d;
+  box-shadow: none;
 }
 
 .chapter.done {
@@ -410,7 +475,8 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 0 rgba(244, 180, 0, 0.22);
 }
 
-.chapter:active {
+.chapter-main:active,
+.story-chip:active {
   transform: translateY(2px);
 }
 

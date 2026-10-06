@@ -8,6 +8,7 @@ import {
   flushMeadowClock,
   hatchMeadowEgg,
   locationForNextMainline,
+  isChapterStoryUnlocked,
   persistState,
   saveMeadowAccessory,
   saveMeadowDecor,
@@ -148,6 +149,10 @@ function mountStage() {
       if (cardId.value === id) cardId.value = null
     },
     onStoreDecor: (id) => storeMeadowDecoration(id),
+    storyReady: (chapterId) => isChapterStoryUnlocked(chapterId),
+    onStory: (chapterId) => {
+      void router.push(`/chapter-story/${chapterId}`)
+    },
   })
 }
 
@@ -1157,6 +1162,21 @@ function onHatched() {
   font-weight: 750;
   line-height: 1.25;
   text-align: center;
+}
+
+.meadow-bubble-story {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #9a5b12;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 3px 0 rgba(244, 180, 0, 0.35);
 }
 
 .meadow-bubble-card {

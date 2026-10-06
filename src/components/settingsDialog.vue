@@ -13,6 +13,7 @@ import {
   resetAllProgress,
   setCurrentLesson,
   setMeadowOpenAnytime,
+  setStoriesUnlockedAll,
   skipMeadowHunger,
 } from '../composables/useProgress'
 import appSelect from './appSelect.vue'
@@ -111,6 +112,11 @@ function toggleMeadow() {
   setMeadowOpenAnytime(!persistState.meadow.openAnytime)
 }
 
+function toggleStories() {
+  playPop()
+  setStoriesUnlockedAll(!persistState.chapter.storiesUnlockedAll)
+}
+
 function toggleHitZones() {
   playPop()
   showHitZones.value = !showHitZones.value
@@ -194,13 +200,19 @@ function applyLesson() {
             「初始化」会回到新玩家的起点：前 {{ openingChapters }} 章算已经玩过，星星、徽章、图鉴和草地上的小动物一起恢复，后面的进度会清掉。词卡图片还在，不会删。
             「完全化」会按配置一键打满：所有课、关卡、星星、徽章贴纸、图鉴词、岛日展示，并把 12 只小动物直接放到星星草地（不孵蛋），每只爱心都是满的。不会送小商店里的装饰。
             「草地时间 +12小时」只给调试用，把草地上每只动物的饥饿时间往前拨 12 小时。
-            「星星 +50」只给调试用，加的是一辈子的星星，不会把小商店里的装饰送掉。
+            「星星 +50」只给调试用，加的是一辈子的星星，不会把小商店里的装饰送掉。「全部章节故事」打开后，每一章的故事都能听，不用先通关，也不会因此发星星。
             「装饰热区」只给调试用，拖小动物时把装饰的放下范围画成虚线。
           </p>
           <button class="meadow-toggle" type="button" @click="toggleMeadow">
             <span>随时进星星草地</span>
             <span class="toggle" :class="{ on: persistState.meadow.openAnytime }">
               {{ persistState.meadow.openAnytime ? '开' : '关' }}
+            </span>
+          </button>
+          <button class="meadow-toggle" type="button" @click="toggleStories">
+            <span>全部章节故事</span>
+            <span class="toggle" :class="{ on: persistState.chapter.storiesUnlockedAll }">
+              {{ persistState.chapter.storiesUnlockedAll ? '开' : '关' }}
             </span>
           </button>
           <button class="meadow-toggle" type="button" @click="toggleHitZones">
