@@ -1,3 +1,4 @@
+import { currentBuildVersion } from '../appVersion'
 import { registerSW } from 'virtual:pwa-register'
 
 const UPDATE_INTERVAL_MS = 10 * 60 * 1000
@@ -16,9 +17,35 @@ let started = false
 let retryTimer = 0
 
 export function appVersionLabel(): string {
-  const commit = __APP_COMMIT__ || 'dev'
+  const commit = currentBuildVersion()
   const builtAt = __APP_BUILD_TIME__ || ''
   return builtAt ? `${commit} · ${builtAt}` : commit
+}
+
+export function nudgeServiceWorkerUpdate() {
+  const run = (reg: ServiceWorkerRegistration) => {
+    registration = reg
+    void reg.update().catch(() => undefined)
+  }
+  if (registration) {
+    run(registration)
+    return
+  }
+  if (!('serviceWorker' in navigator)) return
+  void navigator.serviceWorker.getRegistration().then((reg) => {
+    if (reg) run(reg)
+  })
+}
+
+/** User asked to take the new build; ignore the in-level safe-path delay. */
+export function reloadToNewVersion() {
+  const last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0)
+  const elapsed = Date.now() - last
+  if (Number.isFinite(last) && last > 0 && elapsed < RELOAD_GUARD_MS) return
+  reloading = true
+  pendingReload = false
+  sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()))
+  window.location.reload()
 }
 
 export function noteNavigation(path: string) {

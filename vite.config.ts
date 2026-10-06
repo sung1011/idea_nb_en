@@ -1,18 +1,11 @@
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 /** GitHub Pages project site. Manifest scope and the service worker must match. */
 const base = '/idea_nb_en/'
-
-function gitShortCommit(): string {
-  try {
-    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim() || 'dev'
-  } catch {
-    return 'dev'
-  }
-}
 
 function shanghaiStamp(date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -28,7 +21,18 @@ function shanghaiStamp(date = new Date()): string {
   return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('hour')}:${pick('minute')}`
 }
 
-const appCommit = gitShortCommit()
+function writeAppVersionArtifacts(): string {
+  execSync('node scripts/writeAppVersion.mjs', { stdio: 'inherit' })
+  try {
+    const raw = readFileSync(new URL('./public/version.json', import.meta.url), 'utf8')
+    const data = JSON.parse(raw) as { version?: string }
+    return data.version?.trim() || 'dev'
+  } catch {
+    return 'dev'
+  }
+}
+
+const appCommit = writeAppVersionArtifacts()
 const appBuiltAt = shanghaiStamp()
 
 /** Puts the build id in index.html so its precache revision changes every build. */
@@ -42,6 +46,22 @@ function appBuildStamp(): Plugin {
   }
 }
 
+/** Serve version.json / history.json fresh in dev. Build copies them from public/. */
+function appVersionNoStore(): Plugin {
+  return {
+    name: 'app-version-no-store',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0] ?? ''
+        if (url.endsWith('/version.json') || url.endsWith('/history.json')) {
+          res.setHeader('Cache-Control', 'no-store')
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   define: {
     __APP_COMMIT__: JSON.stringify(appCommit),
@@ -50,6 +70,7 @@ export default defineConfig({
   plugins: [
     vue(),
     appBuildStamp(),
+    appVersionNoStore(),
     VitePWA({
       registerType: 'autoUpdate',
       // Register from the app so a new worker can take over without reloading mid-game.
@@ -93,9 +114,17 @@ export default defineConfig({
         // Each file keeps its own content revision. Unchanged mp3s are copied inside the cache.
         globPatterns: ['**/*.{js,css,html,svg,png,webp,ico,mp3,wav,ogg,m4a}', 'audio/manifest.json'],
         // Chapter stories are fetched into the Cache API when that story opens.
-        globIgnores: ['**/story-ch*-p*-*.mp3'],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // version.json / history.json must stay network-fresh for the update bubble.
+        globIgnores: ['**/story-ch*-p*-*.mp3', '**/version.json', '**/history.json'],
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/\/version\.json$/i, /\/history\.json$/i],
+        runtimeCaching: [
+          {
+            urlPattern: /\/(?:version|history)\.json$/i,
+            handler: 'NetworkOnly',
+          },
+        ],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
     }),
   ],

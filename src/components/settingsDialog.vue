@@ -2,7 +2,8 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listChapters, DEFAULT_COMPLETED_CHAPTERS } from '../data/chapters'
-import { appVersionLabel, checkForAppUpdate, noteSettingsOpen } from '../composables/usePwaUpdate'
+import { appVersionLabel, noteSettingsOpen } from '../composables/usePwaUpdate'
+import { noteUpdateUiOpen, useAppUpdate } from '../composables/useAppUpdate'
 import { playPop } from '../composables/useSfx'
 import { decorHitZonesVisible, setDecorHitZonesVisible } from '../meadow/meadowConfig'
 import {
@@ -28,6 +29,8 @@ const router = useRouter()
 const chapters = listChapters()
 const openingChapters = DEFAULT_COMPLETED_CHAPTERS
 const versionLabel = appVersionLabel()
+const { updateReady, remoteVersion, behindNotes, extraBehindCount, checkRemoteAppUpdate, reloadToNewVersion } =
+  useAppUpdate()
 const checking = ref(false)
 const toast = ref('')
 let toastTimer = 0
@@ -58,6 +61,7 @@ watch(step, () => {
 
 watch(open, (value) => {
   noteSettingsOpen(value)
+  noteUpdateUiOpen(value)
   if (value) {
     step.value = 'main'
     window.addEventListener('keydown', onKey)
@@ -68,6 +72,7 @@ watch(open, (value) => {
 
 onUnmounted(() => {
   noteSettingsOpen(false)
+  noteUpdateUiOpen(false)
   window.removeEventListener('keydown', onKey)
   window.clearTimeout(toastTimer)
 })
@@ -85,12 +90,16 @@ async function checkUpdate() {
   playPop()
   checking.value = true
   try {
-    const result = await checkForAppUpdate()
-    if (result === 'updated') return
-    showToast('已经是最新版本')
+    const result = await checkRemoteAppUpdate('manual')
+    showToast(result === 'updated' ? '有新版本' : '已是当前版本')
   } finally {
     checking.value = false
   }
+}
+
+function goUpdate() {
+  playPop()
+  reloadToNewVersion()
 }
 
 function close() {
@@ -227,6 +236,14 @@ function applyLesson() {
           <big-button variant="danger" @click="askWipeConfirm">初始化</big-button>
           <big-button variant="soft" @click="askMaxConfirm">完全化</big-button>
           <p class="version">当前版本 {{ versionLabel }}</p>
+          <section v-if="updateReady" class="update-box">
+            <p class="update-kicker">发现新版本 v{{ remoteVersion }}</p>
+            <ul v-if="behindNotes.length" class="update-notes">
+              <li v-for="(note, index) in behindNotes" :key="`${note.at}-${index}`">{{ note.title }}</li>
+            </ul>
+            <p v-if="extraBehindCount > 0" class="update-more">还有 {{ extraBehindCount }} 条更早的更新</p>
+            <big-button variant="primary" compact @click="goUpdate">去更新</big-button>
+          </section>
           <big-button variant="soft" :disabled="checking" @click="checkUpdate">检查更新</big-button>
           <big-button variant="soft" @click="close">先不了</big-button>
         </template>
@@ -362,6 +379,40 @@ function applyLesson() {
   font-size: 14px;
   font-weight: 650;
   color: #3d5164;
+}
+
+.update-box {
+  padding: 12px 14px 10px;
+  border-radius: 18px;
+  background: #fff7d6;
+  box-shadow: 0 4px 0 rgba(45, 58, 74, 0.08);
+  display: grid;
+  gap: 8px;
+}
+
+.update-kicker {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.update-notes {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: grid;
+  gap: 4px;
+  color: #3d5164;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.update-more {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
 }
 
 .update-toast {

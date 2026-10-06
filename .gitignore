@@ -14,6 +14,10 @@ dist-ssr
 scripts/.speech-catalog.json
 scripts/.story-tts.json
 
+# Build-time version artifacts (written by scripts/writeAppVersion.mjs)
+public/version.json
+public/history.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

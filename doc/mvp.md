@@ -10,7 +10,7 @@
 - 无后端；进度统一在 `localStorage` 键 `starWords.v2`（星星 / 贴纸 / 图鉴解锁 / 章·课·关卡 / 动物岛日格 / 当日文案 / 星星草地）。启动时从 `starWords.v1` + `starWords.atlas.v1` 迁入。persist `version: 6` 起按 RISE 课表的「章 → 课 → 关」。v5 及更早的 `chN-x` 关卡进度会重置，终身星星、贴纸、图鉴词保留。没有 `meadow` 字段的旧档仍能读，草地按空档补上，已通关的章会排队等孵蛋。之后只读写 v2
 - 首页一张「今天玩」卡片：当前章名字、当前课的「第N章·第M课 x/y」（只出现一次）和一颗大按钮，走无参 `getNextLevel()`。没有关卡内容的课显示「即将开放」。缺省仍写入 `mainTaskId=animalsCh1`，并从已配置的课词表轮换 `focusWord`（只作文案，不锁关）。动物岛大厅先列章，点开再列课，再进关卡
 - 静态托管：Vite `base` 为 `/idea_nb_en/`，hash 路由；`main` 推送后由 GitHub Actions 发到 GitHub Pages
-- 可安装 PWA：`vite-plugin-pwa`，`registerType: autoUpdate`，Workbox `skipWaiting`、`clientsClaim`、`cleanupOutdatedCaches` 都打开，新的 service worker 下载完立刻接管，不弹更新窗。注册在应用里（`injectRegister: null`），页面回到前台、窗口聚焦、`pageshow`，以及打开着时每 10 分钟，都会 `registration.update()`。新 worker 接管后（`controllerchange` / `onNeedReload`）只在安全页面自动刷新：首页、星星草地、动物岛的章 / 课 / 关卡列表、设置开着、单词图鉴、句子图鉴。正在关卡或游戏里只记下待刷新，回到安全页面再刷。15 秒内不连刷，避免刷新循环。设置里显示构建时注入的版本（git 短哈希 + 上海时间），「检查更新」会强制 `update()`，有新版本就刷新，没有就提示「已经是最新版本」。`index.html` 写入 `app-build`，每次构建预缓存修订都会变，导航不会一直用旧壳；`navigateFallback` 仍是 `index.html`。语音 mp3 按文件预缓存，各自带内容修订，没改过的文件不重新下载。manifest 名「星词岛」，`display: standalone`，`orientation: portrait`，`theme_color` / `background_color` 为天空蓝 `#7ec8e3`。`start_url` 与 `scope` 都是 `/idea_nb_en/`。图标在 `public/`（192 / 512 any、512 maskable、180 apple-touch、64 favicon、1024 主图）。Workbox 预缓存构建出的 JS / CSS / HTML，以及 `public/` 里的词卡 webp、图标、`public/audio/` 的神经语音 mp3 和 `manifest.json`。预缓存在安装后的后台下载，不挡住第一次开口。点击音效仍是内存生成的 wav
+- 可安装 PWA：`vite-plugin-pwa`，`registerType: autoUpdate`，Workbox `skipWaiting`、`clientsClaim`、`cleanupOutdatedCaches` 都打开，新的 service worker 下载完立刻接管，不弹更新窗。注册在应用里（`injectRegister: null`），页面回到前台、窗口聚焦、`pageshow`，以及打开着时每 10 分钟，都会 `registration.update()`。新 worker 接管后（`controllerchange` / `onNeedReload`）只在安全页面自动刷新：首页、星星草地、动物岛的章 / 课 / 关卡列表、设置开着、单词图鉴、句子图鉴。正在关卡或游戏里只记下待刷新，回到安全页面再刷。15 秒内不连刷，避免刷新循环。每次构建由 `scripts/writeAppVersion.mjs` 写出 `version.json`（`version` 为 7 位短哈希，另有 `sha` / `releasedAt` / 最近约 10 条 `notes`）和 `history.json`（从新到旧的完整提交列表），并注入同一份 `__APP_COMMIT__`（必须等于 `version.json.version`）以及上海时间 `__APP_BUILD_TIME__`。应用用 `cache: 'no-store'` 拉 `${BASE_URL}version.json?t=`；远程短哈希和本地不同就视为有新版本（忽略 `dev` / 空）。自动发现（前台 / 聚焦 / 每 10 分钟）时设置齿轮亮红点，并在齿轮外侧弹出气泡，标题「发现新版本 v{sha}」，用 `history.json` 算出落后的提交说明（最多约 10 条，多出来一行「还有 N 条更早的更新」；解析失败则退回 `version.json.notes` 最新一条）。点 × 把该远程版本记进 `starWords.updateBubbleDismiss`；设置开着时气泡藏起来，关掉设置红点仍在，直到刷新到新包。「去更新」走和设置里相同的刷新。手动「检查更新」只 toast「有新版本」/「已是当前版本」，不强制弹出外侧气泡。Workbox 不把 `version.json` / `history.json` 预缓存成不可变资源，运行时 `NetworkOnly`。GitHub Actions 用 `fetch-depth: 0` 才能写出完整 history。`index.html` 写入 `app-build`，每次构建预缓存修订都会变，导航不会一直用旧壳；`navigateFallback` 仍是 `index.html`。语音 mp3 按文件预缓存，各自带内容修订，没改过的文件不重新下载。manifest 名「星词岛」，`display: standalone`，`orientation: portrait`，`theme_color` / `background_color` 为天空蓝 `#7ec8e3`。`start_url` 与 `scope` 都是 `/idea_nb_en/`。图标在 `public/`（192 / 512 any、512 maskable、180 apple-touch、64 favicon、1024 主图）。Workbox 预缓存构建出的 JS / CSS / HTML，以及 `public/` 里的词卡 webp、图标、`public/audio/` 的神经语音 mp3 和 `manifest.json`。预缓存在安装后的后台下载，不挡住第一次开口。点击音效仍是内存生成的 wav
 - TTS：固定台词走 `public/audio/` 里预先生成的 Edge 神经语音（英语 `en-US-AnaNeural`、语速 `-12%`；中文 `zh-CN-XiaoxiaoNeural`、默认语速）。`speak` 用「语言 + 整理过的文本」查 `manifest.json`，命中就用同一条 `HTMLAudioElement` 播放，新的一句会停掉上一句；没有条目或播放失败才回退 `speechSynthesis`（英语 en-US、语速 0.86、音高 1.12；中文挑 zh-CN 语音）。`speakPraise` / `speakZh` 不变。小书封面说 `小书：《课名》`（中文课名，试玩是「小小书」），预先生成。单字母和音族热身音素（如 /k/、qu、ch）不生成，仍走系统语音。找一找开场句不再生成。生成：`npm run tts`（已有文件会跳过）。读词钓鱼 / 回音洞的 `SpeechRecognition` 不变。离线或没有麦克风时识别不可用，钓鱼改为点鱼，回音洞点「我说好了」
 - 点对 / 通关英语表扬从 `src/data/praisePhrases.ts` 随机抽（点对一步 / 通关 / 轻提示三套），尽量不连说同一句；中文外壳不动
 - 动物岛 15 词使用 Style-5 描边软陶词卡（`public/word-cards/{word}.webp`，512px 长边，路径走 Vite `base`）；无图或加载失败时回退 emoji / 文字
@@ -114,9 +114,14 @@ src/data/todayTasks.ts         章节目标文案（进度 / 下一关 / 焦点�
 src/composables/progressStore.ts 进度数据模型 + 章节关卡 + localStorage 迁移 + 初始化清档 + 完全化打满
 src/composables/useProgress.ts 星星 / 贴纸 / 图鉴 / 章节关卡 / 岛日 / 当日文案
 src/composables/useStickerAlbum.ts 贴纸相册只读视图（写入走 progressStore）
-src/components/settingsButton.vue 首页 / 大厅齿轮入口
-src/components/settingsDialog.vue 设置弹窗（初始化清空 / 完全化打满，都需确认；版本和检查更新）
-src/composables/usePwaUpdate.ts 安装后的更新检查、安全页面刷新、待刷新标记
+scripts/writeAppVersion.mjs 构建时写出 public/version.json 与 history.json
+src/appVersion.ts            当前构建短哈希、远程 version.json 比较、落后提交
+src/updateBubble.ts          更新气泡定位（右对齐齿轮、夹在屏幕里）
+src/components/settingsButton.vue 首页 / 大厅齿轮入口（锚点 + 红点）
+src/components/settingsDialog.vue 设置弹窗（初始化清空 / 完全化打满，都需确认；版本、落后说明、检查更新、去更新）
+src/components/appUpdateBubble.vue 设置齿轮外侧的新版本气泡
+src/composables/usePwaUpdate.ts 安装后的更新检查、安全页面刷新、待刷新标记、去更新
+src/composables/useAppUpdate.ts 自动/手动查新版本、红点与气泡状态
 src/components/todayGoalBar.vue 章节目标条（首页：当前下一关所在章 x/N + 下一关 + CTA 走无参 getNextLevel；大厅不挂）
 src/components/todayStarBar.vue 过关星星条（空/实星，主线关卡顶栏 + 完成页；格数跟 starsGoal / levels.length）
 src/components/chapterLevelLights.vue 关卡亮格（章内列表 + 首页岛卡 + 完成页；格数 = levelTotal）
@@ -229,8 +234,9 @@ src/views/*.vue                主线玩法 + Day Complete
 - 「随时进星星草地」：开关，默认关，点了立刻记住。开着就不用先过一关也能进草地
 - 「初始化」：先问「真的清空吗？」；确认后 `resetAllProgress()` 清掉进度键，再按 `DEFAULT_COMPLETED_CHAPTERS` 写成新玩家起点（这些章的关卡记首次通关、补上同样的星星和章节徽章、图鉴词句打开、对应小动物直接在草地上且刚喂饱，不播孵化）。已有进度的旧档不会被迁移改写。不删 `public/word-cards`
 - 「完全化」：确认后 `maxOutProgressFromConfig()`，按当前 `CHAPTERS` / 课 / 关卡 / 贴纸目录 / 音族词打满，并把 12 只小动物直接放到星星草地，每只爱心记成 5（饰品和跳舞都解锁，不预先戴上）。空关卡的课也会记成已过，这样以后只加配置就能被打满。不写死章 id 或课数。当天的草地门不会因此打开
-- 「当前版本」：构建时写入的 git 短哈希和上海时间（`__APP_COMMIT__` / `__APP_BUILD_TIME__`）
-- 「检查更新」：向已安装的 service worker 要一次更新。有新版本就刷新；已经是这版就提示「已经是最新版本」
+- 「当前版本」：构建时写入的 git 短哈希和上海时间（`__APP_COMMIT__` / `__APP_BUILD_TIME__`，与 `version.json.version` 相同）
+- 有新版本时齿轮亮红点（`aria-label` 带「有新版本」）。自动发现（不是手动点「检查更新」）且该远程版本没被关掉过，就在齿轮外弹出气泡，列出落后的提交说明。「去更新」刷新到新包；× 按远程版本记住，不再弹出，红点仍在
+- 「检查更新」：拉 `version.json` 并顺便 `registration.update()`。有新版本 toast「有新版本」，并在弹窗里列出落后说明和「去更新」；已经是这版 toast「已是当前版本」。手动检查不强制弹出外侧气泡
 
 ## 关卡通关跳转
 
