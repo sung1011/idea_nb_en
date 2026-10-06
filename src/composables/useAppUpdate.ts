@@ -12,7 +12,7 @@ import {
 } from '../appVersion'
 import { nudgeServiceWorkerUpdate, reloadToNewVersion } from './usePwaUpdate'
 
-const UPDATE_INTERVAL_MS = 10 * 60 * 1000
+const UPDATE_INTERVAL_MS = 20 * 1000
 
 const updateReady = ref(false)
 const remoteVersion = ref('')

@@ -1,20 +1,12 @@
 import { currentBuildVersion } from '../appVersion'
 import { registerSW } from 'virtual:pwa-register'
 
-const UPDATE_INTERVAL_MS = 10 * 60 * 1000
+const UPDATE_INTERVAL_MS = 20 * 1000
 const RELOAD_GUARD_MS = 15_000
 const RELOAD_GUARD_KEY = 'starWords.pwaReloadAt'
 
-/** Screens where a refresh will not wipe an in-progress level. */
-const SAFE_PATHS = new Set(['/', '/star-meadow', '/animal-island', '/word-atlas', '/sentence-atlas'])
-
 let registration: ServiceWorkerRegistration | undefined
-let currentPath = readHashPath()
-let settingsOpen = false
-let pendingReload = false
-let reloading = false
 let started = false
-let retryTimer = 0
 
 export function appVersionLabel(): string {
   const commit = currentBuildVersion()
@@ -37,49 +29,31 @@ export function nudgeServiceWorkerUpdate() {
   })
 }
 
-/** User asked to take the new build; ignore the in-level safe-path delay. */
+/** User asked to take the new build. This is the only reload path. */
 export function reloadToNewVersion() {
   const last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0)
   const elapsed = Date.now() - last
   if (Number.isFinite(last) && last > 0 && elapsed < RELOAD_GUARD_MS) return
-  reloading = true
-  pendingReload = false
   sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()))
   window.location.reload()
 }
 
-export function noteNavigation(path: string) {
-  currentPath = path || '/'
-  flushPendingReload()
+export function noteNavigation(_path: string) {
+  void _path
 }
 
-export function noteSettingsOpen(open: boolean) {
-  settingsOpen = open
-  if (open) flushPendingReload()
+export function noteSettingsOpen(_open: boolean) {
+  void _open
 }
 
 export function startPwaUpdates() {
   if (started || !('serviceWorker' in navigator)) return
   started = true
 
-  let hadController = Boolean(navigator.serviceWorker.controller)
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // The first claim on a fresh install is not an update.
-    if (!hadController) {
-      hadController = true
-      return
-    }
-    requestReload()
-  })
-  window.addEventListener('pageshow', () => {
-    flushPendingReload()
-  })
-
   registerSW({
     immediate: true,
-    onNeedReload() {
-      requestReload()
-    },
+    // Must stay set: vite-plugin-pwa otherwise reloads on SW activate.
+    onNeedReload() {},
     onRegisteredSW(swScriptUrl, reg) {
       void swScriptUrl
       if (!reg) return
@@ -93,7 +67,7 @@ export function startPwaUpdates() {
   })
 }
 
-/** Force a check. Reloads when a new worker is found; otherwise the caller shows the toast. */
+/** Force a check. Reports a new worker without reloading. */
 export async function checkForAppUpdate(): Promise<'updated' | 'current'> {
   if (!('serviceWorker' in navigator)) return 'current'
   const reg = registration ?? (await navigator.serviceWorker.getRegistration())
@@ -115,44 +89,9 @@ export async function checkForAppUpdate(): Promise<'updated' | 'current'> {
   reg.removeEventListener('updatefound', mark)
   const installing = reg.installing
   if (found || reg.waiting || (installing && installing.state !== 'redundant')) {
-    requestReload()
     return 'updated'
   }
   return 'current'
-}
-
-function readHashPath(): string {
-  const raw = window.location.hash.replace(/^#/, '') || '/'
-  const path = raw.split('?')[0] || '/'
-  return path.startsWith('/') ? path : `/${path}`
-}
-
-function isSafeScreen(): boolean {
-  return settingsOpen || SAFE_PATHS.has(currentPath) || currentPath.startsWith('/chapter-story')
-}
-
-function requestReload() {
-  pendingReload = true
-  flushPendingReload()
-}
-
-function flushPendingReload() {
-  if (!pendingReload || reloading || !isSafeScreen()) return
-  const last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0)
-  const elapsed = Date.now() - last
-  if (Number.isFinite(last) && last > 0 && elapsed < RELOAD_GUARD_MS) {
-    if (!retryTimer) {
-      retryTimer = window.setTimeout(() => {
-        retryTimer = 0
-        flushPendingReload()
-      }, RELOAD_GUARD_MS - elapsed + 30)
-    }
-    return
-  }
-  reloading = true
-  pendingReload = false
-  sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()))
-  window.location.reload()
 }
 
 function bindUpdateChecks(reg: ServiceWorkerRegistration) {
