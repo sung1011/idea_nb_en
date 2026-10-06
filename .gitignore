@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 scripts/.speech-catalog.json
+scripts/.story-tts.json
 
 # Editor directories and files
 .vscode/*

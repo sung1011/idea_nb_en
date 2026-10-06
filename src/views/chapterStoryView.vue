@@ -4,9 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { claimChapterStoryStar, isChapterStoryUnlocked } from '../composables/useProgress'
-import { speak, speakZh } from '../composables/useSpeech'
+import { speakStoryLine, warmChapterStoryAudio } from '../composables/useSpeech'
 import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, getChapter, getChapterNumber } from '../data/chapters'
-import { getChapterStory } from '../data/chapterStories'
+import { getChapterStory, storyAudioFile } from '../data/chapterStories'
 
 const CLAY = ['#ffe8c2', '#d7f3c8', '#cfe9ff', '#ffe0ea', '#fff3b0', '#e4d9ff', '#d4f4ef', '#ffd7c2']
 
@@ -34,6 +34,20 @@ watch(chapterId, () => {
   starNote.value = ''
 })
 
+watch(
+  () => [chapterId.value, unlocked.value, pageCount.value] as const,
+  () => {
+    if (!unlocked.value || pageCount.value < 1) return
+    const files: string[] = []
+    for (let page = 1; page <= pageCount.value; page += 1) {
+      files.push(storyAudioFile(chapterNo.value, page, 'en'))
+      files.push(storyAudioFile(chapterNo.value, page, 'zh'))
+    }
+    void warmChapterStoryAudio(files)
+  },
+  { immediate: true },
+)
+
 function clayColor(hint: string, index: number): string {
   let hash = index * 17
   for (const ch of hint) hash = (hash + ch.charCodeAt(0) * 13) % 997
@@ -48,12 +62,12 @@ function sceneEmoji(hint: string): string {
 
 function hearEn() {
   if (!page.value) return
-  void speak(page.value.en)
+  void speakStoryLine(storyAudioFile(chapterNo.value, pageIndex.value + 1, 'en'), page.value.en, 'en-US')
 }
 
 function hearZh() {
   if (!page.value) return
-  void speakZh(page.value.zh)
+  void speakStoryLine(storyAudioFile(chapterNo.value, pageIndex.value + 1, 'zh'), page.value.zh, 'zh-CN')
 }
 
 function goPrev() {

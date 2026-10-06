@@ -120,6 +120,99 @@ function systemSpeak(text: string, lang: string, rate: number, token: number): v
   window.speechSynthesis.speak(utter)
 }
 
+const STORY_CACHE = 'star-words-story'
+
+/** Fetch this chapter's story mp3s into the Cache API. Missing files stay on system speech. */
+export async function warmChapterStoryAudio(files: string[]): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return
+  const cache = await caches.open(STORY_CACHE)
+  await Promise.all(
+    files.map(async (file) => {
+      const url = clipUrl(file)
+      try {
+        if (await cache.match(url)) return
+        const res = await fetch(url)
+        if (res.ok) await cache.put(url, res)
+      } catch {
+        /* offline, or this chapter has not been generated yet */
+      }
+    }),
+  )
+}
+
+function playResolved(
+  src: string,
+  text: string,
+  lang: string,
+  rate: number,
+  token: number,
+  cleanup?: () => void,
+): void {
+  const el = element()
+  let handed = false
+  const finishCleanup = () => {
+    cleanup?.()
+    cleanup = undefined
+  }
+  const fail = () => {
+    finishCleanup()
+    if (seq !== token || handed) return
+    handed = true
+    el.onended = null
+    el.onerror = null
+    systemSpeak(text, lang, rate, token)
+  }
+  el.onended = null
+  el.onerror = null
+  el.pause()
+  el.src = src
+  el.onended = () => {
+    finishCleanup()
+    if (seq !== token || handed) return
+    handed = true
+    releaseCurrent()
+  }
+  el.onerror = fail
+  void el.play().catch(fail)
+}
+
+/** Prefer a named story mp3 (cache, then network). Fall back to system speech. */
+export function speakStoryLine(file: string, text: string, lang = 'en-US'): Promise<void> {
+  stopSpeech()
+  const token = seq
+  const line = text.trim()
+  if (!line) return Promise.resolve()
+  const rate = speechLang(lang) === 'zh-CN' ? 1 : 0.86
+  return new Promise((resolve) => {
+    currentResolve = resolve
+    void (async () => {
+      const url = clipUrl(file)
+      let src = url
+      let blobUrl = ''
+      try {
+        if ('caches' in window) {
+          const cache = await caches.open(STORY_CACHE)
+          const hit = await cache.match(url)
+          if (hit) {
+            blobUrl = URL.createObjectURL(await hit.blob())
+            src = blobUrl
+          }
+        }
+      } catch {
+        src = url
+      }
+      if (seq !== token) {
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
+        releaseCurrent()
+        return
+      }
+      playResolved(src, line, lang, rate, token, () => {
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
+      })
+    })()
+  })
+}
+
 function playClip(file: string, text: string, lang: string, rate: number, token: number): void {
   const el = element()
   let handed = false

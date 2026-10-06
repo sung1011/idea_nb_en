@@ -92,6 +92,8 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         // Each file keeps its own content revision. Unchanged mp3s are copied inside the cache.
         globPatterns: ['**/*.{js,css,html,svg,png,webp,ico,mp3,wav,ogg,m4a}', 'audio/manifest.json'],
+        // Chapter stories are fetched into the Cache API when that story opens.
+        globIgnores: ['**/story-ch*-p*-*.mp3'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
       },
