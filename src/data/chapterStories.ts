@@ -306,6 +306,7 @@ const STORY_IMAGE_PAGES: Readonly<Record<number, readonly number[]>> = {
   4: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   5: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   6: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  7: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
 }
 
 export function storyImageFile(chapterNo: number, pageNo: number): string | undefined {
