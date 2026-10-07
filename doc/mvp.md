@@ -104,8 +104,8 @@ src/data/shortSentences.ts     短句词库（回声 / 小书每页一句）
 src/data/spellTiles.ts         听音拼一拼字母块（目标字母 + 相近 CVC 干扰）
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/data/chapterStories.ts     章节故事正文（12 章 × 约 15 页）+ storyAudioFile / storyImageFile
-src/views/chapterStoryView.vue 章节故事阅读器（第 1–9 章插画，其它章 emoji）
-public/story/ch{1,2,3,4,5,6,7,8,9}/p0N.webp  第 1–9 章奶油底故事插画（每章 15 页，1280×720 WebP）
+src/views/chapterStoryView.vue 章节故事阅读器（第 1–10 章插画，其它章 emoji）
+public/story/ch{1,2,3,4,5,6,7,8,9,10}/p0N.webp  第 1–10 章奶油底故事插画（每章 15 页，1280×720 WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
 src/data/chapters.ts           RISE 12 章 × 48 课（课类型、课表范围、关卡；目前第 1–2 章有关卡）
@@ -258,7 +258,7 @@ src/views/*.vue                主线玩法 + Day Complete
 - 完成页主按钮是「听本章故事」（这一章四课都过了才出现），下面仍可回家或「看贴纸相册」；想再玩回该章点已过关「再玩一次」
 - 这一章刚变成通关（和徽章同一条件）时，庆祝页稍后弹出孵蛋：点蛋 3 下，英文说 “Hi! I am a bunny!”（元音前用 an，如 ox）。点「去草地看看」后这只动物落在草地中间。庆祝页上先回家的话，蛋留着，下次进草地再孵
 
-**章节故事**在 `/chapter-story/:chapterId`。正文在 `src/data/chapterStories.ts`，一章约十五页，每页一句英文、一句中文。第 1–9 章场景区用奶油底插画 `public/story/ch{1,2,3,4,5,6,7,8,9}/p01.webp`…`p15.webp`（路径走 Vite `base`，`storyImageFile` 只对已有页返回地址）；其它章仍是软陶色块 + emoji。点英文或中文就读那一句。四课都过关才解锁；已经通关的章读档后就能听。动物岛每一章卡片上有「故事」芯片，没解锁是小锁。设置里「全部章节故事」给家长一次打开全部，不发星星。第一次把一章故事听到最后一页并点「听完啦」，终身星星 +1，记在 `storyReadChapters` / `storyStarsClaimed`，商店价格不变。语音文件是 `public/audio/story-ch{章}-p{页}-en.mp3` 和 `-zh.mp3`（英语 `en-US-AnaNeural` `-12%`，中文 `zh-CN-XiaoxiaoNeural`）。安装包不预缓存这些 mp3；打开某一章故事时才把这一章的语音放进 Cache API。插画 webp 和其它 `public/` 图一样进 Workbox 预缓存。播放先用缓存，没有文件就回退系统语音。
+**章节故事**在 `/chapter-story/:chapterId`。正文在 `src/data/chapterStories.ts`，一章约十五页，每页一句英文、一句中文。第 1–10 章场景区用奶油底插画 `public/story/ch{1,2,3,4,5,6,7,8,9,10}/p01.webp`…`p15.webp`（路径走 Vite `base`，`storyImageFile` 只对已有页返回地址）；其它章仍是软陶色块 + emoji。点英文或中文就读那一句。四课都过关才解锁；已经通关的章读档后就能听。动物岛每一章卡片上有「故事」芯片，没解锁是小锁。设置里「全部章节故事」给家长一次打开全部，不发星星。第一次把一章故事听到最后一页并点「听完啦」，终身星星 +1，记在 `storyReadChapters` / `storyStarsClaimed`，商店价格不变。语音文件是 `public/audio/story-ch{章}-p{页}-en.mp3` 和 `-zh.mp3`（英语 `en-US-AnaNeural` `-12%`，中文 `zh-CN-XiaoxiaoNeural`）。安装包不预缓存这些 mp3；打开某一章故事时才把这一章的语音放进 Cache API。插画 webp 和其它 `public/` 图一样进 Workbox 预缓存。播放先用缓存，没有文件就回退系统语音。
 
 ## 贴纸相册
 
