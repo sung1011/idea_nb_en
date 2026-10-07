@@ -55,9 +55,9 @@ export const DEFAULT_LESSON_ID = 'ch1-k1'
 
 /**
  * Brand-new saves, and 初始化, start with this many chapters already cleared.
- * Existing saves are left alone. Change this number to move the start point.
+ * 0 = chapter 1 lesson 1 (`ch1` / `ch1-k1`). Existing saves are left alone.
  */
-export const DEFAULT_COMPLETED_CHAPTERS = 2
+export const DEFAULT_COMPLETED_CHAPTERS = 0
 
 export const PLAY_ROUTES: Record<PlayKind, string> = {
   flashFlip: '/flash-flip',
