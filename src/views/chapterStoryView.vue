@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import bigButton from '../components/bigButton.vue'
 import starBar from '../components/starBar.vue'
 import { claimChapterStoryStar, isChapterStoryUnlocked } from '../composables/useProgress'
-import { speakStoryLine, warmChapterStoryAudio } from '../composables/useSpeech'
+import { useSpeakPageLock } from '../composables/useSpeakPageLock'
+import { speakStoryLine, stopSpeech, warmChapterStoryAudio } from '../composables/useSpeech'
 import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, getChapter, getChapterNumber } from '../data/chapters'
 import { getChapterStory, storyAudioFile, storyImageFile } from '../data/chapterStories'
 
@@ -14,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const pageIndex = ref(0)
 const starNote = ref('')
+const { pageLocked, withPageLock, swipeNav } = useSpeakPageLock()
 
 const chapterId = computed(() => {
   const raw = route.params.chapterId
@@ -63,29 +65,39 @@ function sceneEmoji(hint: string): string {
 
 function hearEn() {
   if (!page.value) return
-  void speakStoryLine(storyAudioFile(chapterNo.value, pageIndex.value + 1, 'en'), page.value.en, 'en-US')
+  const text = page.value.en
+  const file = storyAudioFile(chapterNo.value, pageIndex.value + 1, 'en')
+  void withPageLock(text, 'en-US', () => speakStoryLine(file, text, 'en-US'))
 }
 
 function hearZh() {
   if (!page.value) return
-  void speakStoryLine(storyAudioFile(chapterNo.value, pageIndex.value + 1, 'zh'), page.value.zh, 'zh-CN')
+  const text = page.value.zh
+  const file = storyAudioFile(chapterNo.value, pageIndex.value + 1, 'zh')
+  void withPageLock(text, 'zh-CN', () => speakStoryLine(file, text, 'zh-CN'))
 }
 
 function goPrev() {
-  if (pageIndex.value <= 0) return
+  if (pageLocked.value || pageIndex.value <= 0) return
+  stopSpeech()
   pageIndex.value -= 1
   starNote.value = ''
 }
 
-function goNext() {
+function goNext(fromSwipe = false) {
+  if (pageLocked.value) return
   if (!isLast.value) {
+    stopSpeech()
     pageIndex.value += 1
     starNote.value = ''
     return
   }
+  if (fromSwipe) return
   const fresh = claimChapterStoryStar(chapterId.value)
   starNote.value = fresh ? '听完啦，一颗星星送给你！' : '这个故事你已经听完啦。'
 }
+
+const swipe = swipeNav(goPrev, () => goNext(true))
 </script>
 
 <template>
@@ -108,23 +120,29 @@ function goNext() {
       <p class="title-en">{{ titleEn }}</p>
 
       <div
-        class="scene"
-        :class="{ art: Boolean(sceneSrc) }"
-        :style="sceneSrc ? undefined : { background: clayColor(page.sceneHint, pageIndex) }"
-        aria-hidden="true"
+        class="flip-stage"
+        @pointerdown="swipe.onPointerDown"
+        @click.capture="swipe.onClickCapture"
       >
-        <img v-if="sceneSrc" class="scene-art" :src="sceneSrc" alt="" decoding="async" />
-        <span v-else class="scene-emoji">{{ sceneEmoji(page.sceneHint) }}</span>
+        <div
+          class="scene"
+          :class="{ art: Boolean(sceneSrc) }"
+          :style="sceneSrc ? undefined : { background: clayColor(page.sceneHint, pageIndex) }"
+          aria-hidden="true"
+        >
+          <img v-if="sceneSrc" class="scene-art" :src="sceneSrc" alt="" decoding="async" />
+          <span v-else class="scene-emoji">{{ sceneEmoji(page.sceneHint) }}</span>
+        </div>
+
+        <button class="line en" type="button" @click="hearEn">{{ page.en }}</button>
+        <button class="line zh" type="button" @click="hearZh">{{ page.zh }}</button>
+        <p class="page-no">第 {{ pageIndex + 1 }} 页 · 共 {{ pageCount }} 页</p>
+        <p v-if="starNote" class="star-note">{{ starNote }}</p>
       </div>
 
-      <button class="line en" type="button" @click="hearEn">{{ page.en }}</button>
-      <button class="line zh" type="button" @click="hearZh">{{ page.zh }}</button>
-      <p class="page-no">第 {{ pageIndex + 1 }} 页 · 共 {{ pageCount }} 页</p>
-      <p v-if="starNote" class="star-note">{{ starNote }}</p>
-
       <div class="nav">
-        <big-button variant="soft" :disabled="pageIndex <= 0" @click="goPrev">上一页</big-button>
-        <big-button @click="goNext">{{ isLast ? '听完啦' : '下一页' }}</big-button>
+        <big-button variant="soft" :disabled="pageLocked || pageIndex <= 0" @click="goPrev">上一页</big-button>
+        <big-button :disabled="pageLocked" @click="goNext()">{{ isLast ? '听完啦' : '下一页' }}</big-button>
       </div>
     </template>
   </section>
@@ -148,6 +166,13 @@ function goNext() {
   font-size: 16px;
   font-weight: 700;
   color: var(--muted);
+}
+
+.flip-stage {
+  display: grid;
+  gap: 10px;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .scene {
@@ -221,6 +246,11 @@ function goNext() {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: auto;
+}
+
+.nav :deep(.big-btn:disabled) {
+  opacity: 0.42;
+  filter: saturate(0.55);
 }
 
 .gate {

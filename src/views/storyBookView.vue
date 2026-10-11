@@ -6,6 +6,7 @@ import levelClearSheet from '../components/levelClearSheet.vue'
 import wordPic from '../components/wordPic.vue'
 import { useChapterLevel } from '../composables/useChapterLevel'
 import { tweenCelebrate, tweenPulse, waitAfterStar } from '../composables/useMotion'
+import { useSpeakPageLock } from '../composables/useSpeakPageLock'
 import { pickPraise, playPop, playSuccess, speak, speakZh, stopSpeech } from '../composables/useSpeech'
 import { unlockWord } from '../composables/useWordAtlas'
 import { CHAPTER_LOBBY_EMOJI, chapterKidTitle, lessonKidTitle } from '../data/chapters'
@@ -76,6 +77,7 @@ const cardEl = ref<HTMLElement | null>(null)
 const titleEl = ref<HTMLElement | null>(null)
 const cvcEl = ref<HTMLElement | null>(null)
 const heardPages = new Set<number>()
+const { pageLocked, withPageLock, swipeNav } = useSpeakPageLock()
 
 let alive = true
 let enterToken = 0
@@ -178,7 +180,7 @@ async function hearSentence(opts?: { skipBlend?: boolean }) {
   blending.value = false
   markPageHeard(leaf.word)
   playPop()
-  await speak(leaf.line)
+  await withPageLock(leaf.line, 'en-US', () => speak(leaf.line))
 }
 
 async function enterPage() {
@@ -204,7 +206,7 @@ async function enterPage() {
   sentenceShown.value = true
   blending.value = false
   markPageHeard(leaf.word)
-  await speak(leaf.line)
+  await withPageLock(leaf.line, 'en-US', () => speak(leaf.line))
 }
 
 async function listenAgain() {
@@ -216,9 +218,10 @@ async function listenAgain() {
   await hearSentence({ skipBlend: true })
 }
 
-async function nextPage() {
-  if (locked.value || turning.value || !canPlay.value) return
+async function nextPage(fromSwipe = false) {
+  if (pageLocked.value || locked.value || turning.value || !canPlay.value) return
   if (isLast.value) {
+    if (fromSwipe) return
     await finishBook()
     return
   }
@@ -251,6 +254,10 @@ async function finishBook() {
   await waitAfterStar(result.starsAwarded)
   goAfterLevel(result)
 }
+
+const swipe = swipeNav(undefined, () => {
+  void nextPage(true)
+})
 
 onMounted(() => {
   preloadWordCards([focus.value, ...words])
@@ -286,6 +293,8 @@ onUnmounted(() => {
           revealed: sentenceShown && !isCover,
         },
       ]"
+      @pointerdown="swipe.onPointerDown"
+      @click.capture="swipe.onClickCapture"
     >
       <p class="page-mark">{{ pageMark }}</p>
 
@@ -374,7 +383,11 @@ onUnmounted(() => {
     </div>
 
     <p class="hint center">{{ hint }}</p>
-    <big-button :disabled="!canPlay || locked || turning" @click="nextPage">
+    <big-button
+      class="turn-btn"
+      :disabled="!canPlay || locked || turning || pageLocked"
+      @click="nextPage()"
+    >
       {{ nextLabel }}
     </big-button>
     <big-button variant="listen" :disabled="locked || turning" @click="listenAgain">
@@ -419,6 +432,13 @@ onUnmounted(() => {
   margin-top: 8px;
   padding: 18px 14px 16px;
   min-height: 292px;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.book :deep(.turn-btn:disabled) {
+  opacity: 0.42;
+  filter: saturate(0.55);
 }
 
 .page.cover {

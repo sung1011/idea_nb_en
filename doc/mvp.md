@@ -53,7 +53,7 @@
 
 **听音拼一拼（Sound Spell）**是听音拼 CVC 关（`/sound-spell`，`chN-7`）：系统 TTS 读目标词，格子旁有喇叭可随时再听。字母块 = 目标词字母 + 1–2 个相近 CVC 干扰字母（优先同类词首字母，如 cap 配 m/n）。孩子按顺序点字母，或把字母拖进 C-V-C 格子；点错 / 拖错只轻晃并再读单词，没有红叉、不整盘清空。词表走该关 `focusWord` / `appearWords` / `words`（`sampleGateWords`），不是写死 cap/map。一局把词表里的词轮流拼完。中文短指令，点对 / 通关抽 `praisePhrases`。通关 `unlockWord` + `completeLevel`，立刻开章节回顾。`?level=` 与其它关相同；试玩 `?demo=1` 无 id 时从 15 词库抽一小撮。
 
-**小书点读（Story Book）**是正式关（`/story-book`，`chN-6`）。先封面：章节主题 emoji + 书名（章标题如「-ap 派对」），点书名听封面。再 3–5 页内容（词数读该关 `focusWord` / `appearWords` / `words`，最多 5 页）：每页一句短句（`shortSentences`，如 “A cap on a map.”）+ 焦点词图 / emoji。第一次露出句子前，先轻轻高亮焦点 CVC，中文鼓励「试着拼一拼」，不是测验、不挡下一页。点句子或喇叭听整句，点焦点词（或词卡 / 字母）只听单词。句子里的焦点词热区至少 48px 高。「下一页」和「听句子」贴着底部安全区。中文正向提示。`?level=` 与其它关相同；试玩 `?demo=1` 无 id 时从 15 词库抽一小撮。最后一页庆祝后 `completeLevel`，立刻开听音拼一拼。
+**小书点读（Story Book）**是正式关（`/story-book`，`chN-6`）。先封面：章节主题 emoji + 书名（章标题如「-ap 派对」），点书名听封面。再 3–5 页内容（词数读该关 `focusWord` / `appearWords` / `words`，最多 5 页）：每页一句短句（`shortSentences`，如 “A cap on a map.”）+ 焦点词图 / emoji。第一次露出句子前，先轻轻高亮焦点 CVC，中文鼓励「试着拼一拼」，不是测验、不挡下一页。点句子或喇叭听整句，点焦点词（或词卡 / 字母）只听单词。句子里的焦点词热区至少 48px 高。「下一页」和「听句子」贴着底部安全区。中文正向提示。整句朗读期间（含进页自动读和点句子 / 喇叭重听）不能翻页：「下一页」变灰不可点，滑动翻页也无效；点词、封面听书名、拼读提示不锁翻页。读完、播放出错并走完系统语音回退、或超过预估时长约 4 秒后自动解开。`?level=` 与其它关相同；试玩 `?demo=1` 无 id 时从 15 词库抽一小撮。最后一页庆祝后 `completeLevel`，立刻开听音拼一拼。
 
 **读词钓鱼（Word Fish）**同样用 Pixi 池塘画布：有关卡 id 时用该关词表（ch1-4 cap/map/nap，ch2-4 frog/log/jog，ch3-4 duck/rock/lock）；试玩且没有关卡 id 时仍从 15 词库抽 3 条。鱼身贴词卡图、不写中文。孩子读出某个还在池里的词，就挂钩吊进网里；全部钓完过关。有 `SpeechRecognition` 时宽松匹配剩余单词（与回音洞同一套 loose 规则）；没麦克风或没听清可点鱼钓上来，也可点鱼上的喇叭先听 TTS。读错只轻晃再提示，没有红叉、不扣分。读对或点鱼钓到解锁图鉴；只点喇叭听 TTS 不解锁。副文案按章轻提主题（小猫请客 / 听声找伙伴 / 石头袜子）。第一章钓鱼关：`completeLevel` 首次 +1 星，并额外发「派对耳朵」；立刻跳到回声跟读。`?demo=1` 不加星、不推进章节。旧的 `?review=1` 会回到首页。路由仍为 `/sound-fish`。
 
@@ -104,7 +104,7 @@ src/data/shortSentences.ts     短句词库（回声 / 小书每页一句）
 src/data/spellTiles.ts         听音拼一拼字母块（目标字母 + 相近 CVC 干扰）
 public/word-cards/{word}.webp  Style-5 描边软陶词卡（15 词，512px WebP）
 src/data/chapterStories.ts     章节故事正文（12 章 × 约 15 页）+ storyAudioFile / storyImageFile
-src/views/chapterStoryView.vue 章节故事阅读器（第 1–12 章插画）
+src/views/chapterStoryView.vue 章节故事阅读器（第 1–12 章插画；读句时锁翻页）
 public/story/ch{1,2,3,4,5,6,7,8,9,10,11,12}/p0N.webp  第 1–12 章奶油底故事插画（每章 15 页，1280×720 WebP）
 src/components/wordPic.vue     词卡图（加载失败回退 emoji）
 src/composables/useWordSprite.ts Pixi 词卡贴图
@@ -133,7 +133,8 @@ src/composables/useSentenceAtlas.ts 句子图鉴只读视图（按课是否已�
 src/data/atlasCatalog.ts     两本图鉴共用的分章词表和句子
 src/composables/usePlayMode.ts 试玩模式（通关后不推进章节）
 src/composables/useChapterLevel.ts 关卡页读 `?level=`、按关取词（`takeRunWords`）、调用 `completeLevel`、首次跳下一关、重玩弹出选择层
-src/composables/useSpeech.ts   TTS
+src/composables/useSpeech.ts   TTS（`speak` / `speakStoryLine` 的 Promise 在结束、出错回退系统语音、或 `stopSpeech` 时 settle）
+src/composables/useSpeakPageLock.ts 句子朗读时锁翻页（小书点读 / 章节故事；超时兜底）
 src/composables/useSfx.ts      Howler 点按 / 成功 / 轻晃
 src/composables/useMotion.ts   GSAP shake / pulse / celebrate
 src/composables/useDragSnap.ts 听音拼一拼磁吸落格
@@ -144,7 +145,7 @@ src/meadow/                    星星草地（名册、存档、舞台、孵化�
 src/views/homeView.vue         首页（一张「今天玩」+ 星星草地 + 贴纸相册 + 单词图鉴 / 句子图鉴 + 页底玩法一览 + 设置）
 src/views/animalIslandView.vue 动物岛大厅（三章入口；点开后该章关卡列表 + 已过关「再玩一次」）
 src/views/soundSpellView.vue   听音拼一拼（听词、点/拖字母、软失败、喇叭重听）
-src/views/storyBookView.vue    小书点读（封面听书名 + 3–5 页短句点读，先高亮 CVC 再听整句）
+src/views/storyBookView.vue    小书点读（封面听书名 + 3–5 页短句点读，先高亮 CVC 再听整句；读句时锁翻页）
 src/views/chapterFinaleView.vue 章节回顾 stub（读 `?level=` 的章标题 / 词表；ch1-8 / ch2-8 / ch3-8）
 src/views/wordAtlasView.vue    单词图鉴（按章 + 草地动物）
 src/views/sentenceAtlasView.vue 句子图鉴（按章，章内按课；未通关的课句子锁住）
@@ -258,7 +259,7 @@ src/views/*.vue                主线玩法 + Day Complete
 - 完成页主按钮是「听本章故事」（这一章四课都过了才出现），下面仍可回家或「看贴纸相册」；想再玩回该章点已过关「再玩一次」
 - 这一章刚变成通关（和徽章同一条件）时，庆祝页稍后弹出孵蛋：点蛋 3 下，英文说 “Hi! I am a bunny!”（元音前用 an，如 ox）。点「去草地看看」后这只动物落在草地中间。庆祝页上先回家的话，蛋留着，下次进草地再孵
 
-**章节故事**在 `/chapter-story/:chapterId`。正文在 `src/data/chapterStories.ts`，一章约十五页，每页一句英文、一句中文。第 1–12 章场景区用奶油底插画 `public/story/ch{1,2,3,4,5,6,7,8,9,10,11,12}/p01.webp`…`p15.webp`（路径走 Vite `base`，`storyImageFile` 只对已有页返回地址）。点英文或中文就读那一句。四课都过关才解锁；已经通关的章读档后就能听。动物岛每一章卡片上有「故事」芯片，没解锁是小锁。设置里「全部章节故事」给家长一次打开全部，不发星星。第一次把一章故事听到最后一页并点「听完啦」，终身星星 +1，记在 `storyReadChapters` / `storyStarsClaimed`，商店价格不变。语音文件是 `public/audio/story-ch{章}-p{页}-en.mp3` 和 `-zh.mp3`（英语 `en-US-AnaNeural` `-12%`，中文 `zh-CN-XiaoxiaoNeural`）。安装包不预缓存这些 mp3；打开某一章故事时才把这一章的语音放进 Cache API。插画 webp 和其它 `public/` 图一样进 Workbox 预缓存。播放先用缓存，没有文件就回退系统语音。
+**章节故事**在 `/chapter-story/:chapterId`。正文在 `src/data/chapterStories.ts`，一章约十五页，每页一句英文、一句中文。第 1–12 章场景区用奶油底插画 `public/story/ch{1,2,3,4,5,6,7,8,9,10,11,12}/p01.webp`…`p15.webp`（路径走 Vite `base`，`storyImageFile` 只对已有页返回地址）。点英文或中文就读那一句。四课都过关才解锁；已经通关的章读档后就能听。动物岛每一章卡片上有「故事」芯片，没解锁是小锁。设置里「全部章节故事」给家长一次打开全部，不发星星。第一次把一章故事听到最后一页并点「听完啦」，终身星星 +1，记在 `storyReadChapters` / `storyStarsClaimed`，商店价格不变。语音文件是 `public/audio/story-ch{章}-p{页}-en.mp3` 和 `-zh.mp3`（英语 `en-US-AnaNeural` `-12%`，中文 `zh-CN-XiaoxiaoNeural`）。安装包不预缓存这些 mp3；打开某一章故事时才把这一章的语音放进 Cache API。插画 webp 和其它 `public/` 图一样进 Workbox 预缓存。播放先用缓存，没有文件就回退系统语音。句子朗读期间不能上一页 / 下一页（按钮变灰），场景上左右滑翻页同样锁住；读完、出错并走完系统语音、或超过预估时长约 4 秒后自动解开。闪卡等其它关不套这套锁。
 
 ## 贴纸相册
 

@@ -176,7 +176,10 @@ function playResolved(
   void el.play().catch(fail)
 }
 
-/** Prefer a named story mp3 (cache, then network). Fall back to system speech. */
+/**
+ * Prefer a named story mp3 (cache, then network). Fall back to system speech.
+ * The promise settles when the clip ends, play errors then system speech finishes, or stopSpeech runs.
+ */
 export function speakStoryLine(file: string, text: string, lang = 'en-US'): Promise<void> {
   stopSpeech()
   const token = seq
@@ -236,6 +239,7 @@ function playClip(file: string, text: string, lang: string, rate: number, token:
   void el.play().catch(fail)
 }
 
+/** The promise settles when the clip ends, play errors then system speech finishes, or stopSpeech runs. */
 export function speak(text: string, lang = 'en-US', rate = 0.86): Promise<void> {
   stopSpeech()
   const token = seq
